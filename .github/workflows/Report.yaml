@@ -5,13 +5,13 @@ on:
   push:
   schedule:
     - cron: '55 10 * * *'
-#    - cron: '55 10,15 * * *'
-#    - cron: '40 11,12,15 * * 1,2,3,4,5'
 # https://crontab.guru/#5_*_*_*_*
 jobs:
   render:
     name: Render report
     runs-on: windows-2019
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
       - uses: r-lib/actions/setup-r@v2
