@@ -8,17 +8,17 @@ on:
 # https://crontab.guru/#5_*_*_*_*
 jobs:
     render:
-        name: Render report
-        runs-on: windows-2019
-        env:
-          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-        steps:
-        -    uses: actions/checkout@v3
-        -    uses: r-lib/actions/setup-r@v2
+      name: Render report
+      runs-on: windows-2019
+      env:
+        GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      steps:
+      -   uses: actions/checkout@v3
+      -   uses: r-lib/actions/setup-r@v2
              with:
                 r-version: 'release'
-        -    uses: r-lib/actions/setup-pandoc@v2
-        -    name: Install rmarkdown
+      -    uses: r-lib/actions/setup-pandoc@v2
+      -    name: Install rmarkdown
              run: |
               install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
                       "lubridate","flextable","magrittr",
