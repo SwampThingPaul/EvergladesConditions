@@ -76,10 +76,9 @@ library(zoo)
 library(lubridate)
 library(flextable)
 library(magrittr)
-# library(grid)
 library(RcppRoll)
-# library(downloadthis)
 library(dataRetrieval)
+# library(downloadthis)
 
 ## webscrape tools
 # library(rvest)
