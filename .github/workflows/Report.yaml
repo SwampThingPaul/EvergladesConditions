@@ -24,7 +24,7 @@ jobs:
         run: |
           install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
                   "lubridate","flextable","magrittr",
-                  "RcppRoll","dataRetrieval","jsonlite","remotes"))
+                  "RcppRoll","dataRetrieval","remotes"))
           remotes::install_github("SwampThingPaul/AnalystHelper")
         shell: Rscript {0}
         
