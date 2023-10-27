@@ -11,8 +11,6 @@ on:
 jobs:
   render:
     name: Render report
-    # runs-on: macos-latest
-    # runs-on: windows-latest
     runs-on: windows-2019
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -28,7 +26,6 @@ jobs:
                   "lubridate","flextable","magrittr",
                   "RcppRoll","dataRetrieval","jsonlite","remotes"))
           remotes::install_github("SwampThingPaul/AnalystHelper")
-          
         shell: Rscript {0}
         
     - name: Render Site
