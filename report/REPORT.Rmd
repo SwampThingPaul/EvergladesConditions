@@ -51,25 +51,26 @@ knitr::opts_chunk$set(echo=FALSE,
                       message=FALSE,
                       warning=FALSE,
                       fig.path="plots/")
-check.packages <- function(pkg){
-  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-  if (length(new.pkg))
-    install.packages(new.pkg, dependencies = TRUE)
-  sapply(pkg, require, character.only = TRUE)
-}
-
-check.packages("remotes")
-# check.package.git("SwampThingPaul","AnalystHelper")
-## Specific to AnalystHelper for GA actions issues
-pkg=c("AnalystHelper" )
-new.pkg=pkg[!(pkg %in% installed.packages()[, "Package"])]
-if(length(new.pkg)>0){
-  remotes::install_url("https://raw.githubusercontent.com/sccf-tech/CRE_Conditions/main/report/resource/AnalystHelper_0.1.2.tar.gz",
-                       upgrade=TRUE,quiet=TRUE)
-}
+# check.packages <- function(pkg){
+#   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+#   if (length(new.pkg))
+#     install.packages(new.pkg, dependencies = TRUE)
+#   sapply(pkg, require, character.only = TRUE)
+# }
+# 
+# check.packages("remotes")
+# # check.package.git("SwampThingPaul","AnalystHelper")
+# ## Specific to AnalystHelper for GA actions issues
+# pkg=c("AnalystHelper" )
+# new.pkg=pkg[!(pkg %in% installed.packages()[, "Package"])]
+# if(length(new.pkg)>0){
+#   remotes::install_url("https://raw.githubusercontent.com/sccf-tech/CRE_Conditions/main/report/resource/AnalystHelper_0.1.2.tar.gz",
+#                        upgrade=FALSE,quiet=TRUE)
+# }
 
 ## Libraries
-library(AnalystHelper)
+# library(AnalystHelper)
+source("./select_AnalystHelper_source.R")
 library(reshape2)
 library(plyr)
 library(zoo)
@@ -122,7 +123,7 @@ YEST=date.fun(End.Date-ddays(1))
 dates=seq(date.fun(paste(format(Sys.Date(),"%Y"),"01","01",sep="-")),date.fun(Sys.Date()),"1 days")
 
 ## Maps and Archived data
-mapdata=readLines("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/1217/StatusDaily.htm")
+# mapdata=readLines("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/1217/StatusDaily.htm")
 
 map.q=data.frame()
 for(i in 1:(length(dates))){
@@ -247,6 +248,12 @@ for(i in 1:(length(dates))){
   map.url=paste0("https://w3.saj.usace.army.mil/h2o/reports/SDCSDaily/archive/",format(dates[i],"%m%d"),"/SDCSDaily.htm")
   # download.file(map.url, destfile = "map_dat.html", quiet=TRUE)
   mapdata=readLines(map.url)
+  
+  val=grep("S355A",mapdata)
+  S355A=as.numeric(strsplit(mapdata[val],">S-355A:|</div>")[[1]][2])
+  
+  val=grep("S355B",mapdata)
+  S355B=as.numeric(strsplit(mapdata[val],">S-355B:|</div>")[[1]][2])
   
   val=grep("L-29",mapdata)
   L29Canal=as.numeric(strsplit(mapdata[val],"Canal:|ft")[[1]][3])
@@ -422,6 +429,60 @@ ENP.xtab$WY=WY(ENP.xtab$DATE)
 # WCA3A.PET=DBHYDRO_daily(dates[1],dates[2],c("US347","LA375"))
 # https://troyhill.github.io/TTFF/#:~:text=The%20Tamiami%20Trail%20Flow%20Formula,S333%2C%20S333N%2C%20and%20S334.
 
+
+SRS.dbkeys=data.frame(SITE=c("S12A","S12B", "S12C", "S12D", "S333N", "S333", "S334", "S335", "S355A","S355B", "S355B", "S356"),
+                      DBKEY= c("01313","00610", "00621", "01310", "40371", "15042", "FB752", "91489", "MQ895", "AM173", "MQ896", "64136"),
+                      WQSite=c("S12A","S12B", "S12C", "S12D", "S333N", "S333", NA,NA, "S355A","S355B", "S355B", "S356-334"))
+SRS.dbkeys=subset(SRS.dbkeys,!(SITE%in%c("S355A","S355B")))
+# DBHYDRO.meta.byDBKEY(SRS.dbkeys$DBKEY)
+
+srs.flow=data.frame()
+for(i in 1:nrow(SRS.dbkeys)){
+  tmp=DBHYDRO_daily(dates[1],dates[2],SRS.dbkeys$DBKEY[i])
+  tmp$DBKEY=SRS.dbkeys$DBKEY[i]
+  srs.flow=rbind(tmp,srs.flow)
+  print(i)
+}
+srs.flow$FedWY=WY(srs.flow$Date,"Fed")
+srs.flow=merge(srs.flow,SRS.dbkeys,"DBKEY")
+
+srs.flow.xtab=srs.flow
+srs.flow.xtab$fflow.cfs=srs.flow.xtab$Data.Value
+srs.flow.xtab$fflow.cfs[srs.flow.xtab$fflow.cfs<0]=0; #fix a negative flow value.
+
+srs.flow.xtab$Date.EST=date.fun(srs.flow.xtab$Date)
+
+## SRS Inflow ---------------------------------------------------------
+## Settlement Agreement methods
+srs.flow.da.xtab=dcast(srs.flow.xtab,Date.EST+FedWY~SITE,value.var="fflow.cfs",fun.aggregate=function(x) mean(cfs.to.acftd(ifelse(x<0,NA,x)),na.rm=T))
+srs.flow.da.xtab$S355A=srs.flow.da.xtab$S355B=0; # placeholder due to DBKEYs not being updated
+# srs.flow.da.xtab$S355B=rowSums(srs.flow.da.xtab[,c("S355B","S355B_P")],na.rm=T)
+srs.flow.da.xtab=srs.flow.da.xtab[,c("Date.EST","FedWY","S12A","S12B", "S12C", "S12D", "S333",'S333N', "S334", "S355A", "S355B","S356","S335")]
+
+srs.flow.da.xtab[is.na(srs.flow.da.xtab)]<-0
+srs.flow.da.xtab$minS356_S335=apply(srs.flow.da.xtab[,c('S356','S335')],1,min); # with(srs.flow.da.xtab,ifelse(S356>S335,S335,S356));
+srs.flow.da.xtab$m1.ESRS.Q=rowSums(srs.flow.da.xtab[,c("S333","S333N","S355A","S355B")],na.rm=T)
+srs.flow.da.xtab$m2.ESRS.Q=rowSums(srs.flow.da.xtab[,c("S333","S333N","S355A","S355B","minS356_S335")],na.rm=T)
+
+srs.flow.da.xtab$S333.m1=with(srs.flow.da.xtab,S333*(1-ifelse(m1.ESRS.Q>0,ifelse(S334/m1.ESRS.Q>1,1,S334/m1.ESRS.Q),0)))
+srs.flow.da.xtab$S333N.m1=with(srs.flow.da.xtab,S333N*(1-ifelse(m1.ESRS.Q>0,ifelse(S334/m1.ESRS.Q>1,1,S334/m1.ESRS.Q),0)))
+srs.flow.da.xtab$S355A.adj.m1=with(srs.flow.da.xtab,S355A*(1-ifelse(m1.ESRS.Q>0,ifelse(S334/m1.ESRS.Q>1,1,S334/m1.ESRS.Q),0)))
+srs.flow.da.xtab$S355B.adj.m1=with(srs.flow.da.xtab,S355B*(1-ifelse(m1.ESRS.Q>0,ifelse(S334/m1.ESRS.Q>1,1,S334/m1.ESRS.Q),0)))
+srs.flow.da.xtab$S356.adj.m1=with(srs.flow.da.xtab,S356*(1-ifelse(m1.ESRS.Q>0,ifelse(S334/m1.ESRS.Q>1,1,S334/m1.ESRS.Q),0)))
+
+srs.flow.da.xtab$S333.m2=with(srs.flow.da.xtab,S333*(1-ifelse(m2.ESRS.Q>0,ifelse(S334/m2.ESRS.Q>1,1,S334/m2.ESRS.Q),0)))
+srs.flow.da.xtab$S333N.m2=with(srs.flow.da.xtab,S333N*(1-ifelse(m2.ESRS.Q>0,ifelse(S334/m2.ESRS.Q>1,1,S334/m2.ESRS.Q),0)))
+srs.flow.da.xtab$S355A.adj.m2=with(srs.flow.da.xtab,S355A*(1-ifelse(m2.ESRS.Q>0,ifelse(S334/m2.ESRS.Q>1,1,S334/m2.ESRS.Q),0)))
+srs.flow.da.xtab$S355B.adj.m2=with(srs.flow.da.xtab,S355B*(1-ifelse(m2.ESRS.Q>0,ifelse(S334/m2.ESRS.Q>1,1,S334/m2.ESRS.Q),0)))
+srs.flow.da.xtab$S356.adj.m2=with(srs.flow.da.xtab,minS356_S335*(1-ifelse(m2.ESRS.Q>0,ifelse(S334/m2.ESRS.Q>1,1,S334/m2.ESRS.Q),0)))
+srs.flow.da.xtab$TFlow.m1=rowSums(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B")],na.rm=T)
+srs.flow.da.xtab$TFlow.m2=rowSums(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B","minS356_S335")],na.rm=T)
+
+srs.flow.da.xtab$TFlow.kacft=with(srs.flow.da.xtab,cfs.to.acftd(ifelse(FedWY<2000,TFlow.m1,TFlow.m2))/1000)
+
+srs.flow.da.xtab$cum.TFlow=with(srs.flow.da.xtab,ave(TFlow.kacft,FedWY,FUN = function(x)cumsum(ifelse(is.na(x),0,x))))
+
+srs.flow.da.xtab$DOWY.fed=hydro.day(srs.flow.da.xtab$Date.EST,'Fed')
 
 ## CRE ---------------------------------------------------------------------
 cal.flow=data.frame(DBKEY=c("DJ235","88280","DJ237","00865"),SITE=c(rep("S77",2),rep("S79",2)),priority=rep(c("P1","P2"),2))
@@ -1459,6 +1520,74 @@ subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
 
 <br>
 
+```{r SRS_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="WCA3A inflow and outflow volume from USACE."}
+
+# map.q$ENP.kacft=cfs.to.acftd(map.q$WCA2)/1000
+# map.q$S12sS333s.kacft=cfs.to.acftd(rowSums(map.q[,c("S12s","S333","S333N")]))/1000
+# map.q$EAA_WCA3.kacft=cfs.to.acftd(map.q$EAA_WCA3 )/1000
+
+# srs.flow.da.xtab$TFlow.kacft
+
+max.q=max(subset(srs.flow.da.xtab,Date.EST%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$TFlow.kacft,na.rm=T)
+ylim.max=round(max.q+max.q*0.25,-1)
+
+
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
+cols=c("dodgerblue1","indianred1","black")
+
+layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
+plot(TFlow.kacft~Date.EST,srs.flow.da.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+with(srs.flow.da.xtab,lines(Date.EST,TFlow.kacft,col=cols[1],lwd=2))
+# with(map.q,lines(Date,S12sS333s.kacft,col=cols[2],lwd=2,lty=2))
+# with(map.q,lines(Date,EAA.kacft,col=cols[3],lwd=2,lty=3))
+axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
+axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
+box(lwd=lwd.val)
+mtext("Date (MM/DD/YYYY)",side=1,line=2,cex=1)
+mtext("Daily Discharge (x1000 Ac-Ft d\u207B\u00B9)",side=2,line=3.5,cex=1.25)
+
+plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
+legend(0.5,0.5,
+       legend=c("SRS Inflow (S12s+[S333s + S355s + min(S356,S335) - S334])"),
+       col=cols,lty=c(1,2,3),lwd=c(2.5,2.5),pt.cex=2.5,ncol=1,cex=1.25,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+
+```
+
+<br>
+
+```{r SRS_cumQ, echo=FALSE,fig.width=6.5,fig.height=4,fig.align='center',fig.cap="Cumulative discharge for Shark River Slough for the last three Federal Water Years (Oct - Sept). Day of water year is analogous to day of year with Day 1 = October 1."}
+CurWY.Fed=WY(Sys.Date(),"Fed")
+
+ylim.max=signif(max(srs.flow.da.xtab$cum.TFlow),0)
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=c(0,366);xmaj=seq(xlim.val[1],xlim.val[2],90);xmin=seq(xlim.val[1],xlim.val[2],30)
+cols=c("indianred1","orange","dodgerblue1")
+
+par(family="serif",mar=c(2,2,1,1),oma=c(1,3,1,2));
+
+plot(cum.TFlow~DOWY.fed,srs.flow.da.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+for(i in 1:3){
+if(i==3){
+  with(subset(srs.flow.da.xtab,FedWY==seq(CurWY.Fed-2,CurWY.Fed,1)[i]),lines(DOWY.fed,cum.TFlow,lwd=2.5,col=cols[i]))}else{
+  with(subset(srs.flow.da.xtab,FedWY==seq(CurWY.Fed-2,CurWY.Fed,1)[i]),lines(DOWY.fed,cum.TFlow,lwd=3,col=adjustcolor(cols[i],0.5)))}
+ }
+axis_fun(1,xmaj,xmin,xmaj,line=-0.5)
+axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1);box(lwd=lwd.val)
+mtext("Day of Federal Water Year",side=1,line=2,cex=1.25)
+mtext("Cumulative Discharge (kAc-Ft)",side=2,line=3.5,cex=1.25)
+mtext(side=3,"SRS Inflow",adj=0)
+abline(h=c("117","1061"),lty=2,col="red")
+#plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
+legend("topleft",
+       legend=c(paste0("Fed WY",seq(CurWY.Fed-2,CurWY.Fed,1))),
+       col=cols,lty=c(1),lwd=c(2.5),pt.cex=1,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+
+```
+
 ---
 
 # Northern Estuaries
@@ -1568,7 +1697,7 @@ if(i==3){
 axis_fun(1,xmaj,xmin,xmaj,line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj/1000,cex.axis=1);box(lwd=lwd.val)
 mtext("Day of Water Year",side=1,line=2,cex=1.25)
-mtext("Cumulative Discharge (kAc-Ft D\u207B\u00B9)",side=2,line=3.5,cex=1.25)
+mtext("Cumulative Discharge (kAc-Ft)",side=2,line=3.5,cex=1.25)
 mtext(side=3,"S-79",adj=0)
 
 plot(cum.S79~hydro.day,cal.flow.dat.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
