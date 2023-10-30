@@ -29,8 +29,8 @@ DBHYDRO_breakpoint=function (SDATE, EDATE, DBK, col.names = c("DATETIME",
   link = paste("http://my.sfwmd.gov/dbhydroplsql/web_io.report_process?v_period=uspec&v_start_date=", 
                SDATE, "&v_end_date=", EDATE, "&v_report_type=format6&v_target_code=file_csv&v_run_mode=onLine&v_js_flag=Y&v_dbkey=", 
                DBK.val, sep = "")
-  tmp = RCurl::getURL(link, timeout = timeout)
-  REPORT = read.csv(textConnection(tmp), skip = length(DBK) + 
+  # tmp = RCurl::getURL(link, timeout = timeout)
+  REPORT = read.csv(link, skip = length(DBK) + 
                       2, col.names = col.names, header = F)
   REPORT$DATETIME = as.POSIXct(REPORT$DATETIME, format = "%d-%b-%Y %H:%M", 
                                tz = "EST")

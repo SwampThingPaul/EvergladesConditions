@@ -79,7 +79,7 @@ library(flextable)
 library(magrittr)
 library(RcppRoll)
 library(dataRetrieval)
-# library(downloadthis)
+library(downloadthis)
 
 ## webscrape tools
 # library(rvest)
@@ -264,6 +264,16 @@ for(i in 1:(length(dates))){
   print(i)
 }
 
+# LO.url="https://w3.saj.usace.army.mil/h2o/reports/r-oke.html"
+# LO.report=readLines(LO.url)
+# 
+# tmp2=data.frame(t(sapply(strsplit(LO.report[285:298],"\\s+"),c)))
+# colnames(tmp2)=c("day","month","year","S310","S351","S352","S354","L8")
+# tmp2$Date=with(tmp2,date.fun(paste(year,month,day),form="%Y %B %d"))
+# tmp2[,4:8]=sapply(tmp2[,4:8],as.numeric)
+
+
+
 map.q[,2:ncol(map.q)]=sapply(map.q[,2:ncol(map.q)], FUN=function(x) ifelse(is.na(x)==T,0,x))
 
 map.q$NthLake=rowSums(map.q[,c("FEC","Istok","S65E","S65EX1")],na.rm=T)
@@ -282,6 +292,47 @@ map.q$EAA_WCA2=with(map.q,WCA2+EAA_WCA1.out)
 map.q$EAA_WCA3=with(map.q,WCA3+EAA_WCA2.out)
 
 
+## 7-day sumamry information (for SCCF)
+vars=c("Date","S77","S79","S351","S352","S354","S271","S308","S80","NthLake","WCA1","WCA2","WCA3","ENP","LOIN","LOOUT")
+date.7day=seq(date.fun(date.fun(Sys.Date())-ddays(7)),date.fun(Sys.Date()),"1 days")
+
+q.dat.7day=subset(map.q,Date%in%date.7day)[,vars]
+q.dat.7day[,2:ncol(q.dat.7day)]=apply(q.dat.7day[,2:ncol(q.dat.7day)],2,FUN=function(x) cfs.to.acftd(x))
+
+meanQ=cbind(data.frame(Date="Average"),data.frame(t(apply(q.dat.7day[,2:ncol(q.dat.7day)],2,FUN=function(x) mean(x,na.rm=T)))))
+sumQ=cbind(data.frame(Date="Sum"),data.frame(t(apply(q.dat.7day[,2:ncol(q.dat.7day)],2,FUN=function(x) sum(x,na.rm=T)))))
+
+## 
+laketotalQ=q.dat.7day[,c("S77","S351","S352","S354","S271","S308")]
+q.from.Lake=sum(laketotalQ[laketotalQ>0],na.rm=T)
+laketotalQ$EAA=rowSums(laketotalQ[,c("S351","S352","S354")],na.rm=T)
+S77q=sum(laketotalQ[laketotalQ$S77>0,c("S77")],na.rm=T)
+S77q.per=if(q.from.Lake==0){0}else if((S77q/q.from.Lake)*100<1){"< 1"}else{round((S77q/q.from.Lake)*100,0)}
+
+S308q=sum(laketotalQ[,c("S308")],na.rm=T)
+S308q.pos=sum(laketotalQ[laketotalQ$S308>0,c("S308")],na.rm=T)
+S308q.per=ifelse(S308q<0,NA,round((S308q/q.from.Lake)*100,0))
+
+L8q=sum(laketotalQ[,c("S271")],na.rm=T)
+L8q.pos=sum(laketotalQ[laketotalQ$L8>0,c("S271")])
+L8q.per=ifelse(L8q<0,NA,round((L8q/q.from.Lake)*100,0))
+
+EAAq=sum(laketotalQ[,c("EAA")],na.rm=T)
+EAAq.pos=sum(laketotalQ[laketotalQ$EAA>0,c("EAA")],na.rm=T)
+EAAq.per=ifelse(EAAq<0,NA,round((EAAq/q.from.Lake)*100,0))
+
+laketotalQ2=q.dat.7day[,c("S77","S351","S352","S354","S271","S308")]
+tmp=apply(laketotalQ2,2,min,na.rm=T)
+v=names(tmp[tmp<0])
+v[v=="S271"]="C10A"
+v.val=knitr::combine_words(v)
+
+q.BF.Lake=sum(abs(laketotalQ2[laketotalQ2<0]),na.rm=T)
+q.in.Lake=sum(q.dat.7day[,"NthLake"],na.rm=T)
+
+q.dat.7day$Date=as.character(q.dat.7day$Date)
+
+rbind(q.dat.7day,meanQ,sumQ)
 
 # DBHydro -----------------------------------------------------------------
 
@@ -514,7 +565,7 @@ cal.flow.dat.xtab$cum.S77=with(cal.flow.dat.xtab,ave(cfs.to.acftd(S77),WY,FUN = 
 cal.flow.dat.xtab$Q.14=with(cal.flow.dat.xtab,roll_meanr(S79,n=14))
 cal.flow.dat.xtab$S79Q.7=with(cal.flow.dat.xtab,roll_meanr(S79,n=7))
 cal.flow.dat.xtab$S77Q.7=with(cal.flow.dat.xtab,roll_meanr(S77,n=7))
-# cal.flow.dat.xtab$Q.30=with(cal.flow.dat.xtab,roll_meanr(S79,n=30))
+cal.flow.dat.xtab$Q.30=with(cal.flow.dat.xtab,roll_meanr(S79,n=30))
 cal.flow.dat.xtab$SalEnv.cat=with(cal.flow.dat.xtab,ifelse(Q.14<750,"low",
                                                            ifelse(Q.14>=750&Q.14<2100,"optimum",
                                                                   ifelse(Q.14>=2100&Q.14<2600,"stress",
@@ -652,6 +703,32 @@ Cal.Sal$Sal=with(Cal.Sal,ifelse(screen==1,Sal,NA))
 Cal.Sal$MovingAvg.7d=with(Cal.Sal,ave(Sal,SITE,FUN=function(x) roll_meanr(x,n=7)))
 
 
+## 6-month Ft Myers Salinity (for SCCF)
+dates3=c(date.fun(c(Sys.Date()-duration(7, "months"),date.fun(Sys.Date()))))
+dates.fill=data.frame(DATE=seq(dates3[1],dates3[2],"1 days"),fill=1)
+
+bk.dbkeys.surf=data.frame(depth="Surface",
+                         SITE=c(rep("FORTMYERSM",2)),
+                         param=rep(c("WT","SPC"),1),
+                         DBKEY=c("88287","88292")
+                         )
+ftmyers_surf_dat=data.frame()
+for(i in 1:nrow(bk.dbkeys.surf)){
+tmp=DBHYDRO_breakpoint(dates3[1],dates3[2],bk.dbkeys.surf$DBKEY[i])  
+tmp$DBKEY=as.character(bk.dbkeys.surf$DBKEY[i])
+ftmyers_surf_dat=rbind(ftmyers_surf_dat,tmp)
+# print(i)
+}
+
+ftmyers_surf_dat=merge(ftmyers_surf_dat,bk.dbkeys.surf,"DBKEY")
+ftmyers_surf_dat$Data.Value[ftmyers_surf_dat$Data.Value==-999]<-NA
+ftmyers_surf_dat.xtab=dcast(ftmyers_surf_dat,SITE+DATETIME+DATE~param,value.var = "Data.Value",mean)
+ftmyers_surf_dat.xtab$Sal=with(ftmyers_surf_dat.xtab,SalinityCalc(SPC,WT))
+ftmyers_surf_dat.xtab$source="SFWMD"
+
+ftmyers_surf_da.dat=ddply(ftmyers_surf_dat.xtab,"DATE",summarise,mean.val=mean(Sal,na.rm=T))
+ftmyers_surf_da.dat=merge(ftmyers_surf_da.dat,dates.fill,all.y=T,"DATE")
+ftmyers_surf_da.dat$Sal.30d=with(ftmyers_surf_da.dat,roll_meanr(mean.val,n=30))
 
 ## SLE ---------------------------------------------------------------------
 
@@ -785,6 +862,19 @@ q.tab[,vars]%>%
   footnote(j=~NthLake,value=as_paragraph(" Includes discharges from Fisheating Creek, S71, S72, S84, S84X, S65E, and S65EX1"),ref_symbols =c(" 1"),part="header")%>%
 footnote(j=~ENP,value=as_paragraph(" Estimated as S12s+(S333+S333N)-S356. If no data is present (i.e. -NR-) either S12s, S333s or S356 data is not available."),ref_symbols =c(" 2"),part="header")
   # footnote(i=1,j=1,value=as_paragraph("Negative flow values omitted from this table and statistical summaries below."),ref_symbols =c(" "),part="header")
+```
+
+
+```{r}
+rbind(q.dat.7day,meanQ,sumQ)%>%
+  download_this(
+    output_name = "Discharge7day",
+    output_extension = ".xlsx",
+    button_label = "Download 7-Day Discharge as .xlsx",
+    button_type = "primary",
+    has_icon = TRUE,
+    icon = "fa fa-file-excel"
+  )
 ```
 
 ---
@@ -960,6 +1050,20 @@ legend(0.5,0.5,
 
 
 <br>
+
+**Lake Flows:** In the past 7 days the total outflow from Lake
+Okeechobee was **`r format(round(q.from.Lake,0),big.mark=",")` AF** with
+**`r format(round(S77q,0),big.mark=",")` AF** to the Caloosahatchee
+through
+**S-77**,`r if(S308q.pos>0){paste("**",format(round(S308q.pos,0),big.mark=",")," AF** through **S-308** in Port Mayaca,",sep="")}`
+and **`r format(round(EAAq.pos,0),big.mark=",")` AF** to the
+EAA through **S-351**, **S-352**, and **S-354**. The total net inflow to
+the Lake was **`r format(round(q.in.Lake+q.BF.Lake,0),big.mark=",")`
+AF** (`r format(round(q.in.Lake,0),big.mark=",")` AF from Fisheating
+Creek, S-71, S-72, S-84s, S-65EX, and S-65EX1)
+`r if(q.BF.Lake>0){paste(" with a total backflow volume of ","**",format(round(q.BF.Lake,0),big.mark=",")," AF** from **", v.val,"**",sep="")}`.
+
+
 
 ---
 
@@ -1637,13 +1741,57 @@ legend(0.75,0.75,
 
 ```
 
+```{r, CREFlow_6month, include=FALSE}
+png(filename="./plots/CREFlow_6month.png",width=7,height=5,units="in",res=200,type="windows",bg="white")
+
+max.q=max(subset(cal.flow.dat.xtab,Date%in%seq(End.Date-ddays(180),End.Date+ddays(3),"1 days"))$S79,na.rm=T)
+ylim.max=round(max.q+max.q*0.25,-3)
+
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=date.fun(c(End.Date-duration(6,"months"),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="2 months ");xmin=seq(xlim.val[1],xlim.val[2],by="1 months")
+
+layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(1,0.5))
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,2),oma=c(0.5,3,1,2));
+plot(S79~Date,cal.flow.dat.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+xx=c(xlim.val[1],xlim.val[1],xlim.val[2],xlim.val[2])
+yy3=c(2600,ylim.max,ylim.max,2600);polygon(x=xx,y=yy3,col=adjustcolor("red",0.5))
+yy4=c(2100,2600,2600,2100);polygon(x=xx,y=yy4,col=adjustcolor("yellow",0.5))
+yy5=c(750,2100,2100,750);polygon(x=xx,y=yy5,col=adjustcolor("green",0.5))
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+# abline(h=457,col="red")
+with(cal.flow.dat.xtab,pt_line(Date,S79,2,"black",1,21,"grey",cex=1.25,pt.lwd=0.1))
+with(cal.flow.dat.xtab,lines(Date,Q.14,lwd=3,col=adjustcolor("dodgerblue3",0.5)))
+axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj,cex.axis=1)
+axis_fun(4,ymaj,ymin,format(round(cfs.to.acftd(ymaj)/1000,1)),cex.axis=1)
+
+box(lwd=lwd.val)
+mtext("Date\n(MM/DD/YYYY)",side=1,line=2.75,cex=1.25)
+mtext("Discharge (cfs)",side=2,line=3.5,cex=1.25)
+mtext("Discharge (kAc-Ft D\u207B\u00B9)",side=4,line=2.5,cex=1.25)
+
+plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
+legend(0.25,0.75,
+       legend=c( "Damaging (>2600 cfs)","Stress (2100 - 2600 cfs)","Optimum (750 - 2100 cfs)"),pch=22,
+       pt.bg=adjustcolor(c("red","yellow","green"),0.5),pt.cex=2,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5,title.adj = 0,title='RECOVER PM')
+
+legend(0.75,0.75,
+       legend=c("Daily Discharge","14-Day moving average"),
+       pch=c(21,NA),pt.bg=c("grey",NA),pt.cex=c(1.5,NA),
+       lty=c(NA,1),lwd=c(0.5,2),col=c("black",adjustcolor(c("dodgerblue1"),0.5)),
+       ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5,title.adj = 0,title='')
+dev.off()
+```
+
+CRE Discharge Salinity Envelope - 6 months [plot]("./plots/CREFlow_6month.png")
+
 **Caloosahatchee Conditions Summary:** Flow to the Caloosahatchee
 Estuary had a 7-day average of **`r format(round(subset(cal.flow.dat.xtab,Date==date.fun(End.Date-ddays(1)))$S79Q.7,0),big.mark=",")`
 cfs** at **S-79** with a 7-day average of
 **`r format(round(subset(cal.flow.dat.xtab,Date==date.fun(End.Date-ddays(1)))$S77Q.7,0),big.mark=",")` cfs coming from the lake
 at **S-77**. **The 14-day moving average flow at S-79 is
-`r format(round(salenv.vals$Q.14),big.mark=",")` cfs and has been in the
-`r paste0("<span style='color:",cols[which(salenv.vals1==max(salenv.vals1))],"'>")` `r names(salenv.vals1)[which(salenv.vals1==max(salenv.vals1))]` **</span>
+`r format(round(salenv.vals$Q.14),big.mark=",")` cfs and has been in the **
+`r paste0("<span style='color:",cols[which(salenv.vals1==max(salenv.vals1))],"'>")` `r names(salenv.vals1)[which(salenv.vals1==max(salenv.vals1))]` </span> **
 flow envelope (`r flow.envs[which(salenv.vals1==max(salenv.vals1))]`
 cfs; RECOVER 2020) for
 `r as.numeric(salenv.vals1[which(salenv.vals1==max(salenv.vals1))])`
@@ -1809,6 +1957,40 @@ legend(0.5,0.15,legend=c("Poor(>15)","Fair (10 - 15)","Good(<10)"),
 
 <br>
 
+```{r CRESalPlot,include=F}
+png(filename="./plots/CRESalPlot.png",width=6,height=4,units="in",res=200,type="windows",bg="white")
+
+ylim.val=c(0,30);by.y=5;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=c(date.fun(dates3[2]-duration(6, "months")),date.fun(dates3[2]+duration(15,"days")));xmaj=seq(xlim.val[1],xlim.val[2],by="2 months ");xmin=seq(xlim.val[1],xlim.val[2],by="1 months")
+
+par(family="serif",cex.axis=1.2,mar=c(3.5,1.75,1,4.5),oma=c(0.5,3,1,2));
+plot(Sal~DATETIME,ftmyers_surf_dat.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+with(ftmyers_surf_dat.xtab,lines(DATETIME,Sal,lty=1,col="blue",lwd=2))
+with(ftmyers_surf_da.dat,lines(DATE,Sal.30d,lty=1,col="darkolivegreen3",lwd=4))
+axis_fun(1,xmaj,xmin,NA)
+axis_fun(2,ymaj,ymin,ymaj)
+text(xmaj,-1.5,format(xmaj,"%m/%d/%y"),srt=-45,xpd=NA,adj=0,cex=0.95)
+mtext(side=2,line=2,"Salinity (PSU)")
+mtext(side=1,line=3,"Date (MM/DD/YY)")
+ylim.val=c(0,20000);by.y=4000;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+par(new=T);plot(S79~Date,cal.flow.dat.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+with(cal.flow.dat.xtab,lines(Date,S79,lwd=2,col="black"))
+with(cal.flow.dat.xtab,lines(Date,Q.30,lwd=4,col="indianred1"))
+axis_fun(4,ymaj,ymin,ymaj)
+mtext(side=4,line=3.25,"Discharge (cfs)")
+mtext(side=3,"Surface Salinity at Fort Myers Yacht Basin")
+
+legend("topright",
+       legend=c("Hourly Salinity","30-Day Avg Sal","S79 Daily Discharge","30-d Avg Discharge"),
+       lty=c(1,1,1,1),lwd=c(1,2,1,2),
+       col=c("blue","darkolivegreen3","black","indianred1"),
+       ncol=1,cex=0.8,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5)
+dev.off()
+```
+
+CRE Salinity and Discharge - 6 months [plot]("./plots/CRESalPlot.png")
+
 ---
 
 ## St Lucie River Estuary
@@ -1861,7 +2043,7 @@ cfs** from **North and South Forks** with a 7-day average of
 **`r format(round(subset(SLE.q.dat,DATE==date.fun(End.Date-ddays(1)))$S308Q.7,0),big.mark=",")` cfs** coming from the lake
 at **S-308**. 
 
-```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="S-308 (from Lake Okeechobee) and S-80 (to Lower Fork) flow data along the C-44 and St Lucie River. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
+```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="S-308 (from Lake Okeechobee), S-80 (to Lower Fork),  C-44 Basin and North Fork (Gordy Rd, S49, S48) daily discharge. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
 
 max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(90),End.Date+ddays(3),"1 days"))$NorthFork,na.rm=T)
 ylim.max=round(max.q+max.q*0.25,-2)
