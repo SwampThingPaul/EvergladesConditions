@@ -1552,7 +1552,7 @@ mtext("Daily Discharge (x1000 Ac-Ft d\u207B\u00B9)",side=2,line=3.5,cex=1.25)
 plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
 legend(0.5,0.5,
        legend=c("SRS Inflow (S12s+[S333s + S355s + min(S356,S335) - S334])"),
-       col=cols,lty=c(1,2,3),lwd=c(2.5,2.5),pt.cex=2.5,ncol=1,cex=1.25,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+       col=cols,lty=c(1,2,3),lwd=c(2.5,2.5),pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
 
@@ -1863,12 +1863,12 @@ at **S-308**.
 
 ```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="S-308 (from Lake Okeechobee) and S-80 (to Lower Fork) flow data along the C-44 and St Lucie River. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
 
-max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(90),End.Date+ddays(3),"1 days"))$S80,na.rm=T)
+max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(90),End.Date+ddays(3),"1 days"))$NorthFork,na.rm=T)
 ylim.max=round(max.q+max.q*0.25,-2)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
-cols=c("dodgerblue1","indianred1","black")
+cols=c("dodgerblue1","indianred1","black","grey50")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
@@ -1877,16 +1877,17 @@ abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(SLE.q.dat,lines(DATE,S80,col=cols[1],lwd=2))
 with(SLE.q.dat,lines(DATE,S308,col=cols[2],lwd=2,lty=2))
 with(SLE.q.dat,lines(DATE,C44Basin,col=cols[3],lwd=2,lty=3))
+with(SLE.q.dat,lines(DATE,NorthFork,col=cols[4],lwd=2,lty=3))
 axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj,cex.axis=1)
+axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
 box(lwd=lwd.val)
-mtext("Date\n(MM/DD/YYYY)",side=1,line=2.75,cex=1.25)
-mtext("Daily Discharge (cfs)",side=2,line=3.5,cex=1.25)
+mtext("Date\n(MM/DD/YYYY)",side=1,line=2.75,cex=1)
+mtext("Daily Discharge (cfs)",side=2,line=3.5,cex=1)
 
 plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
-legend(0.5,0.5,
-       legend=c("S-80 (to Estuary)","S-308 (from Lake)","C-44 Basin Flow"),
-       col=cols,lty=c(1,2,3),lwd=c(2.5,2.5,2.5),pt.cex=2.5,ncol=3,cex=1.25,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+legend(0.5,0.6,
+       legend=c("S-80 (to Estuary)","S-308 (from Lake)","C-44 Basin Flow","North Fork"),
+       col=cols,lty=c(1,2,3,3),lwd=c(2,2,2,2),pt.cex=2,ncol=2,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
 
