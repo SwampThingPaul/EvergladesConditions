@@ -1627,7 +1627,7 @@ subset(WCA3.xtab,DOWY==hydro.day(YEST))%>%
 
 ```{r WCA3_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="WCA3A inflow and outflow volume from USACE."}
 
-map.q$WCA3.kacft=cfs.to.acftd(map.q$WCA2)/1000
+map.q$WCA3.kacft=cfs.to.acftd(map.q$WCA3)/1000
 map.q$S12sS333s.kacft=cfs.to.acftd(rowSums(map.q[,c("S12s","S333","S333N")]))/1000
 map.q$EAA_WCA3.kacft=cfs.to.acftd(map.q$EAA_WCA3 )/1000
 
