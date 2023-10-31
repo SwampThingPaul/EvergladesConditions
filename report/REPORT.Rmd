@@ -369,6 +369,39 @@ LakeO.xtab$recess_30day=with(LakeO.xtab,c(rep(NA,30),diff(LOK.stage,lag=30)))
 LakeO.xtab$DoY=as.numeric(format(LakeO.xtab$DATE,"%j"))
 LakeO.xtab$CY=as.numeric(format(LakeO.xtab$DATE,"%Y"))
 
+## EAA ---------------------------------------------------------------------
+stg.ops.rng=data.frame(Struct=c("S2","S3","S4","S5A","S5AS","S6","S7","S8","C10A"),
+                       Canal=c("Hillsboro/N.NewRiver","Miami","Canal20","WPB","Canal10","Hills","NNR","Miami","L8"),
+                       LORS.upper=c(12,12,13,12,NA,12,12,12.0,14),
+                       LORS.lower=c(11.5,11.5,13,11.5,NA,11.5,11.5,11.5,12),
+                       LOSOM.upper=c(13,13,13,13,18,13,NA,NA,NA),
+                       LOSOM.lower=c(10,10,9.5,9.0,12,13,NA,NA,NA)
+                       
+)
+
+STG.locs=EAA.STG.locs=data.frame(STATION=c("S3_H","HILLSS2","NNRS2","S352","L8.441"),
+                    DBKEY=c("00537","00345","00432","40536","02854"),
+                    CANAL=c("Miami","Hills","NNR","WPB","L8"))
+# AnalystHelper::DBHYDRO.meta.byDBKEY(STG.locs$DBKEY)
+
+stg.dat=data.frame()
+for(i in 1:nrow(STG.locs)){
+  tmp=DBHYDRO_daily(dates[1],dates[2],STG.locs$DBKEY[i])
+  tmp$DBKEY=as.character(STG.locs$DBKEY[i])
+  stg.dat=rbind(stg.dat,tmp)
+}
+stg.dat=merge(stg.dat,STG.locs,"DBKEY")
+stg.dat$DATE=date.fun(stg.dat$Date)
+# stg.dat$month=as.numeric(format(stg.dat$Date,"%m"))
+# stg.dat$CY=as.numeric(format(stg.dat$Date,"%Y"))
+# stg.dat$WY=WY(stg.dat$Date)
+EAA_canals.stg.dat=stg.dat
+EAA_canals=dcast(stg.dat,DATE~STATION,value.var="Data.Value",mean)
+
+EAA_canals$DOWY=hydro.day(EAA_canals$DATE)
+EAA_canals$WY=WY(EAA_canals$DATE)
+EAA_canals$DoY=as.numeric(format(EAA_canals$DATE,"%j"))
+EAA_canals$CY=as.numeric(format(EAA_canals$DATE,"%Y"))
 
 ## WCA1 --------------------------------------------------------------------
 WCA1.dbkeys=data.frame(STATION=c("CA1-8T","CA1-9","CA1-7"),
@@ -1016,7 +1049,7 @@ subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
 
 <br>
 
-```{r LOK_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="Lake Okeechobee inflow and outflow volume from USACE."}
+```{r LOK_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="Lake Okeechobee inflow and outflow volume from USACE."}
 
 map.q$LOIN.kacft=cfs.to.acftd(map.q$LOIN)/1000
 map.q$LOOUT.kacft=cfs.to.acftd(map.q$LOOUT)/1000
@@ -1063,7 +1096,119 @@ AF** (`r format(round(q.in.Lake,0),big.mark=",")` AF from Fisheating
 Creek, S-71, S-72, S-84s, S-65EX, and S-65EX1)
 `r if(q.BF.Lake>0){paste(" with a total backflow volume of ","**",format(round(q.BF.Lake,0),big.mark=",")," AF** from **", v.val,"**",sep="")}`.
 
+---
 
+## Everglades Agricultural Area
+
+```{r EAA_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="Lake Okeechobee inflow and outflow volume from USACE."}
+
+map.q$LOK_to_EAA.kacft=cfs.to.acftd(map.q$LOK_to_EAA)/1000 # c("S354","S351","S352","S271")
+map.q$EAA_to_WCAs.kacft=cfs.to.acftd(map.q$EAA_to_WCAs)/1000 # STA 1W, 2, 3/4
+
+max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))[,c("EAA_to_WCAs.kacft","LOK_to_EAA.kacft")],na.rm=T)
+# max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$EAA_to_WCAs.kacft,na.rm=T)
+ylim.max=round(max.q+max.q*0.25,-1)
+
+
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
+cols=c("dodgerblue1","indianred1")
+
+layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
+plot(LOK_to_EAA.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+with(map.q,lines(Date,LOK_to_EAA.kacft,col=cols[1],lwd=2))
+with(map.q,lines(Date,EAA_to_WCAs.kacft,col=cols[2],lwd=2,lty=2))
+axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
+axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
+box(lwd=lwd.val)
+mtext("Date (MM/DD/YYYY)",side=1,line=2,cex=1)
+mtext("Daily Discharge (x1000 Ac-Ft d\u207B\u00B9)",side=2,line=3.5,cex=1.25)
+
+plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
+legend(0.5,0.75,
+       legend=c("EAA Inflow (S354, S351, S352, S271)","EAA Outflow (STA-1W, 2, 3/4)"),
+       col=cols,lty=c(1,2),lwd=c(2.5,2.5),pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+
+```
+
+<br>
+
+```{r EAA_stg, echo=FALSE,fig.width=7,fig.height=6,fig.align='center',fig.cap="EAA canal stage relative to 'optimum' stage levels as identified in LORS2008."}
+site.vals=c("S3_H","NNRS2","HILLSS2","S352","L8.441")
+site.val.lab=c("Miami","NNR","Hills","WPB","L8")
+struct.val=c("S3","S2","S2","S5A","C10A")
+# stg.ops.rng
+
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
+# lwd.val=1
+layout(matrix(1:6,3,2,byrow=T))
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
+ylim.val.min=c(9,9,9,9,11)
+ylim.val.max=c(13,13,13,13,17)
+for(i in 1:length(site.vals)){
+  ylim.val=c(ylim.val.min[i],ylim.val.max[i]);by.y=1;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+  tmp.dat=subset(EAA_canals.stg.dat,STATION==site.vals[i])
+  plot(Data.Value~DATE,tmp.dat,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+  abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.5)
+  xx=c(xlim.val[1],xlim.val[1],xlim.val[2],xlim.val[2])
+  yy=with(subset(stg.ops.rng,Struct==struct.val[i]),c(LORS.lower,LORS.upper,LORS.upper,LORS.lower))
+  polygon(x=xx,y=yy,col=adjustcolor("indianred1",0.5),border=NA)
+  lines(Data.Value~Date,tmp.dat,col=adjustcolor("black",0.5),lwd=2)
+  axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
+  axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
+  box(lwd=lwd.val)
+  if(i%in%c(5,4)){mtext(side=1,line=1.5,"Date")}
+  mtext(side=3,line=-1.3,adj=0,paste0(" ",site.val.lab[i]))
+}
+
+plot(0:1,0:1,type="n",ann=F,axes=F)
+legend("center",legend=c("Optimum Canal Stage", "Daily Canal Stage"),
+       pch=c(22,NA),
+       lty=c(NA,1),
+       lwd=c(NA,2),
+       pt.bg=c(adjustcolor("indianred1",0.5),NA),
+       col=c(NA, adjustcolor("black",0.5)),
+       pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+
+mtext(side=2,outer=T,line=1, "Stage Elevation (Ft, NGVD29)")
+
+
+```
+
+<br>
+<br>
+```{r}
+EAA.STG.locs$labs=with(EAA.STG.locs,paste0(CANAL," (DBKEY:",DBKEY,")"))
+
+cap.val="Stage elevations this time for the current and last three water years"
+
+subset(EAA_canals,DOWY==hydro.day(YEST))[,c("DATE","WY",site.vals)]%>%
+  flextable()%>%
+  width(width=c(1,0.75,rep(0.8,5)))%>%
+  align(align="center",part="all")%>%
+  colformat_datetime(j=1,fmt_date="%m-%d")%>%
+  colformat_double(j=2,big.mark="",digits=0)%>%
+  colformat_num(j=3:5,na_str="- NR -")%>%
+  padding(padding=1,part="all")%>%
+  font(fontname="Times New Roman",part="all")%>%
+  fontsize(size=12,part="body")%>%
+  fontsize(size=13,part="header")%>%
+  bold(part="header")%>%
+  set_header_labels("DATE"="Date\n(Month-Day)",
+                    "WY"="Water Year",
+                    "S3_H"="Miami",
+                    "NNRS2"="NNR",
+                    "HILLSS2"="Hills",
+                    "S352"="WPB",
+                    "L8.441"="L8")%>%
+  bg(i=~WY==CurWY,part="body",bg="wheat")%>%
+  footnote(j=3:7,value=as_paragraph(EAA.STG.locs$labs),ref_symbols =paste0(" ",1:5," "),part="header")%>%
+  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")
+
+```
 
 ---
 
@@ -1182,7 +1327,7 @@ subset(WCA1.xtab,DOWY==hydro.day(YEST))%>%
 
 <br>
 
-```{r WCA1_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="WCA1 inflow and outflow volume from USACE."}
+```{r WCA1_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="WCA1 inflow and outflow volume from USACE."}
 
 map.q$WCA1.kacft=cfs.to.acftd(map.q$WCA1)/1000
 map.q$S10s.kacft=cfs.to.acftd(map.q$S10s)/1000
@@ -1197,7 +1342,7 @@ xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],
 cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
-par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
 plot(LOIN.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(map.q,lines(Date,WCA1.kacft,col=cols[1],lwd=2))
@@ -1321,7 +1466,7 @@ subset(WCA2.xtab,DOWY==hydro.day(YEST))%>%
 
 <br>
 
-```{r WCA2_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="WCA2 inflow and outflow volume from USACE."}
+```{r WCA2_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="WCA2 inflow and outflow volume from USACE."}
 
 map.q$WCA2.kacft=cfs.to.acftd(map.q$WCA2)/1000
 map.q$S11s.kacft=cfs.to.acftd(map.q$S11s)/1000
@@ -1336,7 +1481,7 @@ xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],
 cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
-par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
 plot(LOIN.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(map.q,lines(Date,WCA2.kacft,col=cols[1],lwd=2))
@@ -1480,7 +1625,7 @@ subset(WCA3.xtab,DOWY==hydro.day(YEST))%>%
 
 <br>
 
-```{r WCA3_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="WCA3A inflow and outflow volume from USACE."}
+```{r WCA3_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="WCA3A inflow and outflow volume from USACE."}
 
 map.q$WCA3.kacft=cfs.to.acftd(map.q$WCA2)/1000
 map.q$S12sS333s.kacft=cfs.to.acftd(rowSums(map.q[,c("S12s","S333","S333N")]))/1000
@@ -1495,7 +1640,7 @@ xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],
 cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
-par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
 plot(LOIN.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(map.q,lines(Date,WCA3.kacft,col=cols[1],lwd=2))
@@ -1624,7 +1769,7 @@ subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
 
 <br>
 
-```{r SRS_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="WCA3A inflow and outflow volume from USACE."}
+```{r SRS_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="Shark River Slough calculated net inflow."}
 
 # map.q$ENP.kacft=cfs.to.acftd(map.q$WCA2)/1000
 # map.q$S12sS333s.kacft=cfs.to.acftd(rowSums(map.q[,c("S12s","S333","S333N")]))/1000
@@ -1635,18 +1780,20 @@ subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
 max.q=max(subset(srs.flow.da.xtab,Date.EST%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$TFlow.kacft,na.rm=T)
 ylim.max=round(max.q+max.q*0.25,-1)
 
+srs.flow.da.xtab$S12s=cfs.to.acftd(rowSums(srs.flow.da.xtab[,c(paste0("S12",LETTERS[1:4]))],na.rm=T))/1000
+srs.flow.da.xtab$S333s=cfs.to.acftd(rowSums(srs.flow.da.xtab[,c("S333","S333N")],na.rm=T))/1000
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
 cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
-par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1.25,3,1,2));
 plot(TFlow.kacft~Date.EST,srs.flow.da.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(srs.flow.da.xtab,lines(Date.EST,TFlow.kacft,col=cols[1],lwd=2))
-# with(map.q,lines(Date,S12sS333s.kacft,col=cols[2],lwd=2,lty=2))
-# with(map.q,lines(Date,EAA.kacft,col=cols[3],lwd=2,lty=3))
+with(srs.flow.da.xtab,lines(Date.EST,S12s,col=cols[2],lty=2))
+with(srs.flow.da.xtab,lines(Date.EST,S333s,col=cols[3],lty=2))
 axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
 box(lwd=lwd.val)
@@ -1654,15 +1801,17 @@ mtext("Date (MM/DD/YYYY)",side=1,line=2,cex=1)
 mtext("Daily Discharge (x1000 Ac-Ft d\u207B\u00B9)",side=2,line=3.5,cex=1.25)
 
 plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
-legend(0.5,0.5,
-       legend=c("SRS Inflow (S12s+[S333s + S355s + min(S356,S335) - S334])"),
-       col=cols,lty=c(1,2,3),lwd=c(2.5,2.5),pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+legend(0.5,1,
+       legend=c("SRS Inflow (S12s+[S333s + S355s + min(S356,S335) - S334])",
+                "S12s (S12A, S12B, S12C, S12D)",
+                "S333s (S333, S333N)"),
+       col=cols,lty=c(1,2,2),lwd=c(2.5,1,1),pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
 
 <br>
 
-```{r SRS_cumQ, echo=FALSE,fig.width=6.5,fig.height=4,fig.align='center',fig.cap="Cumulative discharge for Shark River Slough for the last three Federal Water Years (Oct - Sept). Day of water year is analogous to day of year with Day 1 = October 1."}
+```{r SRS_cumQ, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Cumulative discharge for Shark River Slough for the last three Federal Water Years (Oct - Sept). Day of water year is analogous to day of year with Day 1 = October 1."}
 CurWY.Fed=WY(Sys.Date(),"Fed")
 
 ylim.max=signif(max(srs.flow.da.xtab$cum.TFlow),0)
@@ -1681,7 +1830,7 @@ if(i==3){
  }
 axis_fun(1,xmaj,xmin,xmaj,line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1);box(lwd=lwd.val)
-mtext("Day of Federal Water Year",side=1,line=2,cex=1.25)
+mtext("Day of Federal Water Year",side=1,line=1.5,cex=1.25)
 mtext("Cumulative Discharge (kAc-Ft)",side=2,line=3.5,cex=1.25)
 mtext(side=3,"SRS Inflow",adj=0)
 abline(h=c("117","1061"),lty=2,col="red")
@@ -1797,7 +1946,7 @@ cfs; RECOVER 2020) for
 `r as.numeric(salenv.vals1[which(salenv.vals1==max(salenv.vals1))])`
 days.
 
-```{r CRE_LOK_Q, echo=FALSE,fig.width=7,fig.height=4,fig.align='center',fig.cap="S-77 (from Lake Okeechobee) and S-79 (to Tidal Basin) flow data along the C-43 and Caloosahatchee River. C-43 Basin Flow was calculated as the difference from S-77 and S-79."}
+```{r CRE_LOK_Q, echo=FALSE,fig.width=7,fig.height=4.5,fig.align='center',fig.cap="S-77 (from Lake Okeechobee) and S-79 (to Tidal Basin) flow data along the C-43 and Caloosahatchee River. C-43 Basin Flow was calculated as the difference from S-77 and S-79."}
 
 max.q=max(subset(cal.flow.dat.xtab,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$S79,na.rm=T)
 ylim.max=round(max.q+max.q*0.25,-3)
@@ -1807,7 +1956,7 @@ xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],
 cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
-par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
 plot(S79~Date,cal.flow.dat.xtab,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(cal.flow.dat.xtab,lines(Date,S79,col=cols[1],lwd=2))
@@ -1826,7 +1975,7 @@ legend(0.5,0.5,
 
 ```
 
-```{r CRE_cumQ, echo=FALSE,fig.width=7,fig.height=4,fig.align='center',fig.cap="Cumulative discharge for S-79 (to Tidal Basin) and S-77 (from Lake Okeechobee) for the last three Florida Water Years (May - April). Day of water year is analogous to day of year with Day 1 = May 1."}
+```{r CRE_cumQ, echo=FALSE,fig.width=7,fig.height=4.5,fig.align='center',fig.cap="Cumulative discharge for S-79 (to Tidal Basin) and S-77 (from Lake Okeechobee) for the last three Florida Water Years (May - April). Day of water year is analogous to day of year with Day 1 = May 1."}
 ylim.max=signif(max(cal.flow.dat.xtab$cum.S79),0)
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=c(0,366);xmaj=seq(xlim.val[1],xlim.val[2],90);xmin=seq(xlim.val[1],xlim.val[2],30)
@@ -2043,23 +2192,23 @@ cfs** from **North and South Forks** with a 7-day average of
 **`r format(round(subset(SLE.q.dat,DATE==date.fun(End.Date-ddays(1)))$S308Q.7,0),big.mark=",")` cfs** coming from the lake
 at **S-308**. 
 
-```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4,fig.align='center',fig.cap="S-308 (from Lake Okeechobee), S-80 (to Lower Fork),  C-44 Basin and North Fork (Gordy Rd, S49, S48) daily discharge. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
+```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="S-308 (from Lake Okeechobee), S-80 (to Lower Fork),  C-44 Basin and North Fork (Gordy Rd, S49, S48) daily discharge. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
 
 max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(90),End.Date+ddays(3),"1 days"))$NorthFork,na.rm=T)
 ylim.max=round(max.q+max.q*0.25,-2)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
-cols=c("dodgerblue1","indianred1","black","grey50")
+cols=c("dodgerblue1","indianred1","black","lightgreen")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
-par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(0.5,3,1,2));
+par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
 plot(S80~DATE,SLE.q.dat,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(SLE.q.dat,lines(DATE,S80,col=cols[1],lwd=2))
 with(SLE.q.dat,lines(DATE,S308,col=cols[2],lwd=2,lty=2))
 with(SLE.q.dat,lines(DATE,C44Basin,col=cols[3],lwd=2,lty=3))
-with(SLE.q.dat,lines(DATE,NorthFork,col=cols[4],lwd=2,lty=3))
+with(SLE.q.dat,lines(DATE,NorthFork,col=cols[4],lwd=2,lty=1))
 axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
 box(lwd=lwd.val)
@@ -2069,13 +2218,13 @@ mtext("Daily Discharge (cfs)",side=2,line=3.5,cex=1)
 plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
 legend(0.5,0.6,
        legend=c("S-80 (to Estuary)","S-308 (from Lake)","C-44 Basin Flow","North Fork"),
-       col=cols,lty=c(1,2,3,3),lwd=c(2,2,2,2),pt.cex=2,ncol=2,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+       col=cols,lty=c(1,2,3,1),lwd=c(2,2,2,2),pt.cex=2,ncol=2,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
 
 <br>
 
-```{r SLE_cumQ, echo=FALSE,fig.width=7,fig.height=4,fig.align='center',fig.cap="Cumulative discharge for S-80 (to Tidal Basin) and S-308 (from Lake Okeechobee) for the last three Florida Water Years (May - April). Day of water year is analogous to day of year with Day 1 = May 1."}
+```{r SLE_cumQ, echo=FALSE,fig.width=7,fig.height=4.5,fig.align='center',fig.cap="Cumulative discharge for S-80 (to Tidal Basin) and S-308 (from Lake Okeechobee) for the last three Florida Water Years (May - April). Day of water year is analogous to day of year with Day 1 = May 1."}
 
 ylim.max=signif(max(SLE.q.dat$cum.S80),0)
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
