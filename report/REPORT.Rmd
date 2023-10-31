@@ -865,8 +865,61 @@ SLE.Sal$Calc.Sal=with(SLE.Sal,SalinityCalc(SPC,WT))
 
 SLE.Sal$MovingAvg.7d=with(SLE.Sal,ave(Sal,SITE,FUN=function(x) roll_meanr(x,n=7)))
 
+## LWL ---------------------------------------------------------------------
+LWL.dbkeys=data.frame(STATION=c("S44","S155","S41","S155A"),
+                      DBKEY=c("91602","91404","91601","91403"),
+                      CANAL=c("C17","C51","C16","C51W"))
+q.da=data.frame()
+for(i in 1:nrow(LWL.dbkeys)){
+  tmp=DBHYDRO_daily(dates[1],dates[2],LWL.dbkeys$DBKEY[i])
+  tmp$DBKEY=as.character(LWL.dbkeys$DBKEY[i])
+  q.da=rbind(q.da,tmp)
+}
+q.da=merge(q.da,LWL.dbkeys,"DBKEY")
+q.da$DATE=date.fun(q.da$Date)
 
-map.q
+LWL.q.dat=dcast(q.da,DATE~STATION,value.var="Data.Value",mean,na.rm=T)
+LWL.q.dat$TFlow.cfs=rowSums(LWL.q.dat[,c("S44","S155","S41")],na.rm=T)
+LWL.q.dat$TFlow.kacft=cfs.to.acftd(LWL.q.dat$TFlow.cfs)/1000
+LWL.q.dat$hydro.day=hydro.day(LWL.q.dat$DATE)
+LWL.q.dat$WY=WY(LWL.q.dat$DATE)
+LWL.q.dat$Q.14=with(LWL.q.dat,roll_meanr(TFlow.cfs,n=14))
+LWL.q.dat$Q.7=with(LWL.q.dat,roll_meanr(TFlow.cfs,n=7))
+LWL.q.dat$S44.Q.7=with(LWL.q.dat,roll_meanr(S44,n=7))
+LWL.q.dat$S155.Q.7=with(LWL.q.dat,roll_meanr(S155,n=7))
+LWL.q.dat$S41.Q.7=with(LWL.q.dat,roll_meanr(S41,n=7))
+
+LWL.q.dat$cum.TFlow.kacft=with(LWL.q.dat,ave(TFlow.kacft,WY,FUN = function(x)cumsum(ifelse(is.na(x),0,x))))
+
+## salinity
+lwl.bk.dbkeys.bot=data.frame(depth="bottom",
+                         SITE=c(rep("LWL19",2),rep("LWL20A",2)),
+                         param=rep(c("WT","SPC"),2),
+                         DBKEY=c("39343","39347","39450","39452")
+)
+LWL.sal.dat=data.frame()
+for(i in 1:nrow(lwl.bk.dbkeys.bot)){
+  tmp=DBHYDRO_breakpoint(dates2[1],dates2[2],lwl.bk.dbkeys.bot$DBKEY[i])
+  if(nrow(tmp)==0) next
+  tmp$DBKEY=lwl.bk.dbkeys.bot$DBKEY[i]
+  LWL.sal.dat=rbind(LWL.sal.dat,tmp)
+  print(i)
+}
+LWL.sal.dat=merge(LWL.sal.dat,lwl.bk.dbkeys.bot,"DBKEY")
+LWL.sal.dat$Date.EST=date.fun(LWL.sal.dat$DATETIME)
+
+da.screen=ddply(LWL.sal.dat,c("Date.EST","SITE"),summarise,N.val=N.obs(Data.Value[param=="SPC"]))
+da.screen$screen=with(da.screen,ifelse(N.val<20,0,1))
+LWL.sal.dat=merge(LWL.sal.dat,da.screen,c("Date.EST","SITE"),all.x=T)
+
+LWL.sal.dat.xtab=dcast(subset(LWL.sal.dat,screen==1),SITE+Date.EST~param,value.var="Data.Value",mean,na.rm=T)
+fill=data.frame(expand.grid(SITE=unique(lwl.bk.dbkeys.bot$SITE),Date.EST=date.fun(seq(dates2[1],dates2[2],"1 days"))))
+LWL.sal.dat.xtab=merge(LWL.sal.dat.xtab,fill,c("SITE","Date.EST"),all.y=T)
+LWL.sal.dat.xtab$WT=with(LWL.sal.dat.xtab,ifelse(WT<0,NA,WT))
+
+LWL.sal.dat.xtab$Sal=with(LWL.sal.dat.xtab,SalinityCalc(SPC,WT))
+
+LWL.sal.dat.xtab$MovingAvg.7d=with(LWL.sal.dat.xtab,ave(Sal,SITE,FUN=function(x) roll_meanr(x,n=7)))
 
 ```
 
@@ -1153,25 +1206,35 @@ for(i in 1:length(site.vals)){
   tmp.dat=subset(EAA_canals.stg.dat,STATION==site.vals[i])
   plot(Data.Value~DATE,tmp.dat,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
   abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.5)
-  xx=c(xlim.val[1],xlim.val[1],xlim.val[2],xlim.val[2])
-  yy=with(subset(stg.ops.rng,Struct==struct.val[i]),c(LORS.lower,LORS.upper,LORS.upper,LORS.lower))
-  polygon(x=xx,y=yy,col=adjustcolor("indianred1",0.5),border=NA)
+  # xx=c(xlim.val[1],xlim.val[1],xlim.val[2],xlim.val[2])
+  # yy=with(subset(stg.ops.rng,Struct==struct.val[i]),c(LORS.lower,LORS.upper,LORS.upper,LORS.lower))
+  # polygon(x=xx,y=yy,col=adjustcolor("indianred1",0.5),border=NA)
   lines(Data.Value~Date,tmp.dat,col=adjustcolor("black",0.5),lwd=2)
   axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
   axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
   box(lwd=lwd.val)
   if(i%in%c(5,4)){mtext(side=1,line=1.5,"Date")}
   mtext(side=3,line=-1.3,adj=0,paste0(" ",site.val.lab[i]))
+  if(i==1){
+    legend("topright",legend=c("Daily Canal Stage"),
+       pch=c(NA),
+       lty=c(1),
+       lwd=c(2),
+       pt.bg=c(NA),
+       col=c(adjustcolor("black",0.5)),
+       pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+
+  }
 }
 
 plot(0:1,0:1,type="n",ann=F,axes=F)
-legend("center",legend=c("Optimum Canal Stage", "Daily Canal Stage"),
-       pch=c(22,NA),
-       lty=c(NA,1),
-       lwd=c(NA,2),
-       pt.bg=c(adjustcolor("indianred1",0.5),NA),
-       col=c(NA, adjustcolor("black",0.5)),
-       pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+# legend("center",legend=c("Optimum Canal Stage", "Daily Canal Stage"),
+#        pch=c(22,NA),
+#        lty=c(NA,1),
+#        lwd=c(NA,2),
+#        pt.bg=c(adjustcolor("indianred1",0.5),NA),
+#        col=c(NA, adjustcolor("black",0.5)),
+#        pt.cex=2.5,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
 
 mtext(side=2,outer=T,line=1, "Stage Elevation (Ft, NGVD29)")
 
@@ -2071,10 +2134,11 @@ axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d"),line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj)
 mtext(side=3,station.label[4])
 box(lwd=lwd.val)
-mtext("Month/Day",side=1,line=-6,cex=1.25,outer=T)
+mtext("Month/Day",side=1,line=-6,cex=1,outer=T)
 mtext(expression(paste(underline("Tape grass Condition"))),side=3,cex=1,line=1.75,outer=F)
 
 plot(0:1,0:1,ann=F,axes=F,type="n")
+
 legend(0.25,0.15,legend=c("Daily Average", "7-Day Moving Avg"),
        pch=c(21,NA),
        lty=c(NA,1),
@@ -2306,8 +2370,9 @@ box(lwd=lwd.val)
 if(i==1){mtext(side=2,"Salinity (PSU)",line=2,cex=1.25)}
 if(i==2){mtext(expression(paste(underline("Oyster Condition"))),side=3,cex=1,line=1.75,outer=F)}
 }
-
+mtext("Month/Day",side=1,line=-6,cex=1,outer=T)
 plot(0:1,0:1,ann=F,axes=F,type="n")
+# mtext(side=3,line=-1.25,"Date (Month/Day)")
 legend(0.25,0.15,legend=c("Daily Average", "7-Day Moving Avg"),
        pch=c(21,NA),
        lty=c(NA,1),
@@ -2329,5 +2394,132 @@ legend(0.75,0.15,legend=c("Poor(<5 or >35)","Fair (5-10 or 30-35)","Good(10-30)"
 # dev.off()
 ```
 
+<br>
+
+## Lake Worth Lagoon
+
+### Discharge Conditions
+
+```{r, LWLFlow, echo=FALSE,fig.width=7,fig.height=5,fig.align='center',fig.cap="Daily and 14-day moving average discharge for discharge to the Lake Worth Lagoon for the recent 30-day period."}
+# LWL.q.dat
+max.q=max(subset(LWL.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$TFlow.cfs,na.rm=T)
+ylim.max=round(max.q+max.q*0.25,-3)
+
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
+
+layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(1,0.5))
+par(family="serif",cex.axis=1.2,mar=c(1,2,1,2),oma=c(0.5,3,1,2));
+plot(TFlow.cfs~DATE,LWL.q.dat,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+with(LWL.q.dat,pt_line(DATE,S155A,2,"forestgreen",1,21,"lightgreen",cex=1.25,pt.lwd=0.1))
+with(LWL.q.dat,pt_line(DATE,TFlow.cfs,2,"black",1,21,"grey",cex=1.25,pt.lwd=0.1))
+with(LWL.q.dat,lines(DATE,Q.14,lwd=3,col=adjustcolor("dodgerblue3",0.5)))
+axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj,cex.axis=1)
+axis_fun(4,ymaj,ymin,format(round(cfs.to.acftd(ymaj)/1000,1)),cex.axis=1)
+box(lwd=lwd.val)
+mtext("Date\n(MM/DD/YYYY)",side=1,line=2.75,cex=1)
+mtext("Discharge (cfs)",side=2,line=3.5,cex=1.25)
+mtext("Discharge (kAc-Ft D\u207B\u00B9)",side=4,line=2.5,cex=1.25)
+
+
+plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
+legend(0.5,0.5,
+       legend=c("Daily Discharge (S44, S155, S41)","14-Day moving average","Daily Discharge S155A"),
+       pch=c(21,NA,21),pt.bg=c("grey",NA,"lightgreen"),pt.cex=c(1.5,NA,1.5),
+       lty=c(NA,1,NA),lwd=c(0.5,2,0.5),col=c("black",adjustcolor(c("dodgerblue1"),0.5),"black"),
+       ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5)
+
+```
+
+**Lake Worth Lagoon Conditions Summary:** Flow to the Lake Worth Lagoon
+Estuary had a 7-day average of **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$Q.7,0),big.mark=",")`
+cfs**, with  **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S44.Q.7,0),big.mark=",")`
+cfs** from S44, **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S155.Q.7,0),big.mark=",")`
+cfs** from S155 and **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S41.Q.7,0),big.mark=",")`
+cfs** from S41. 
+
 
 <br>
+
+```{r LWL_cumQ, echo=FALSE,fig.width=5,fig.height=4.5,fig.align='center',fig.cap="Cumulative total (S44, S155, S41) discharge for to Lake Worth Lagoon for the last three Florida Water Years (May - April). Day of water year is analogous to day of year with Day 1 = May 1."}
+
+ylim.max=signif(max(LWL.q.dat$cum.TFlow.kacft),0)
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=c(0,366);xmaj=seq(xlim.val[1],xlim.val[2],90);xmin=seq(xlim.val[1],xlim.val[2],30)
+cols=c("indianred1","orange","dodgerblue1")
+
+#layout(matrix(1:2,1,2,byrow=F),widths = c(1,1,0.5))
+par(family="serif",mar=c(2,2,1,1),oma=c(1,3,1,2));
+
+plot(cum.TFlow.kacft~hydro.day,LWL.q.dat,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+for(i in 1:3){
+if(i==3){
+  with(subset(LWL.q.dat,WY==seq(CurWY-2,CurWY,1)[i]),lines(hydro.day,cum.TFlow.kacft,lwd=2.5,col=cols[i]))}else{
+  with(subset(LWL.q.dat,WY==seq(CurWY-2,CurWY,1)[i]),lines(hydro.day,cum.TFlow.kacft,lwd=3,col=adjustcolor(cols[i],0.5)))}
+ }
+axis_fun(1,xmaj,xmin,xmaj,line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj,cex.axis=1);box(lwd=lwd.val)
+mtext("Day of Water Year",side=1,line=2,cex=1.25)
+mtext("Cumulative Discharge (kAc-Ft D\u207B\u00B9)",side=2,line=3.5,cex=1.25)
+mtext(side=3,"S44 + S155 + S41",adj=0)
+
+#plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
+legend("topleft",
+       legend=c(paste0("WY",seq(CurWY-2,CurWY,1))),
+       col=cols,lty=c(1),lwd=c(2.5),pt.cex=1,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+
+```
+
+
+### Salinity
+
+```{r LWL_Sal,echo=FALSE,fig.width=6.5,fig.height=5,fig.align='center',fig.cap="Daily average bottom salinity data for the last 14-days from sampling locations within the Lake Worth Lagoon. LWL20A is location north of Southern Blvd; LWL19 is located Lake/Lucerne Ave."}
+# head(LWL.sal.dat)
+LWLSITES=c("LWL20A","LWL19")
+station.label=LWLSITES
+EDate.plot=as.Date(Sys.time())+duration(1,"days")
+SDate.plot=as.Date(EDate.plot-duration(15,"days"))
+lwd.val=1
+xlim.val=as.POSIXct(strptime(c(SDate.plot,EDate.plot),"%Y-%m-%d"),tz="EST")
+xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
+
+ylim.val=c(0,40);
+ylim.val2=c(0,20);
+by.y=10;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+colrmp="blue"
+txt.cex=1
+opt.sal.col=rgb(212/250,228/250,178/250)
+
+par(family="serif",cex.axis=1.2,mar=c(1,2,0.5,1),oma=c(1,3,0.5,1));
+layout(matrix(c(1:2,rep(3,2)),2,2,byrow=T),heights=c(1,0.25));
+
+for(i in 1:2){
+plot(Sal~Date.EST,subset(LWL.sal.dat.xtab,SITE==LWLSITES[i]),type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",ann=F,axes=F)
+xx=c(xlim.val[1],xlim.val[1],xlim.val[2],xlim.val[2])
+yy=c(15,20,20,15);polygon(x=xx,y=yy,col=opt.sal.col)
+abline(h=seq(0,40,5))
+with(subset(LWL.sal.dat.xtab,SITE==LWLSITES[i]),pt_line(Date.EST,Sal,1,colrmp,2,21,colrmp,cex=2,pt.col=colrmp))
+with(subset(LWL.sal.dat.xtab,SITE==LWLSITES[i]),lines(Date.EST,MovingAvg.7d,lwd=2.5,col="orange"))
+axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d"),line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj)
+mtext(side=3,station.label[i])
+box(lwd=lwd.val)
+if(i==1){mtext(side=2,"Salinity (PSU)",line=2,cex=1.25)}
+}
+mtext("Month/Day",side=1,line=-5.25,cex=1,outer=T)
+plot(0:1,0:1,ann=F,axes=F,type="n")
+# mtext(side=3,line=-1.25,"Date (Month/Day)")
+legend(0.5,0.5,legend=c("Daily Average", "7-Day Moving Avg","Optimum Salinity"),
+       pch=c(21,NA,22),
+       lty=c(NA,1,NA),
+       lwd=c(0.01,3,NA),
+       col=c("blue","orange",NA),
+       pt.bg=c("blue",NA,opt.sal.col),
+       pt.cex=1.5,ncol=3,cex=1.25,bty="n",y.intersp=1,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+
+
+# dev.off()
+```
