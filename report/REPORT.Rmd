@@ -562,6 +562,7 @@ srs.flow.da.xtab$S356.adj.m2=with(srs.flow.da.xtab,minS356_S335*(1-ifelse(m2.ESR
 srs.flow.da.xtab$TFlow.m1=rowSums(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B")],na.rm=T)
 srs.flow.da.xtab$TFlow.m2=rowSums(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B","minS356_S335")],na.rm=T)
 
+srs.flow.da.xtab$TFlow.cfs=with(srs.flow.da.xtab,ifelse(FedWY<2000,TFlow.m1,TFlow.m2))
 srs.flow.da.xtab$TFlow.kacft=with(srs.flow.da.xtab,cfs.to.acftd(ifelse(FedWY<2000,TFlow.m1,TFlow.m2))/1000)
 
 srs.flow.da.xtab$cum.TFlow=with(srs.flow.da.xtab,ave(TFlow.kacft,FedWY,FUN = function(x)cumsum(ifelse(is.na(x),0,x))))
@@ -1729,6 +1730,7 @@ legend(0.5,0.5,
 
 ## Everglades National Park
 
+
 ```{r ENPplot,echo=FALSE,fig.width=7.5,fig.height=5.5,fig.align='center',fig.cap=paste0("Daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years in Everglades National Park.")}
 
 xlim.vals=date.fun(c(paste(CurWY-1,05,01,sep="-"),paste(CurWY,04,30,sep="-")))
@@ -1828,6 +1830,33 @@ subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
   add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")
     
+```
+
+<br>
+
+```{r ENPflowtable}
+vars=c("Date.EST",paste0("S12",LETTERS[1:4]),"S333","S333N","S355A","S355B","S356","S334","TFlow.cfs")
+date.14day=seq(date.fun(date.fun(Sys.Date())-ddays(14)),date.fun(Sys.Date()),"1 days")
+
+ENP.q.tab=subset(srs.flow.da.xtab[,vars],Date.EST%in%date.14day)
+ENP.q.tab[,2:ncol(ENP.q.tab)]=round(ENP.q.tab[,2:ncol(ENP.q.tab)],0)
+ENP.q.tab=ENP.q.tab[match(ENP.q.tab$Date.EST,rev(ENP.q.tab$Date.EST)),]
+
+cap.val="Daily discharge volume in cubic feet per second for the last 14-days. Data Source: SFWMD DBHYDRO"
+ENP.q.tab[,vars]%>%
+  flextable()%>%
+  colformat_datetime(j=1,fmt_date="%m-%d")%>%
+  colformat_double(j=2:12,big.mark = "",digits=0)%>%
+  set_header_labels("Date.EST"="Date",
+                    "TFlow.cfs"="Total Inflow")%>%
+  align(j=2:12,part="all",align="center")%>%
+  padding(padding=1,part="all")%>%
+  font(fontname="Times New Roman",part="all")%>%
+  fontsize(size=10,part="body")%>%
+  fontsize(size=12,part="header")%>%
+  add_header_lines(values=cap.val)%>%
+  align(align="center",part="header")%>%fontsize(size=12,part="header")%>%font(fontname = "Times New Roman",part="all")%>%
+  footnote(j=~TFlow.cfs,value=as_paragraph(" Estimated as S12s+(S333+S333N+S355s+min(S356,S335)-S334)."),ref_symbols =c(" 1"),part="header")
 ```
 
 <br>
