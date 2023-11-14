@@ -1730,6 +1730,7 @@ legend(0.5,0.5,
 
 ## Everglades National Park
 
+### Stages 
 
 ```{r ENPplot,echo=FALSE,fig.width=7.5,fig.height=5.5,fig.align='center',fig.cap=paste0("Daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years in Everglades National Park.")}
 
@@ -1834,6 +1835,8 @@ subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
 
 <br>
 
+### Discharge
+
 ```{r ENPflowtable}
 vars=c("Date.EST",paste0("S12",LETTERS[1:4]),"S333","S333N","S355A","S355B","S356","S334","TFlow.cfs")
 date.14day=seq(date.fun(date.fun(Sys.Date())-ddays(14)),date.fun(Sys.Date()),"1 days")
@@ -1858,6 +1861,7 @@ ENP.q.tab[,vars]%>%
   align(align="center",part="header")%>%fontsize(size=12,part="header")%>%font(fontname = "Times New Roman",part="all")%>%
   footnote(j=~TFlow.cfs,value=as_paragraph(" Estimated as S12s+(S333+S333N+S355s+min(S356,S335)-S334)."),ref_symbols =c(" 1"),part="header")
 ```
+
 
 <br>
 
