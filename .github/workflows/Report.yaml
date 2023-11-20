@@ -24,7 +24,8 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
       - name: Install rmarkdown
         run: |
-          install.packages(c("stringi","rmarkdown","knitr","reshape2","plyr","zoo",
+          install.packages("stringi", configure.args="--disable-pkg-config")
+          install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
                   "lubridate","flextable","magrittr",
                   "RcppRoll","dataRetrieval","downloadthis")) # ,"remotes"))
           # remotes::install_github("SwampThingPaul/AnalystHelper")
