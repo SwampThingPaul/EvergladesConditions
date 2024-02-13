@@ -26,6 +26,7 @@ jobs:
         run: |
           install.packages("remotes")
           remotes::install_github("gagolews/stringi")
+          remotes::install_github("davidgohel/flextable")
           install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
                   "lubridate","flextable","magrittr",
                   "RcppRoll","dataRetrieval","downloadthis")) # ,"remotes"))
