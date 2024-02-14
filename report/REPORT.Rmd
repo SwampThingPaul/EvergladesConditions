@@ -371,6 +371,8 @@ LakeO.xtab$recess_30day=with(LakeO.xtab,c(rep(NA,30),diff(LOK.stage,lag=30)))
 LakeO.xtab$DoY=as.numeric(format(LakeO.xtab$DATE,"%j"))
 LakeO.xtab$CY=as.numeric(format(LakeO.xtab$DATE,"%Y"))
 
+# writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("DATE")]))
+# writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("LOK.stage")]))
 ## EAA ---------------------------------------------------------------------
 stg.ops.rng=data.frame(Struct=c("S2","S3","S4","S5A","S5AS","S6","S7","S8","C10A"),
                        Canal=c("Hillsboro/N.NewRiver","Miami","Canal20","WPB","Canal10","Hills","NNR","Miami","L8"),
