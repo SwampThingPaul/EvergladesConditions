@@ -213,7 +213,7 @@ for(i in 1:(length(dates))){
   
   # date.val=dates[i]-ddays(1)
   date.val=dates[i]
-  rslt=data.frame(Date=date.val,
+  rslt=data.frame(Date=date.val-ddays(1),
                   OtherLOKInflow=OtherLOKInflow,
                   FEC=as.numeric(FEC),
                   Istok=as.numeric(Istok),
@@ -260,7 +260,7 @@ for(i in 1:(length(dates))){
   val=grep("L-29",mapdata)
   L29Canal=as.numeric(strsplit(mapdata[val],"Canal:|ft")[[1]][3])
   
-  date.val=dates[i]
+  date.val=dates[i]-ddays(1)
   rslt=data.frame(Date=date.val,L29Canal.map=L29Canal)
   map.SDCS=rbind(map.SDCS,rslt)
   print(i)
@@ -370,7 +370,7 @@ LakeO.xtab$recess_7day=with(LakeO.xtab,c(rep(NA,7),diff(LOK.stage,lag=7)))
 LakeO.xtab$recess_30day=with(LakeO.xtab,c(rep(NA,30),diff(LOK.stage,lag=30)))
 LakeO.xtab$DoY=as.numeric(format(LakeO.xtab$DATE,"%j"))
 LakeO.xtab$CY=as.numeric(format(LakeO.xtab$DATE,"%Y"))
-
+tail(LakeO.xtab)
 # writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("DATE")]))
 # writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("LOK.stage")]))
 ## EAA ---------------------------------------------------------------------
