@@ -26,9 +26,10 @@ jobs:
         run: |
           install.packages("remotes")
           remotes::install_github("gagolews/stringi")
+          remotes::install_github("davidgohel/officer")
           remotes::install_github("davidgohel/flextable")
           install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
-                  "lubridate","flextable","magrittr",
+                  "lubridate","magrittr",
                   "RcppRoll","dataRetrieval","downloadthis")) # ,"remotes"))
           # remotes::install_github("SwampThingPaul/AnalystHelper")
         shell: Rscript {0}

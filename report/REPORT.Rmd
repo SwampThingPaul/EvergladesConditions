@@ -83,6 +83,9 @@ library(RcppRoll)
 library(dataRetrieval)
 library(downloadthis)
 
+## custom fun
+roundUp <- function(x) 10^ceiling(log10(x))
+
 ## webscrape tools
 # library(rvest)
 # library(jsonlite)
@@ -1113,7 +1116,7 @@ map.q$LOIN.kacft=cfs.to.acftd(map.q$LOIN)/1000
 map.q$LOOUT.kacft=cfs.to.acftd(map.q$LOOUT)/1000
 
 max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$LOIN.kacft,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-1)
+ylim.max=round(max.q+max.q*0.5,-1)
 
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
@@ -1165,7 +1168,7 @@ map.q$EAA_to_WCAs.kacft=cfs.to.acftd(map.q$EAA_to_WCAs)/1000 # STA 1W, 2, 3/4
 
 max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))[,c("EAA_to_WCAs.kacft","LOK_to_EAA.kacft")],na.rm=T)
 # max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$EAA_to_WCAs.kacft,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-1)
+ylim.max=round(max.q+max.q*0.4,-1)
 
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
@@ -1193,7 +1196,7 @@ legend(0.5,0.75,
 
 <br>
 
-```{r EAA_stg, echo=FALSE,fig.width=7,fig.height=6,fig.align='center',fig.cap="EAA canal stage relative to 'optimum' stage levels as identified in LORS2008."}
+```{r EAA_stg, echo=FALSE,fig.width=7,fig.height=6,fig.align='center',fig.cap="EAA canal stage."}
 site.vals=c("S3_H","NNRS2","HILLSS2","S352","L8.441")
 site.val.lab=c("Miami","NNR","Hills","WPB","L8")
 struct.val=c("S3","S2","S2","S5A","C10A")
@@ -1401,8 +1404,8 @@ map.q$WCA1.kacft=cfs.to.acftd(map.q$WCA1)/1000
 map.q$S10s.kacft=cfs.to.acftd(map.q$S10s)/1000
 map.q$EAA.kacft=cfs.to.acftd(map.q$EAA_WCA1.out)/1000
 
-max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$WCA1.kacft,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-1)
+max.q=with(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days")),max(c(WCA1.kacft,S10s.kacft),na.rm=T))# max(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$WCA1.kacft,na.rm=T)
+ylim.max=round(max.q+max.q*0.25,0)
 
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
@@ -2295,8 +2298,9 @@ at **S-308**.
 
 ```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="S-308 (from Lake Okeechobee), S-80 (to Lower Fork),  C-44 Basin and North Fork (Gordy Rd, S49, S48) daily discharge. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
 
-max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(90),End.Date+ddays(3),"1 days"))$NorthFork,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-2)
+max.q=with(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days")),max(c(NorthFork,S80,S308),na.rm=T))#
+# max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(90),End.Date+ddays(3),"1 days"))$NorthFork,na.rm=T)
+ylim.max=roundUp(max.q+max.q*0.1);# round(max.q+max.q*0.25,0)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
