@@ -2035,7 +2035,7 @@ legend(0.75,0.75,
 dev.off()
 ```
 
-CRE Discharge Salinity Envelope - 6 months [plot](https://github.com/SwampThingPaul/EvergladesConditions/blob/4676ac1d524b35a44ea6e6991a07fad9b5fe6bc3/report/plots/CREFlow_6month.png)
+CRE Discharge Salinity Envelope - 6 months [plot](.../plots/CREFlow_6month.png)
 
 **Caloosahatchee Conditions Summary:** Flow to the Caloosahatchee
 Estuary had a 7-day average of **`r format(round(subset(cal.flow.dat.xtab,Date==date.fun(End.Date-ddays(1)))$S79Q.7,0),big.mark=",")`
@@ -2242,7 +2242,7 @@ legend("topright",
 dev.off()
 ```
 
-CRE Salinity and Discharge - 6 months [plot](https://github.com/SwampThingPaul/EvergladesConditions/blob/4676ac1d524b35a44ea6e6991a07fad9b5fe6bc3/report/plots/CRESalPlot.png)
+CRE Salinity and Discharge - 6 months [plot](.../plots/CRESalPlot.png)
 
 ---
 
