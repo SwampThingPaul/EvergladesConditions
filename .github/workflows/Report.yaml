@@ -28,6 +28,7 @@ jobs:
           remotes::install_github("gagolews/stringi")
           remotes::install_github("davidgohel/officer")
           remotes::install_github("davidgohel/flextable")
+          # remotes::install_github("tidyverse/magrittr")
           install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
                   "lubridate","magrittr",
                   "RcppRoll","dataRetrieval","downloadthis")) # ,"remotes"))

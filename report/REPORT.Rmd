@@ -51,14 +51,14 @@ knitr::opts_chunk$set(echo=FALSE,
                       message=FALSE,
                       warning=FALSE,
                       fig.path="plots/")
-check.packages <- function(pkg){
-  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-  if (length(new.pkg))
-    install.packages(new.pkg, dependencies = TRUE)
-  sapply(pkg, require, character.only = TRUE)
-}
-
-pks.list=c("rmarkdown","knitr","reshape2","plyr","zoo","lubridate","flextable","magrittr","RcppRoll","dataRetrieval","downloadthis","stringi")
+# check.packages <- function(pkg){
+#   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+#   if (length(new.pkg))
+#     install.packages(new.pkg, dependencies = TRUE)
+#   sapply(pkg, require, character.only = TRUE)
+# }
+# 
+# pks.list=c("rmarkdown","knitr","reshape2","plyr","zoo","lubridate","flextable","magrittr","RcppRoll","dataRetrieval","downloadthis","stringi")
 # 
 # check.packages("remotes")
 # # check.package.git("SwampThingPaul","AnalystHelper")
@@ -1100,7 +1100,7 @@ subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
                     "recess_7day"="7-Day Recession Rate\n(ft 7-d\u207B\u00B9)",
                     "recess_30day"="30-Day Recession Rate\n(ft 30-d\u207B\u00B9)")%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
-  footnote(i=4,j=3,value=ifelse(is.na(subset(LakeO.xtab,DATE==YEST)$P1)==T|is.na(subset(LakeO.xtab,DATE==YEST)$P2)==T,as_paragraph("Value estimated from average stage height across L001, L005, L006, LZ40, S133TW, S352HW & S4TW"),as_paragraph("Value provided by SFWMD DBKEY:N3466")),ref_symbols =c(" A "))%>%
+  # footnote(i=4,j=3,value=ifelse(is.na(subset(LakeO.xtab,DATE==YEST)$P1)==T|is.na(subset(LakeO.xtab,DATE==YEST)$P2)==T,as_paragraph("Value estimated from average stage height across L001, L005, L006, LZ40, S133TW, S352HW & S4TW"),as_paragraph("Value provided by SFWMD DBKEY:N3466")),ref_symbols =c(" A "))%>%
   add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")%>%
   footnote(j=5,part="header",value=as_paragraph("-0.5 ft 30-d\u207B\u00B9 maximum 30-day Recession Rate for HAB Deviation"),ref_symbols =c(" B "))
     
