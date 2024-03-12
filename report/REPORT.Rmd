@@ -1986,7 +1986,7 @@ legend(0.25,0.75,
        pt.bg=adjustcolor(c("red","yellow","green"),0.5),pt.cex=2,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5,title.adj = 0,title='RECOVER PM')
 
 legend(0.75,0.75,
-       legend=c("Daily Discharge","14-Day moving average"),
+       legend=c("Daily Discharge (S79)","14-Day moving average"),
        pch=c(21,NA),pt.bg=c("grey",NA),pt.cex=c(1.5,NA),
        lty=c(NA,1),lwd=c(0.5,2),col=c("black",adjustcolor(c("dodgerblue1"),0.5)),
        ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5,title.adj = 0,title='')
@@ -2028,7 +2028,7 @@ legend(0.25,0.75,
        pt.bg=adjustcolor(c("red","yellow","green"),0.5),pt.cex=2,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5,title.adj = 0,title='RECOVER PM')
 
 legend(0.75,0.75,
-       legend=c("Daily Discharge","14-Day moving average"),
+       legend=c("Daily Discharge (S79)","14-Day moving average"),
        pch=c(21,NA),pt.bg=c("grey",NA),pt.cex=c(1.5,NA),
        lty=c(NA,1),lwd=c(0.5,2),col=c("black",adjustcolor(c("dodgerblue1"),0.5)),
        ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=1,xpd=NA,xjust=0.5,title.adj = 0,title='')
