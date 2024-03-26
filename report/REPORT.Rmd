@@ -901,9 +901,9 @@ LWL.q.dat$cum.TFlow.kacft=with(LWL.q.dat,ave(TFlow.kacft,WY,FUN = function(x)cum
 
 ## salinity
 lwl.bk.dbkeys.bot=data.frame(depth="bottom",
-                         SITE=c(rep("LWL19",2),rep("LWL20A",2)),
-                         param=rep(c("WT","SPC"),2),
-                         DBKEY=c("39343","39347","39450","39452")
+                         SITE=c(rep("LWL19",2),rep("LWL20A",2),rep("LWL20",2)),
+                         param=rep(c("WT","SPC"),3),
+                         DBKEY=c("39343","39347","39450","39452","WZ749","WZ753")
 )
 LWL.sal.dat=data.frame()
 for(i in 1:nrow(lwl.bk.dbkeys.bot)){
@@ -1115,7 +1115,8 @@ subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
 map.q$LOIN.kacft=cfs.to.acftd(map.q$LOIN)/1000
 map.q$LOOUT.kacft=cfs.to.acftd(map.q$LOOUT)/1000
 
-max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$LOIN.kacft,na.rm=T)
+# max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$LOIN.kacft,na.rm=T)
+max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))[,c("LOIN.kacft","LOOUT.kacft")],na.rm=T)
 ylim.max=round(max.q+max.q*0.5,-1)
 
 
@@ -2519,7 +2520,9 @@ legend("topleft",
 
 ```{r LWL_Sal,echo=FALSE,fig.width=6.5,fig.height=5,fig.align='center',fig.cap="Daily average bottom salinity data for the last 14-days from sampling locations within the Lake Worth Lagoon. LWL20A is location north of Southern Blvd; LWL19 is located Lake/Lucerne Ave."}
 # head(LWL.sal.dat)
-LWLSITES=c("LWL20A","LWL19")
+# dcast( LWL.sal.dat.xtab,Date.EST~SITE,value.var = "Sal",mean)
+
+LWLSITES=c("LWL20","LWL19")
 station.label=LWLSITES
 EDate.plot=as.Date(Sys.time())+duration(1,"days")
 SDate.plot=as.Date(EDate.plot-duration(15,"days"))
