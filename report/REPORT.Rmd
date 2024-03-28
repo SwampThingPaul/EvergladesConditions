@@ -72,6 +72,7 @@ knitr::opts_chunk$set(echo=FALSE,
 
 ## Libraries
 # library(AnalystHelper)
+# source("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/select_AnalystHelper_source.R")
 source("./select_AnalystHelper_source.R")
 library(reshape2)
 library(plyr)
@@ -707,13 +708,13 @@ bk.dbkeys.bot=rbind(bk.dbkeys.bot,
                                DBKEY=c("WZ152","WZ156")
                     ));# Adds site MARKHA - temporary alterantive site for MARKH
 
-bk.dbkeys.bot=subset(bk.dbkeys.bot,DBKEY!="UO832");# temperature data not reporting
-bk.dbkeys.bot=rbind(bk.dbkeys.bot,
-                    data.frame(depth="top",
-                               SITE=c("CCORAL"),
-                               param=c("WT"),
-                               DBKEY=c("UO834")
-                    ));# using top water temp as proxy to calculate salinity
+# bk.dbkeys.bot=subset(bk.dbkeys.bot,DBKEY!="UO832");# temperature data not reporting
+# bk.dbkeys.bot=rbind(bk.dbkeys.bot,
+#                     data.frame(depth="top",
+#                                SITE=c("CCORAL"),
+#                                param=c("WT"),
+#                                DBKEY=c("UO834")
+#                     ));# using top water temp as proxy to calculate salinity
 bk.dbkeys.bot=subset(bk.dbkeys.bot,SITE!="VALI75")
 sal.dat=data.frame()
 for(i in 1:nrow(bk.dbkeys.bot)){
