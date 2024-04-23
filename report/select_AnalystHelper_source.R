@@ -165,3 +165,10 @@ decimal.WY=function (date, WY.type = "FL")
   dec.dateWY <- WY + sofar/total
   return(dec.dateWY)
 }
+
+
+shaded.range=function(x,y.L,y.U,bg,col=bg,lty=3,col.adj=0.25,lwd=1){
+    xx=c(x,rev(x))
+    yy=c(y.L,rev(y.U))
+    polygon(xx,yy,col=adjustcolor(bg,col.adj),border=col,lty=lty,lwd=lwd)
+  }

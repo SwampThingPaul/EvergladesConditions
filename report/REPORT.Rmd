@@ -344,6 +344,10 @@ rbind(q.dat.7day,meanQ,sumQ)
 
 dates=c(Start.Date,End.Date)
 
+#Start.Date=date.fun(paste(CurWY-10,05,01,sep="-"))
+# End.Date=date.fun(Sys.time())
+flab.dates=c(date.fun(paste(CurWY-10,05,01,sep="-")),End.Date)
+
 
 ## Lake Okeechobee ---------------------------------------------------------
 
@@ -530,7 +534,7 @@ SRS.dbkeys=subset(SRS.dbkeys,!(SITE%in%c("S355A","S355B")))
 
 srs.flow=data.frame()
 for(i in 1:nrow(SRS.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],SRS.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],SRS.dbkeys$DBKEY[i])
   tmp$DBKEY=SRS.dbkeys$DBKEY[i]
   srs.flow=rbind(tmp,srs.flow)
   print(i)
@@ -577,6 +581,52 @@ srs.flow.da.xtab$cum.TFlow=with(srs.flow.da.xtab,ave(TFlow.kacft,FedWY,FUN = fun
 
 srs.flow.da.xtab$DOWY.fed=hydro.day(srs.flow.da.xtab$Date.EST,'Fed')
 
+### SRS inflows
+srs.flow.da.xtab$SRS.east=rowSums(cfs.to.acftd(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D")]),na.rm=T)/1000
+srs.flow.da.xtab$SRS.west=rowSums(cfs.to.acftd(srs.flow.da.xtab[,c("S333","S333N","S355A","S355B","minS356_S335")]),na.rm=T)/1000
+
+srs.flow.da.xtab.melt=melt(srs.flow.da.xtab[,c("Date.EST",'SRS.east',"SRS.west")],id.vars = "Date.EST")
+srs.flow.da.xtab.melt$DOY=as.numeric(format(srs.flow.da.xtab.melt$Date.EST,"%j"))
+srs.flow.da.xtab.melt$CY=as.numeric(format(srs.flow.da.xtab.melt$Date.EST,"%Y"))
+srs.flow.da.xtab.melt$WY=WY(srs.flow.da.xtab.melt$Date.EST)
+
+
+srs.flow.da.sum=ddply(subset(srs.flow.da.xtab.melt,WY!=CurWY),c("variable","DOY"),summarise,
+                      min.val=min(value,na.rm=T),
+                      q10=quantile(value,prob=0.1,na.rm=T),
+                      q90=quantile(value,prob=0.9,na.rm=T),
+                      max.val=max(value,na.rm=T))
+srs.flow.da.sum$DATE.plt=date.fun(as.Date(srs.flow.da.sum$DOY,origin=paste0(format(End.Date,"%Y"),"-01-01")))
+
+
+
+
+## FLAB ---------------------------------------------------------------------
+FLAB.sal.dbkeys=data.frame(STATION=paste0("ENP",c("TB","GB","BK","MK","JK","WB","LR")),
+                           DBKEY=c("63683","63617","63578","63667","63634","63695","63654"))
+flab.sal.da=data.frame()
+for(i in 1:nrow(FLAB.sal.dbkeys)){
+  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],FLAB.sal.dbkeys$DBKEY[i])
+  tmp$DBKEY=as.character(FLAB.sal.dbkeys$DBKEY[i])
+  flab.sal.da=rbind(flab.sal.da,tmp)
+}
+
+flab.sal.da=merge(flab.sal.da,FLAB.sal.dbkeys,"DBKEY")
+flab.sal.da$DATE=date.fun(flab.sal.da$Date)
+flab.sal.da$DOY=as.numeric(format(flab.sal.da$DATE,"%j"))
+flab.sal.da$CY=as.numeric(format(flab.sal.da$DATE,"%Y"))
+flab.sal.da$WY=WY(flab.sal.da$DATE)
+
+head(flab.sal.da)
+
+flab.sal.da.sum=ddply(subset(flab.sal.da,WY!=CurWY),c("STATION","DOY"),summarise,
+                      min.val=min(Data.Value,na.rm=T),
+                      q10=quantile(Data.Value,prob=0.1,na.rm=T),
+                      q90=quantile(Data.Value,prob=0.9,na.rm=T),
+                      max.val=max(Data.Value,na.rm=T))
+flab.sal.da.sum$DATE.plt=date.fun(as.Date(flab.sal.da.sum$DOY,origin=paste0(format(End.Date,"%Y"),"-01-01")))
+
+
 ## CRE ---------------------------------------------------------------------
 cal.flow=data.frame(DBKEY=c("DJ235","88280","DJ237","00865"),SITE=c(rep("S77",2),rep("S79",2)),priority=rep(c("P1","P2"),2))
 cal.flow.dat=data.frame()
@@ -585,11 +635,16 @@ for(i in 1:nrow(cal.flow)){
   tmp$DBKEY=as.character(cal.flow$DBKEY[i])
   cal.flow.dat=rbind(tmp,cal.flow.dat)
 }
+# if(subset(cal.flow.dat,Date==End.Date&is.na(Data.Value)==T))
+
 cal.flow.dat$Date=date.fun(cal.flow.dat$Date)
+cal.flow.dat=subset(cal.flow.dat,Date<End.Date)
+
 cal.flow.dat$WY=WY(cal.flow.dat$Date)
 cal.flow.dat=merge(cal.flow.dat,cal.flow,"DBKEY")
 cal.flow.dat.xtab=dcast(cal.flow.dat,SITE+Date+WY~priority,value.var="Data.Value",mean,na.rm=T)
 cal.flow.dat.xtab$Data.Value=with(cal.flow.dat.xtab,ifelse(is.na(P1)==T,P2,P1))
+
 
 cal.flow.dat.xtab=dcast(cal.flow.dat.xtab,Date+WY~SITE,value.var="Data.Value",mean)
 tmp=map.q[,c("Date","S77","S79")]
@@ -691,7 +746,6 @@ colnames(salenv.vals1)=c("low","optimal","stress","damaging")
 
 flow.envs=c("< 750","750 - 2100", "2100 - 2600","> 2600")
 cols=c("red","green","orange","red")
-
 
 ## Salinity
 dates2=c(as.Date(End.Date-duration(30,"days")),End.Date)
@@ -1944,6 +1998,90 @@ legend("topleft",
        legend=c(paste0("Fed WY",seq(CurWY.Fed-2,CurWY.Fed,1))),
        col=cols,lty=c(1),lwd=c(2.5),pt.cex=1,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
+```
+
+<br>
+
+```{r SRS_eastwest, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Shark River Slough daily discharge relative to historic peroid of record summary statistics."}
+sum.stat.dates.form=format(c(flab.dates[1],date.fun(paste(CurWY-1,05,01,sep="-"))),"%b %Y")
+
+max.q=max(subset(srs.flow.da.xtab.melt,Date.EST%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$value,na.rm=T)
+ylim.max=round(max.q+max.q*0.3,-1)
+
+xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
+ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+# png(filename=paste0(plot.path,"SRSInflow.png"),width=6.5,height=4,units="in",res=200,type="cairo",bg="white")
+par(family="serif",mar=c(2,2,0.5,1),oma=c(1.25,3,1,1));
+# par(family="serif",mar=c(1,1.75,0.5,0.5),oma=c(1,2,1,0.5));
+layout(matrix(c(1:2,3,3),2,2,byrow=T),heights=c(1,0.4))
+
+site.val=c("SRS.east","SRS.west")
+site.val.lab=c("SRS East\n(S12s)","SRS West\n(S333s, S335s & min(S356, S335))")
+#i=1
+for(i in 1:length(site.val)){
+  plot(value~Date.EST,srs.flow.da.xtab.melt,type="n",ylim=ylim.val,xlim=xlim.val,xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+  with(subset(srs.flow.da.sum,variable==site.val[i]),shaded.range(DATE.plt,q10,q90,"lightblue",lty=1,col.adj=1))
+  with(subset(srs.flow.da.xtab.melt,variable==site.val[i]),pt_line(Date.EST,value,2,"black",1,21,"indianred1",cex=1.25))
+  abline(h=ymaj,v=xmaj,lty=3,col="grey")
+  axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+  axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1);box(lwd=1)
+  mtext(site.val.lab[i],side=3,line=-2.75)
+  if(i==1){mtext("Daily Discharge (x1000 Ac-Ft d)",side=2,line=2.5,cex=1)}
+}
+
+par(mar=c(0.5,1.5,0.25,1))
+plot(0:1,0:1,type="n",ann=F,axes=F)
+mtext(side=3,"Date (Month-Day)",line=-1.75)
+legend(0.5,0.25,legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form[2]," 10th to 90th\nQuantile Range"),"Daily Discharge"),
+       pch=c(22,21),pt.bg=c("lightblue","indianred1"),
+       lty=c(0,0),lwd=c(0,0.5),col=c("grey50","black"),
+       pt.cex=1.5,cex=1,ncol=2,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+```
+
+
+
+
+
+### Florida Bay Salinity 
+
+```{r, out.width="60%",echo=FALSE,fig.align="center",fig.cap="Select salinity monitoring locations within Florida Bay."}
+knitr::include_graphics("FLAB_salsites.png")
+```
+
+<br>
+
+```{r FLAB_SAL, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Daily salinity values for select Florida Bay salinity mointoring locations relative to site specific daily historic statistics."}
+ylim.val=c(0,50);by.y=10;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
+
+sum.stat.dates.form=format(c(flab.dates[1],date.fun(paste(CurWY-1,05,01,sep="-"))),"%b %Y")
+
+# png(filename=paste0(plot.path,"FLAB_saldata.png"),width=6.5,height=4.5,units="in",res=200,type="windows",bg="white")
+par(family="serif",mar=c(1,1,0.5,1),oma=c(2.5,2.5,1.25,1));
+layout(matrix(1:8,2,4,byrow=T))
+
+site.val=paste0("ENP",c("MK","BK","GB","TB","JK","WB","LR"))
+#i=1
+for(i in 1:length(site.val)){
+plot(Data.Value~DATE,flab.sal.da,type="n",ylim=ylim.val,xlim=xlim.val,xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+with(subset(flab.sal.da.sum,STATION==site.val[i]),shaded.range(DATE.plt,q10,q90,"lightblue",lty=1,col.adj=1))
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+# lines(q10~DATE.plt,subset(flab.sal.da.sum,STATION=="ENPGB"),col="lightblue")
+# lines(q90~DATE.plt,subset(flab.sal.da.sum,STATION=="ENPGB"),col="lightblue")
+with(subset(flab.sal.da,STATION==site.val[i]),pt_line(DATE,Data.Value,2,"black",1,21,"indianred1",cex=1.25))
+axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj,cex.axis=1);box(lwd=1)
+mtext(substr(site.val[i],4,5),side=3,line=-1.25)
+if(i==1){mtext(side=3,adj=0,"Florida Bay",cex=1.25)}
+}
+mtext(side=2,outer=T,"Salinity",line=1)
+mtext(side=1,outer=T,"Date (Month-Day)",line=1)
+
+plot(0:1,0:1,type="n",ann=F,axes=F)
+legend("center",legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form[2],"\n10th to 90th\nQuantile Range"),"Daily Average Salinity"),
+       pch=c(22,21),pt.bg=c("lightblue","indianred1"),
+       lty=c(0,0),lwd=c(0,0.5),col=c("grey50","black"),
+       pt.cex=1.5,cex=1,ncol=1,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
 ```
 
 ---
