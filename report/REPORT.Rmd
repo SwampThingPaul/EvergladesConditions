@@ -4,6 +4,8 @@ output:
   html_document: 
     toc: yes
     self_contained: true
+    dev: png
+    type: cairo
 editor_options: 
   chunk_output_type: console
   markdown: 
@@ -49,7 +51,8 @@ to change.
 knitr::opts_chunk$set(echo=FALSE,
                       message=FALSE,
                       warning=FALSE,
-                      fig.path="plots/")
+                      fig.path="plots/",
+                      dev.args = list(png = list(type = "cairo")))
 # check.packages <- function(pkg){
 #   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
 #   if (length(new.pkg))
@@ -1114,7 +1117,7 @@ if(subset(LakeO.xtab,DATE==YEST)$DOWY<300){
   with(subset(LakeO.xtab,DATE==YEST),text(DOWY,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
 }else{
     with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY-30,10.1,lty=2))
-  with(subset(LakeO.xtab,DATE==YEST),text(DOWY-30,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  with(subset(LakeO.xtab,DATE==YEST),text(DOWY-30,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
   }
 
 }
