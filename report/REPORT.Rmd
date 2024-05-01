@@ -30,7 +30,6 @@ dst.check=lubridate::dst(as.POSIXct(up.date))
 
 ```
 
-
 `r paste("Updated:",up.date, ifelse(dst.check==T,"EDT","EST"))`
 
 <!-- ![](https://github.com/sccf-tech/CRE_Conditions/actions/workflows/RegionalReport.yaml/badge.svg) -->
@@ -43,8 +42,8 @@ This webpage/report is intended to aggregate information from different
 agencies (i.e. USACE, SFWMD, FWC, USGS and NOAA) into one spot to help
 inform local government agencies and stakeholders on conditions within
 Lake Okeechobee, the Northern Estuaries and the Everglades ecosystem.
-The data provided here should be considered
-preliminary and are subject to change.
+The data provided here should be considered preliminary and are subject
+to change.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE,
@@ -987,7 +986,7 @@ LWL.sal.dat.xtab$MovingAvg.7d=with(LWL.sal.dat.xtab,ave(Sal,SITE,FUN=function(x)
 
 ```
 
----
+------------------------------------------------------------------------
 
 ```{r flowtable}
 vars=c("Date","S77","S79","S354","S351","S352","S271","S308","S80","NthLake","WCA1","WCA2","WCA3","ENP")
@@ -1014,7 +1013,6 @@ footnote(j=~ENP,value=as_paragraph(" Estimated as S12s+(S333+S333N)-S356. If no 
   # footnote(i=1,j=1,value=as_paragraph("Negative flow values omitted from this table and statistical summaries below."),ref_symbols =c(" "),part="header")
 ```
 
-
 ```{r}
 rbind(q.dat.7day,meanQ,sumQ)%>%
   download_this(
@@ -1027,7 +1025,7 @@ rbind(q.dat.7day,meanQ,sumQ)%>%
   )
 ```
 
----
+------------------------------------------------------------------------
 
 ## Lake Okeechobee
 
@@ -1175,7 +1173,6 @@ subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
 
 ```
 
-
 <br>
 
 ```{r LOK_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="Lake Okeechobee inflow and outflow volume from USACE."}
@@ -1211,7 +1208,6 @@ legend(0.5,0.5,
 
 ```
 
-
 <br>
 
 **Lake Flows:** In the past 7 days the total outflow from Lake
@@ -1219,14 +1215,14 @@ Okeechobee was **`r format(round(q.from.Lake,0),big.mark=",")` AF** with
 **`r format(round(S77q,0),big.mark=",")` AF** to the Caloosahatchee
 through
 **S-77**,`r if(S308q.pos>0){paste("**",format(round(S308q.pos,0),big.mark=",")," AF** through **S-308** in Port Mayaca,",sep="")}`
-and **`r format(round(EAAq.pos,0),big.mark=",")` AF** to the
-EAA through **S-351**, **S-352**, and **S-354**. The total net inflow to
-the Lake was **`r format(round(q.in.Lake+q.BF.Lake,0),big.mark=",")`
-AF** (`r format(round(q.in.Lake,0),big.mark=",")` AF from Fisheating
-Creek, S-71, S-72, S-84s, S-65EX, and S-65EX1)
+and **`r format(round(EAAq.pos,0),big.mark=",")` AF** to the EAA through
+**S-351**, **S-352**, and **S-354**. The total net inflow to the Lake
+was **`r format(round(q.in.Lake+q.BF.Lake,0),big.mark=",")` AF**
+(`r format(round(q.in.Lake,0),big.mark=",")` AF from Fisheating Creek,
+S-71, S-72, S-84s, S-65EX, and S-65EX1)
 `r if(q.BF.Lake>0){paste(" with a total backflow volume of ","**",format(round(q.BF.Lake,0),big.mark=",")," AF** from **", v.val,"**",sep="")}`.
 
----
+------------------------------------------------------------------------
 
 ## Everglades Agricultural Area
 
@@ -1318,8 +1314,8 @@ mtext(side=2,outer=T,line=1, "Stage Elevation (Ft, NGVD29)")
 
 ```
 
-<br>
-<br>
+<br> <br>
+
 ```{r}
 EAA.STG.locs$labs=with(EAA.STG.locs,paste0(CANAL," (DBKEY:",DBKEY,")"))
 
@@ -1350,7 +1346,7 @@ subset(EAA_canals,DOWY==hydro.day(YEST))[,c("DATE","WY",site.vals)]%>%
 
 ```
 
----
+------------------------------------------------------------------------
 
 ## Water Conservation Area 1
 
@@ -1503,7 +1499,7 @@ legend(0.5,0.5,
 
 <br>
 
----
+------------------------------------------------------------------------
 
 ## Water Conservation Area 2
 
@@ -1642,7 +1638,7 @@ legend(0.5,0.5,
 
 <br>
 
----
+------------------------------------------------------------------------
 
 ## Water Conservation Area 3
 
@@ -1799,14 +1795,13 @@ legend(0.5,0.5,
 
 ```
 
-
 <br>
 
---- 
+------------------------------------------------------------------------
 
 ## Everglades National Park
 
-### Stages 
+### Stages
 
 ```{r ENPplot,echo=FALSE,fig.width=7.5,fig.height=5.5,fig.align='center',fig.cap=paste0("Daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years in Everglades National Park.")}
 
@@ -1938,7 +1933,6 @@ ENP.q.tab[,vars]%>%
   footnote(j=~TFlow.cfs,value=as_paragraph(" Estimated as S12s+(S333+S333N+S355s+min(S356,S335)-S334)."),ref_symbols =c(" 1"),part="header")
 ```
 
-
 <br>
 
 ```{r SRS_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="Shark River Slough calculated net inflow."}
@@ -2051,11 +2045,7 @@ legend(0.5,0.25,legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form
        pt.cex=1.5,cex=1,ncol=2,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
 ```
 
-
-
-
-
-### Florida Bay Salinity 
+### Florida Bay Salinity
 
 ```{r, out.width="60%",echo=FALSE,fig.align="center",fig.cap="Select salinity monitoring locations within Florida Bay."}
 knitr::include_graphics("FLAB_salsites.png")
@@ -2097,7 +2087,7 @@ legend("center",legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form
        pt.cex=1.5,cex=1,ncol=1,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
 ```
 
----
+------------------------------------------------------------------------
 
 # Northern Estuaries
 
@@ -2188,17 +2178,21 @@ legend(0.75,0.75,
 dev.off()
 ```
 
-CRE Discharge Salinity Envelope - 6 months [plot](./plots/CREFlow_6month.png)
+CRE Discharge Salinity Envelope - 6 months
+[plot](./plots/CREFlow_6month.png)
 
 **Caloosahatchee Conditions Summary:** Flow to the Caloosahatchee
-Estuary had a 7-day average of **`r format(round(subset(cal.flow.dat.xtab,Date==date.fun(End.Date-ddays(1)))$S79Q.7,0),big.mark=",")`
+Estuary had a 7-day average of
+**`r format(round(subset(cal.flow.dat.xtab,Date==date.fun(End.Date-ddays(1)))$S79Q.7,0),big.mark=",")`
 cfs** at **S-79** with a 7-day average of
-**`r format(round(subset(cal.flow.dat.xtab,Date==date.fun(End.Date-ddays(1)))$S77Q.7,0),big.mark=",")` cfs coming from the lake
-at **S-77**. **The 14-day moving average flow at S-79 is
-`r format(round(salenv.vals$Q.14),big.mark=",")` cfs and has been in the **
-`r paste0("<span style='color:",cols[which(salenv.vals1==max(salenv.vals1))],"'>")` `r names(salenv.vals1)[which(salenv.vals1==max(salenv.vals1))]` </span> **
-flow envelope (`r flow.envs[which(salenv.vals1==max(salenv.vals1))]`
-cfs; RECOVER 2020) for
+**`r format(round(subset(cal.flow.dat.xtab,Date==date.fun(End.Date-ddays(1)))$S77Q.7,0),big.mark=",")`
+cfs coming from the lake at** S-77**.** The 14-day moving average flow
+at S-79 is `r format(round(salenv.vals$Q.14),big.mark=",")` cfs and has
+been in the
+**`r paste0("<span style='color:",cols[which(salenv.vals1==max(salenv.vals1))],"'>")` `r names(salenv.vals1)[which(salenv.vals1==max(salenv.vals1))]`**
+</span> flow envelope
+(`r flow.envs[which(salenv.vals1==max(salenv.vals1))]` cfs; RECOVER
+2020) for
 `r as.numeric(salenv.vals1[which(salenv.vals1==max(salenv.vals1))])`
 days.
 
@@ -2271,7 +2265,6 @@ legend("topright",
        col=cols,lty=c(1),lwd=c(2.5),pt.cex=1,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
-
 
 ### Salinity
 
@@ -2397,7 +2390,7 @@ dev.off()
 
 CRE Salinity and Discharge - 6 months [plot](./plots/CRESalPlot.png)
 
----
+------------------------------------------------------------------------
 
 ## St Lucie River Estuary
 
@@ -2443,11 +2436,12 @@ legend(0.75,0.75,
 
 ```
 
-**St Lucie Conditions Summary:** Flow to the St Lucie
-Estuary had a 7-day average of **`r format(round(subset(SLE.q.dat,DATE==date.fun(End.Date-ddays(1)))$Q.7,0),big.mark=",")`
+**St Lucie Conditions Summary:** Flow to the St Lucie Estuary had a
+7-day average of
+**`r format(round(subset(SLE.q.dat,DATE==date.fun(End.Date-ddays(1)))$Q.7,0),big.mark=",")`
 cfs** from **North and South Forks** with a 7-day average of
-**`r format(round(subset(SLE.q.dat,DATE==date.fun(End.Date-ddays(1)))$S308Q.7,0),big.mark=",")` cfs** coming from the lake
-at **S-308**. 
+**`r format(round(subset(SLE.q.dat,DATE==date.fun(End.Date-ddays(1)))$S308Q.7,0),big.mark=",")`
+cfs** coming from the lake at **S-308**.
 
 ```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="S-308 (from Lake Okeechobee), S-80 (to Lower Fork),  C-44 Basin and North Fork (Gordy Rd, S49, S48) daily discharge. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
 
@@ -2628,12 +2622,15 @@ legend(0.5,0.5,
 ```
 
 **Lake Worth Lagoon Conditions Summary:** Flow to the Lake Worth Lagoon
-Estuary had a 7-day average of **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$Q.7,0),big.mark=",")`
-cfs**, with  **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S44.Q.7,0),big.mark=",")`
-cfs** from S44, **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S155.Q.7,0),big.mark=",")`
-cfs** from S155 and **`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S41.Q.7,0),big.mark=",")`
-cfs** from S41. 
-
+Estuary had a 7-day average of
+**`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$Q.7,0),big.mark=",")`
+cfs**, with
+**`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S44.Q.7,0),big.mark=",")`
+cfs** from S44,
+**`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S155.Q.7,0),big.mark=",")`
+cfs** from S155 and
+**`r format(round(subset(LWL.q.dat,DATE==date.fun(End.Date-ddays(1)))$S41.Q.7,0),big.mark=",")`
+cfs** from S41.
 
 <br>
 
@@ -2666,7 +2663,6 @@ legend("topleft",
        col=cols,lty=c(1),lwd=c(2.5),pt.cex=1,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
-
 
 ### Salinity
 
