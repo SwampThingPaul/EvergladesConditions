@@ -1,45 +1,29 @@
-DBHYDRO_daily=function(SDATE, EDATE, DBK) 
+DBHYDRO_daily=function(SDATE, EDATE, DBK,offset=4) 
 {
-  DBK.val = paste("", DBK, "", collapse = "/", 
-                  sep = "")
-  SDATE = paste(format(SDATE, "%Y"), toupper(format(SDATE, 
-                                                    "%m")), format(SDATE, "%d"), sep = "")
-  EDATE = paste(format(EDATE, "%Y"), toupper(format(EDATE, 
-                                                    "%m")), format(EDATE, "%d"), sep = "")
-  link = paste("http://my.sfwmd.gov/dbhydroplsql/web_io.report_process?v_period=uspec&v_start_date=", 
-               SDATE, "&v_end_date=", EDATE, "&v_report_type=format6&v_target_code=file_csv&v_run_mode=onLine&v_js_flag=Y&v_dbkey=", 
-               DBK.val, sep = "")
-  REPORT = read.csv(link, skip = length(DBK) + 4)
-  REPORT$Date = with(REPORT, as.POSIXct(as.character(Daily.Date), 
-                                        format = "%d-%b-%Y", tz = "America/New_York"))
-  REPORT = subset(REPORT, is.na(Date) == F)
+  #Returns daily data from SFWMD DBHydro
+  DBK.val=paste("",DBK,"",collapse="/",sep="")
+  SDATE=paste(format(SDATE,"%Y"),toupper(format(SDATE,"%m")),format(SDATE,"%d"),sep="");#In YYYYMMDD format
+  EDATE=paste(format(EDATE,"%Y"),toupper(format(EDATE,"%m")),format(EDATE,"%d"),sep="");#In YYYYMMDD format
+  link=paste("http://my.sfwmd.gov/dbhydroplsql/web_io.report_process?v_period=uspec&v_start_date=",SDATE,"&v_end_date=",EDATE,"&v_report_type=format6&v_target_code=file_csv&v_run_mode=onLine&v_js_flag=Y&v_dbkey=",DBK.val,sep="")
+  REPORT=read.csv(link,skip=length(DBK)+offset)
+  REPORT$Date=with(REPORT,as.POSIXct(as.character(Daily.Date),format="%d-%b-%Y",tz="America/New_York"))
+  REPORT=subset(REPORT,is.na(Date)==F)
   return(REPORT)
 }
 
-DBHYDRO_breakpoint=function (SDATE, EDATE, DBK, col.names = c("DATETIME", 
-                                           "Station", "DBKEY", "Data.Value", "Flag", 
-                                           "Comment"), timeout = 200) 
-{
-  DBK.val = paste("", DBK, "", collapse = "/", 
-                  sep = "")
-  SDATE = paste(format(SDATE, "%Y"), toupper(format(SDATE, 
-                                                    "%m")), format(SDATE, "%d"), sep = "")
-  EDATE = paste(format(EDATE, "%Y"), toupper(format(EDATE, 
-                                                    "%m")), format(EDATE, "%d"), sep = "")
-  link = paste("http://my.sfwmd.gov/dbhydroplsql/web_io.report_process?v_period=uspec&v_start_date=", 
-               SDATE, "&v_end_date=", EDATE, "&v_report_type=format6&v_target_code=file_csv&v_run_mode=onLine&v_js_flag=Y&v_dbkey=", 
-               DBK.val, sep = "")
-  # tmp = RCurl::getURL(link, timeout = timeout)
-  REPORT = read.csv(link, skip = length(DBK) + 
-                      2, col.names = col.names, header = F)
-  REPORT$DATETIME = as.POSIXct(REPORT$DATETIME, format = "%d-%b-%Y %H:%M", 
-                               tz = "EST")
-  REPORT$DATE = as.POSIXct(format(REPORT$DATETIME, format = "%Y-%m-%d"), 
-                           tz = "EST")
-  REPORT = subset(REPORT, is.na(DATETIME) == F)
+DBHYDRO_breakpoint=function(SDATE,EDATE,DBK,col.names=c("DATETIME","Station","DBKEY","Data.Value","Flag","Comment"),timeout=200,offset=2){
+  DBK.val=paste("",DBK,"",collapse="/",sep="")
+  SDATE=paste(format(SDATE,"%Y"),toupper(format(SDATE,"%m")),format(SDATE,"%d"),sep="");#In YYYYMMDD format
+  EDATE=paste(format(EDATE,"%Y"),toupper(format(EDATE,"%m")),format(EDATE,"%d"),sep="");#In YYYYMMDD format
+  link=paste("http://my.sfwmd.gov/dbhydroplsql/web_io.report_process?v_period=uspec&v_start_date=",SDATE,"&v_end_date=",EDATE,"&v_report_type=format6&v_target_code=file_csv&v_run_mode=onLine&v_js_flag=Y&v_dbkey=",DBK.val,sep="")
+  
+  tmp=RCurl::getURL(link,timeout=timeout)
+  REPORT=read.csv(textConnection(tmp),skip=length(DBK)+offset,col.names=col.names,header=F)
+  REPORT$DATETIME=as.POSIXct(REPORT$DATETIME,format="%d-%b-%Y %H:%M",tz="EST")
+  REPORT$DATE=as.POSIXct(format(REPORT$DATETIME,format="%Y-%m-%d"),tz="EST")
+  REPORT=subset(REPORT,is.na(DATETIME)==F)
   return(REPORT)
 }
-
 
 date.fun=function (x, tz = "EST", form = "%F") 
 {

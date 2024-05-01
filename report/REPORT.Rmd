@@ -352,10 +352,11 @@ flab.dates=c(date.fun(paste(CurWY-10,05,01,sep="-")),End.Date)
 ## Lake Okeechobee ---------------------------------------------------------
 
 comp.dbkey=data.frame(DBKEY=c("N3466","06832"),Priority=c("P2","P1"))
+AnalystHelper::DBHYDRO.meta.byDBKEY(comp.dbkey$DBKEY)
 
 stg.da=data.frame()
 for(i in 1:nrow(comp.dbkey)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i],3)
   tmp$DBKEY=as.character(comp.dbkey$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -398,7 +399,7 @@ STG.locs=EAA.STG.locs=data.frame(STATION=c("S3_H","HILLSS2","NNRS2","S352","L8.4
 
 stg.dat=data.frame()
 for(i in 1:nrow(STG.locs)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],STG.locs$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],STG.locs$DBKEY[i],3)
   tmp$DBKEY=as.character(STG.locs$DBKEY[i])
   stg.dat=rbind(stg.dat,tmp)
 }
@@ -422,7 +423,7 @@ WCA1.dbkeys=data.frame(STATION=c("CA1-8T","CA1-9","CA1-7"),
 
 stg.da=data.frame()
 for(i in 1:nrow(WCA1.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],WCA1.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],WCA1.dbkeys$DBKEY[i],3)
   tmp$DBKEY=as.character(WCA1.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -447,7 +448,7 @@ WCA2.dbkeys=data.frame(STATION=c("S11B_H","CA217"),
 
 stg.da=data.frame()
 for(i in 1:nrow(WCA2.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],WCA2.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],WCA2.dbkeys$DBKEY[i],3)
   tmp$DBKEY=as.character(WCA2.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -469,7 +470,7 @@ WCA3.dbkeys=data.frame(STATION=c("CA3-62","CA3-63","CA3-64","CA3-65"),
 
 stg.da=data.frame()
 for(i in 1:nrow(WCA3.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],WCA3.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],WCA3.dbkeys$DBKEY[i],3)
   tmp$DBKEY=as.character(WCA3.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -500,7 +501,7 @@ ENP.dbkeys=data.frame(STATION=c("NESRS2","NP201","L29Canal"),
 
 stg.da=data.frame()
 for(i in 1:nrow(ENP.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],ENP.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],ENP.dbkeys$DBKEY[i],3)
   tmp$DBKEY=as.character(ENP.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -534,7 +535,7 @@ SRS.dbkeys=subset(SRS.dbkeys,!(SITE%in%c("S355A","S355B")))
 
 srs.flow=data.frame()
 for(i in 1:nrow(SRS.dbkeys)){
-  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],SRS.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],SRS.dbkeys$DBKEY[i],3)
   tmp$DBKEY=SRS.dbkeys$DBKEY[i]
   srs.flow=rbind(tmp,srs.flow)
   print(i)
@@ -606,7 +607,7 @@ FLAB.sal.dbkeys=data.frame(STATION=paste0("ENP",c("TB","GB","BK","MK","JK","WB",
                            DBKEY=c("63683","63617","63578","63667","63634","63695","63654"))
 flab.sal.da=data.frame()
 for(i in 1:nrow(FLAB.sal.dbkeys)){
-  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],FLAB.sal.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],FLAB.sal.dbkeys$DBKEY[i],3)
   tmp$DBKEY=as.character(FLAB.sal.dbkeys$DBKEY[i])
   flab.sal.da=rbind(flab.sal.da,tmp)
 }
@@ -631,7 +632,7 @@ flab.sal.da.sum$DATE.plt=date.fun(as.Date(flab.sal.da.sum$DOY,origin=paste0(form
 cal.flow=data.frame(DBKEY=c("DJ235","88280","DJ237","00865"),SITE=c(rep("S77",2),rep("S79",2)),priority=rep(c("P1","P2"),2))
 cal.flow.dat=data.frame()
 for(i in 1:nrow(cal.flow)){
-  tmp=DBHYDRO_daily(date.fun(paste(CurWY-3,"05-01",sep="-")),End.Date,cal.flow$DBKEY[i])
+  tmp=DBHYDRO_daily(date.fun(paste(CurWY-3,"05-01",sep="-")),End.Date,cal.flow$DBKEY[i],3)
   tmp$DBKEY=as.character(cal.flow$DBKEY[i])
   cal.flow.dat=rbind(tmp,cal.flow.dat)
 }
@@ -832,7 +833,7 @@ SLE.dbkeys=data.frame(STATION=c("GORDY","S49","S48","S80","S308","S308.DS"),
                        DBKEY=c("91295","91607","91606","DJ238","DJ239","06548"))
 q.da=data.frame()
 for(i in 1:nrow(SLE.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],SLE.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],SLE.dbkeys$DBKEY[i],3)
   tmp$DBKEY=as.character(SLE.dbkeys$DBKEY[i])
   q.da=rbind(q.da,tmp)
 }
@@ -934,7 +935,7 @@ LWL.dbkeys=data.frame(STATION=c("S44","S155","S41","S155A"),
                       CANAL=c("C17","C51","C16","C51W"))
 q.da=data.frame()
 for(i in 1:nrow(LWL.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],LWL.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(dates[1],dates[2],LWL.dbkeys$DBKEY[i],3)
   tmp$DBKEY=as.character(LWL.dbkeys$DBKEY[i])
   q.da=rbind(q.da,tmp)
 }
@@ -1083,7 +1084,7 @@ xlim.vals2=hydro.day(xlim.vals)
 ylim.val=c(9,18);by.y=1
 ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 
-par(family="serif",mar=c(0.5,2,1,1),oma=c(0.5,3,1,1));
+par(family="serif",mar=c(0.5,1.5,1,1.5),oma=c(0.5,3,1,3));
 layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 
 plot(High~DOWY,LORS.gaph2Yrs,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
@@ -1109,9 +1110,15 @@ with(subset(LakeO.xtab,WY==CurWY-2),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("
 with(subset(LakeO.xtab,WY==CurWY-1),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("blue",0.5),lty=1))
 with(subset(LakeO.xtab,WY==CurWY),lines(DOWY,LOK.stage,lwd=4,col="red",lty=1))
 if(is.na(subset(LakeO.xtab,DATE==YEST)$LOK.stage)==T|nrow(subset(LakeO.xtab,DATE==YEST))==0){NA}else{
-with(subset(LakeO.xtab,DATE==YEST),points(DOWY,LOK.stage,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
-with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY,10.1,lty=2))
-with(subset(LakeO.xtab,DATE==YEST),text(DOWY,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+with(subset(LakeO.xtab,DATE==YEST),points(DOWY,LOK.stage,pch=21,bg=adjustcolor("grey",0.5),col="gray",lwd=0.1,cex=1.25))
+if(subset(LakeO.xtab,DATE==YEST)$DOWY<300){
+  with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY,10.1,lty=2))
+  with(subset(LakeO.xtab,DATE==YEST),text(DOWY,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+}else{
+    with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY-30,10.1,lty=2))
+  with(subset(LakeO.xtab,DATE==YEST),text(DOWY-30,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  }
+
 }
 
 axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
@@ -1121,6 +1128,12 @@ mtext(side=1,"Month",line=2,cex=1.25)
 mtext(side=2,"Stage Elevation (Feet, NGVD29)",line=2.5,cex=1.25)
 mtext(side=3,adj=0,paste("Date:",format(date.fun(Sys.Date()-ddays(1)),"%b %d, %Y")))
 mtext(side=3,adj=1,"Data are provisional and subject to change",col="red")
+
+ylim.val2=c(8,16);by.y2=1
+ymaj2=seq(ylim.val2[1],ylim.val2[2],by.y2);ymin2=seq(ylim.val2[1],ylim.val2[2],by.y2/2)
+lok.con=1.22
+axis_fun(4,ymaj2+lok.con,ymin2+lok.con,ymaj2)
+mtext(side=4,"Stage Elevation (Feet, NAVD88)",line=2.5,cex=1.25)
 
 plot(0:1,0:1,type = 'n', axes = F,xlab=NA, ylab=NA)
 legend(0.5,0.5,
