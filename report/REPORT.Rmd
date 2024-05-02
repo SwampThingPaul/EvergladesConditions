@@ -2151,6 +2151,7 @@ SRS.delive=dcast(subset(srs.flow.da.xtab,CY>2011),CY~month,value.var ="SRS.del",
 SRS.delive$Total=rowSums(SRS.delive[,2:ncol(SRS.delive)])
 colnames(SRS.delive)=c("Year",month.abb,"Total")
 
+
 cap.val="Water Deliveries (Ac-Ft) to L-29 Canal (S12s + S333 + S333N + S356 - S334)"
 SRS.delive|>
   flextable()|>
@@ -2172,6 +2173,7 @@ SRS.delive|>
   align(align="center",part="header")|>
   fontsize(size=12,part="header")|>
   font(fontname = "Times New Roman",part="all")|>
+  padding(padding=1.5, part='footer')|>
   autofit()
 
 ```
@@ -2183,6 +2185,7 @@ eSRS.delive=dcast(subset(srs.flow.da.xtab,CY>2011),CY~month,value.var ="eastSRS.
 eSRS.delive$Total=rowSums(eSRS.delive[,2:ncol(eSRS.delive)])
 colnames(eSRS.delive)=c("Year",month.abb,"Total")
 
+dbkeys.txt=with(subset(SRS.dbkeys,!(SITE%in%c("S335"))),paste0("Structure (DBKEY): ",paste(paste0(SITE," (",DBKEY,")"),collapse="; ")))
 cap.val="Water Deliveries (Ac-Ft) to L-29 Canal (S333 + S333N + S356 - S334)"
 eSRS.delive|>
   flextable()|>
@@ -2193,6 +2196,7 @@ eSRS.delive|>
   align(part="all",align="center")|>
   padding(padding=2,part="all")|>
   footnote(j=1,value=as_paragraph(" Note: All data is from DBHYDRO and provisional."),ref_symbols=" ",part="header")|>
+  footnote(j=2,value=as_paragraph(dbkeys.txt),ref_symbols=" ",part="header")|>
   footnote(j=cur.month,
            value=as_paragraph(" The latest month value may include an incomplete monthly period of record."),ref_symbols=" *",part="header")|>
   font(fontname="Times New Roman",part="all")|>
@@ -2204,8 +2208,11 @@ eSRS.delive|>
   align(align="center",part="header")|>
   fontsize(size=12,part="header")|>
   font(fontname = "Times New Roman",part="all")|>
+  padding(padding=1.5, part='footer')|>
   autofit()
 ```
+
+<br>
 
 ```{r}
 data.frame(LEGEND=c("IOP","ERTP","Increment 1","2016 Emergency Deviation","Increment 1.1/1.2","2017 Temporary Deviation","Increment 2","COP"))|>
