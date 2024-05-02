@@ -348,7 +348,7 @@ dates=c(Start.Date,End.Date)
 
 #Start.Date=date.fun(paste(CurWY-10,05,01,sep="-"))
 # End.Date=date.fun(Sys.time())
-flab.dates=c(date.fun(paste(CurWY-10,05,01,sep="-")),End.Date)
+flab.dates=c(date.fun(paste(CurWY-14,05,01,sep="-")),End.Date)
 
 
 ## Lake Okeechobee ---------------------------------------------------------
@@ -577,12 +577,22 @@ srs.flow.da.xtab$S356.adj.m2=with(srs.flow.da.xtab,minS356_S335*(1-ifelse(m2.ESR
 srs.flow.da.xtab$TFlow.m1=rowSums(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B")],na.rm=T)
 srs.flow.da.xtab$TFlow.m2=rowSums(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B","minS356_S335")],na.rm=T)
 
+srs.flow.da.xtab$SRS.del=with(srs.flow.da.xtab,S12A+S12B+S12C+S12D+S333+S333N+S356-S334)
+srs.flow.da.xtab$eastSRS.del=with(srs.flow.da.xtab,S333+S333N+S356-S334)
+
+
+
 srs.flow.da.xtab$TFlow.cfs=with(srs.flow.da.xtab,ifelse(FedWY<2000,TFlow.m1,TFlow.m2))
 srs.flow.da.xtab$TFlow.kacft=with(srs.flow.da.xtab,cfs.to.acftd(ifelse(FedWY<2000,TFlow.m1,TFlow.m2))/1000)
 
 srs.flow.da.xtab$cum.TFlow=with(srs.flow.da.xtab,ave(TFlow.kacft,FedWY,FUN = function(x)cumsum(ifelse(is.na(x),0,x))))
 
 srs.flow.da.xtab$DOWY.fed=hydro.day(srs.flow.da.xtab$Date.EST,'Fed')
+
+srs.flow.da.xtab$CY=as.numeric(format(srs.flow.da.xtab$Date.EST,"%Y"))
+srs.flow.da.xtab$month=as.numeric(format(srs.flow.da.xtab$Date.EST,"%m"))
+
+# dcast(srs.flow.da.xtab,CY~month,value.var ="TFlow.m2",sum )
 
 ### SRS inflows
 srs.flow.da.xtab$SRS.east=rowSums(cfs.to.acftd(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D")]),na.rm=T)/1000
@@ -2096,6 +2106,117 @@ legend(0.5,0.25,legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form
        pch=c(22,21),pt.bg=c("lightblue","indianred1"),
        lty=c(0,0),lwd=c(0,0.5),col=c("grey50","black"),
        pt.cex=1.5,cex=1,ncol=2,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+```
+
+<br>
+
+### Water Deliveries across Tamiami Trail
+
+```{r TT_all}
+cols.val=c("cornsilk","lightgreen","lightblue","dodgerblue1","steelblue","pink")
+cols.labs=c("IOP","ERTP","Increment1","Increment 1.1/1.2","Increment 2","COP")
+txt.cols.val=c("maroon","hotpink","yellow")
+
+cols.df=data.frame(expand.grid(mon=1:12,CY=2012:2024))
+cols.df$monCY.date=with(cols.df,date.fun(paste(CY,mon,"01",sep="-")))
+cols.df$col=NA
+cols.df$ops=NA
+cols.df$txt.col="black"
+
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-01-01"),date.fun("2012-09-01"),"months"),"col"]=cols.val[1]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),"months"),"col"]=cols.val[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"col"]=cols.val[3]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"col"]=cols.val[4]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"col"]=cols.val[5]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),date.fun("2024-12-01"),"months"),"col"]=cols.val[6]
+
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-01-01"),date.fun("2012-09-01"),"months"),"ops"]=cols.labs[1]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),"months"),"ops"]=cols.labs[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"ops"]=cols.labs[3]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"ops"]=cols.labs[4]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"ops"]=cols.labs[5]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),date.fun("2024-12-01"),"months"),"ops"]=cols.labs[6]
+
+cols.df[cols.df$monCY.date%in%seq(date.fun("2016-02-01"),date.fun("2016-11-01"),"months"),"txt.col"]=txt.cols.val[1]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2017-07-01"),date.fun("2017-12-01"),"months"),"txt.col"]=txt.cols.val[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"txt.col"]=txt.cols.val[3]
+
+colmatrix=matrix(cols.df$col,ncol=12,byrow=T)
+txt.colmatrix=matrix(cols.df$txt.col,ncol=12,byrow=T)
+cur.month=month.abb[as.numeric(format(Sys.Date(),"%m"))]
+
+### 
+
+SRS.delive=dcast(subset(srs.flow.da.xtab,CY>2011),CY~month,value.var ="SRS.del",fun.aggregate = function(x) round(sum(x,na.rm=T)))
+SRS.delive$Total=rowSums(SRS.delive[,2:ncol(SRS.delive)])
+colnames(SRS.delive)=c("Year",month.abb,"Total")
+
+cap.val="Water Deliveries (Ac-Ft) to L-29 Canal (S12s + S333 + S333N + S356 - S334)"
+SRS.delive|>
+  flextable()|>
+  colformat_double(j=1,big.mark = "",digits=0)|>
+  bg(j=2:13,bg=colmatrix)|>
+  color(j=2:13,color=txt.colmatrix)|>
+  bold(j=2:13)|>
+  align(part="all",align="center")|>
+  padding(padding=2,part="all")|>
+  footnote(j=1,value=as_paragraph(" Note: All data is from DBHYDRO and provisional."),ref_symbols=" ",part="header")|>
+  footnote(j=cur.month,
+           value=as_paragraph(" The latest month value may include an incomplete monthly period of record."),ref_symbols=" *",part="header")|>
+  font(fontname="Times New Roman",part="all")|>
+  fontsize(size=10,part="body")|>
+  fontsize(size=12,part="header")|>
+  bold(part="header")|>
+  hline(part="header")|>
+  add_header_lines(values=cap.val)|>
+  align(align="center",part="header")|>
+  fontsize(size=12,part="header")|>
+  font(fontname = "Times New Roman",part="all")|>
+  autofit()
+
+```
+
+<br>
+
+```{r eastTT_all}
+eSRS.delive=dcast(subset(srs.flow.da.xtab,CY>2011),CY~month,value.var ="eastSRS.del",fun.aggregate = function(x) round(sum(x,na.rm=T)))
+eSRS.delive$Total=rowSums(eSRS.delive[,2:ncol(eSRS.delive)])
+colnames(eSRS.delive)=c("Year",month.abb,"Total")
+
+cap.val="Water Deliveries (Ac-Ft) to L-29 Canal (S333 + S333N + S356 - S334)"
+eSRS.delive|>
+  flextable()|>
+  colformat_double(j=1,big.mark = "",digits=0)|>
+  bg(j=2:13,bg=colmatrix)|>
+  color(j=2:13,color=txt.colmatrix)|>
+  bold(j=2:13)|>
+  align(part="all",align="center")|>
+  padding(padding=2,part="all")|>
+  footnote(j=1,value=as_paragraph(" Note: All data is from DBHYDRO and provisional."),ref_symbols=" ",part="header")|>
+  footnote(j=cur.month,
+           value=as_paragraph(" The latest month value may include an incomplete monthly period of record."),ref_symbols=" *",part="header")|>
+  font(fontname="Times New Roman",part="all")|>
+  fontsize(size=10,part="body")|>
+  fontsize(size=12,part="header")|>
+  bold(part="header")|>
+  hline(part="header")|>
+  add_header_lines(values=cap.val)|>
+  align(align="center",part="header")|>
+  fontsize(size=12,part="header")|>
+  font(fontname = "Times New Roman",part="all")|>
+  autofit()
+```
+
+```{r}
+data.frame(LEGEND=c("IOP","ERTP","Increment 1","2016 Emergency Deviation","Increment 1.1/1.2","2017 Temporary Deviation","Increment 2","COP"))|>
+  flextable()|>
+  bold()|>
+  bold(part="header")|>
+  align(part="all",align="center")|>
+  padding(padding=2,part="all")|>
+  bg(bg=c("cornsilk","lightgreen","lightblue","lightblue","dodgerblue1","dodgerblue1","steelblue","pink"))|>
+  color(color=c(rep("black",3),"maroon","black","hotpink","yellow","black"))|>
+  autofit()
 ```
 
 ### Florida Bay Salinity
