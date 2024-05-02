@@ -354,7 +354,7 @@ flab.dates=c(date.fun(paste(CurWY-10,05,01,sep="-")),End.Date)
 ## Lake Okeechobee ---------------------------------------------------------
 
 comp.dbkey=data.frame(DBKEY=c("N3466","06832"),Priority=c("P2","P1"))
-AnalystHelper::DBHYDRO.meta.byDBKEY(comp.dbkey$DBKEY)
+# AnalystHelper::DBHYDRO.meta.byDBKEY(comp.dbkey$DBKEY)
 
 stg.da=data.frame()
 for(i in 1:nrow(comp.dbkey)){
@@ -1112,14 +1112,16 @@ with(subset(LakeO.xtab,WY==CurWY-1),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("
 with(subset(LakeO.xtab,WY==CurWY),lines(DOWY,LOK.stage,lwd=4,col="red",lty=1))
 if(is.na(subset(LakeO.xtab,DATE==YEST)$LOK.stage)==T|nrow(subset(LakeO.xtab,DATE==YEST))==0){NA}else{
 with(subset(LakeO.xtab,DATE==YEST),points(DOWY,LOK.stage,pch=21,bg=adjustcolor("grey",0.5),col="gray",lwd=0.1,cex=1.25))
-if(subset(LakeO.xtab,DATE==YEST)$DOWY<300){
-  with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY,10.1,lty=2))
-  with(subset(LakeO.xtab,DATE==YEST),text(DOWY,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
-}else{
-    with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY-30,10.1,lty=2))
-  with(subset(LakeO.xtab,DATE==YEST),text(DOWY-30,10,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+if(subset(LakeO.xtab,DATE==YEST)$DOWY>300){
+  with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY-30,10.6,lty=2))
+  with(subset(LakeO.xtab,DATE==YEST),text(DOWY-30,10.5,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  }else if(subset(LakeO.xtab,DATE==YEST)$DOWY<30){
+    with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY+30,10.6,lty=2))
+  with(subset(LakeO.xtab,DATE==YEST),text(DOWY+30,10.5,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }else{
+  with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY,10.6,lty=2))
+  with(subset(LakeO.xtab,DATE==YEST),text(DOWY,10.5,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
   }
-
 }
 
 axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
@@ -1407,8 +1409,21 @@ lines(Avg.8T97~DOWY,subset(WCA1.xtab,WY==CurWY),lwd=3,col="red",lty=1)
 
 if(is.na(subset(WCA1.xtab,DATE==YEST)$Avg.8T97)==T|nrow(subset(WCA1.xtab,DATE==YEST))==0){NA}else{
   with(subset(WCA1.xtab,DATE==YEST),points(DOWY,Avg.8T97,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
+  # with(subset(WCA1.xtab,DATE==YEST),segments(DOWY,Avg.8T97,DOWY,15.1,lty=2))
+  # with(subset(WCA1.xtab,DATE==YEST),text(DOWY,15,paste(format(round(Avg.8T97,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  
+  if(subset(WCA1.xtab,DATE==YEST)$DOWY>300){
+  with(subset(WCA1.xtab,DATE==YEST),segments(DOWY,Avg.8T97,DOWY-30,15.1,lty=2))
+  with(subset(WCA1.xtab,DATE==YEST),text(DOWY-30,15,paste(format(round(Avg.8T97,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  }else if(subset(WCA1.xtab,DATE==YEST)$DOWY<30){
+  with(subset(WCA1.xtab,DATE==YEST),segments(DOWY,Avg.8T97,DOWY+30,15.1,lty=2))
+  with(subset(WCA1.xtab,DATE==YEST),text(DOWY+30,15,paste(format(round(Avg.8T97,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+}else{
   with(subset(WCA1.xtab,DATE==YEST),segments(DOWY,Avg.8T97,DOWY,15.1,lty=2))
-  with(subset(WCA1.xtab,DATE==YEST),text(DOWY,15,paste(format(round(Avg.8T97,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  with(subset(WCA1.xtab,DATE==YEST),text(DOWY,15,paste(format(round(Avg.8T97,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }
+  
+  
 }
 axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj)
@@ -1545,9 +1560,21 @@ lines(S11B_H~DOWY,subset(WCA2.xtab,WY==CurWY),lwd=1,col="red",lty=2)
 
 if(is.na(subset(WCA2.xtab,DATE==YEST)$CA217)==T|nrow(subset(WCA2.xtab,DATE==YEST))==0){NA}else{
   with(subset(WCA2.xtab,DATE==YEST),points(DOWY,CA217,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
+  # with(subset(WCA2.xtab,DATE==YEST),segments(DOWY,CA217,DOWY,10.1,lty=2))
+  # with(subset(WCA2.xtab,DATE==YEST),text(DOWY,10,paste(format(round(CA217,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  
+  if(subset(WCA2.xtab,DATE==YEST)$DOWY>300){
+  with(subset(WCA2.xtab,DATE==YEST),segments(DOWY,CA217,DOWY-30,10.1,lty=2))
+  with(subset(WCA2.xtab,DATE==YEST),text(DOWY-30,10,paste(format(round(CA217,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  }else if(subset(WCA2.xtab,DATE==YEST)$DOWY<30){
+    with(subset(WCA2.xtab,DATE==YEST),segments(DOWY,CA217,DOWY+30,10.1,lty=2))
+  with(subset(WCA2.xtab,DATE==YEST),text(DOWY+30,10,paste(format(round(CA217,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }else{
   with(subset(WCA2.xtab,DATE==YEST),segments(DOWY,CA217,DOWY,10.1,lty=2))
-  with(subset(WCA2.xtab,DATE==YEST),text(DOWY,10,paste(format(round(CA217,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  with(subset(WCA2.xtab,DATE==YEST),text(DOWY,10,paste(format(round(CA217,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }
 }
+
 axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj)
 box(lwd=1)
@@ -1703,8 +1730,19 @@ lines(Avg.6263~DOWY,subset(WCA3.xtab,WY==CurWY),lwd=1,col="red",lty=2)
 
 if(is.na(subset(WCA3.xtab,DATE==YEST)$Avg.636465)==T|nrow(subset(WCA3.xtab,DATE==YEST))==0){NA}else{
   with(subset(WCA3.xtab,DATE==YEST),points(DOWY,Avg.636465,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
+  # with(subset(WCA3.xtab,DATE==YEST),segments(DOWY,Avg.636465,DOWY,6.6,lty=2))
+  # with(subset(WCA3.xtab,DATE==YEST),text(DOWY,6.5,paste(format(round(Avg.636465,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  
+    if(subset(WCA3.xtab,DATE==YEST)$DOWY>300){
+  with(subset(WCA3.xtab,DATE==YEST),segments(DOWY,Avg.636465,DOWY-30,6.6,lty=2))
+  with(subset(WCA3.xtab,DATE==YEST),text(DOWY-30,6.5,paste(format(round(Avg.636465,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  }else if(subset(WCA3.xtab,DATE==YEST)$DOWY<30){
+    with(subset(WCA3.xtab,DATE==YEST),segments(DOWY,Avg.636465,DOWY+30,6.6,lty=2))
+  with(subset(WCA3.xtab,DATE==YEST),text(DOWY+30,6.5,paste(format(round(Avg.636465,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }else{
   with(subset(WCA3.xtab,DATE==YEST),segments(DOWY,Avg.636465,DOWY,6.6,lty=2))
-  with(subset(WCA3.xtab,DATE==YEST),text(DOWY,6.5,paste(format(round(Avg.636465,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  with(subset(WCA3.xtab,DATE==YEST),text(DOWY,6.5,paste(format(round(Avg.636465,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }
 }
 axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj)
@@ -1825,8 +1863,20 @@ lines(L29Canal.f~DOWY,subset(ENP.xtab,WY==CurWY),lwd=2,col="red",lty=1)
 
 if(is.na(subset(ENP.xtab,DATE==YEST)$L29Canal.f)==T|nrow(subset(ENP.xtab,DATE==YEST))==0){NA}else{
   with(subset(ENP.xtab,DATE==YEST),points(DOWY,L29Canal.f,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
-  with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY,6.7,lty=2))
-  with(subset(ENP.xtab,DATE==YEST),text(DOWY,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  # with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY,6.7,lty=2))
+  # with(subset(ENP.xtab,DATE==YEST),text(DOWY,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
+  
+  if(subset(ENP.xtab,DATE==YEST)$DOWY>300){
+    with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY-30,6.7,lty=2))
+    with(subset(ENP.xtab,DATE==YEST),text(DOWY-30,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  }else if(subset(ENP.xtab,DATE==YEST)$DOWY<30){
+    with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY+30,6.7,lty=2))
+    with(subset(ENP.xtab,DATE==YEST),text(DOWY+30,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }else{
+    with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY,6.7,lty=2))
+    with(subset(ENP.xtab,DATE==YEST),text(DOWY,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  }
+  
 }
 axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj));box(lwd=1)
