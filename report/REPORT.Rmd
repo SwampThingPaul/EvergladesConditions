@@ -2579,7 +2579,8 @@ CRE Salinity and Discharge - 6 months [plot](./plots/CRESalPlot.png)
 
 ```{r, SLEFlow, echo=FALSE,fig.width=7,fig.height=5,fig.align='center',fig.cap="Daily and 14-day moving average discharge for north and south fork relative to the Northern Estuaries RECOVER performance measure for the recent 30-day period."}
 
-max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$SLE.tot,na.rm=T)
+# max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$SLE.tot,na.rm=T)
+max.q=with(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days")),max(c(SLE.tot,Q.14),na.rm=T))
 ylim.max=round(max.q+max.q*0.25,-3)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
