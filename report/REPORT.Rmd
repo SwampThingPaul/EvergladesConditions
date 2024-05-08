@@ -1144,7 +1144,7 @@ mtext(side=3,adj=1,"Data are provisional and subject to change",col="red")
 
 ylim.val2=c(8,16);by.y2=1
 ymaj2=seq(ylim.val2[1],ylim.val2[2],by.y2);ymin2=seq(ylim.val2[1],ylim.val2[2],by.y2/2)
-lok.con=1.22
+lok.con=1.25
 axis_fun(4,ymaj2+lok.con,ymin2+lok.con,ymaj2)
 mtext(side=4,"Stage Elevation (Feet, NAVD88)",line=2.5,cex=1.25)
 
@@ -1417,7 +1417,8 @@ lines(Avg.8T97~DOWY,subset(WCA1.xtab,WY==CurWY-2),lwd=3,col=adjustcolor("forestg
 lines(Avg.8T97~DOWY,subset(WCA1.xtab,WY==CurWY-1),lwd=3,col=adjustcolor("blue",0.5),lty=1)
 lines(Avg.8T97~DOWY,subset(WCA1.xtab,WY==CurWY),lwd=3,col="red",lty=1)
 
-if(is.na(subset(WCA1.xtab,DATE==YEST)$Avg.8T97)==T|nrow(subset(WCA1.xtab,DATE==YEST))==0){NA}else{
+# if(is.na(subset(WCA1.xtab,DATE==YEST)$Avg.8T97)==T|nrow(subset(WCA1.xtab,DATE==YEST))==0){NA}else{
+if(nrow(subset(WCA1.xtab,DATE==YEST))>0){
   with(subset(WCA1.xtab,DATE==YEST),points(DOWY,Avg.8T97,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
   # with(subset(WCA1.xtab,DATE==YEST),segments(DOWY,Avg.8T97,DOWY,15.1,lty=2))
   # with(subset(WCA1.xtab,DATE==YEST),text(DOWY,15,paste(format(round(Avg.8T97,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
@@ -1568,7 +1569,8 @@ lines(S11B_H~DOWY,subset(WCA2.xtab,WY==CurWY-2),lwd=1,col=adjustcolor("forestgre
 lines(S11B_H~DOWY,subset(WCA2.xtab,WY==CurWY-1),lwd=1,col=adjustcolor("blue",0.5),lty=2)
 lines(S11B_H~DOWY,subset(WCA2.xtab,WY==CurWY),lwd=1,col="red",lty=2)
 
-if(is.na(subset(WCA2.xtab,DATE==YEST)$CA217)==T|nrow(subset(WCA2.xtab,DATE==YEST))==0){NA}else{
+# if(is.na(subset(WCA2.xtab,DATE==YEST)$CA217)==T|nrow(subset(WCA2.xtab,DATE==YEST))==0){NA}else{
+if(nrow(subset(WCA2.xtab,DATE==YEST))>0){
   with(subset(WCA2.xtab,DATE==YEST),points(DOWY,CA217,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
   # with(subset(WCA2.xtab,DATE==YEST),segments(DOWY,CA217,DOWY,10.1,lty=2))
   # with(subset(WCA2.xtab,DATE==YEST),text(DOWY,10,paste(format(round(CA217,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
@@ -1738,7 +1740,8 @@ lines(Avg.6263~DOWY,subset(WCA3.xtab,WY==CurWY-2),lwd=1,col=adjustcolor("forestg
 lines(Avg.6263~DOWY,subset(WCA3.xtab,WY==CurWY-1),lwd=1,col=adjustcolor("blue",0.5),lty=2)
 lines(Avg.6263~DOWY,subset(WCA3.xtab,WY==CurWY),lwd=1,col="red",lty=2)
 
-if(is.na(subset(WCA3.xtab,DATE==YEST)$Avg.636465)==T|nrow(subset(WCA3.xtab,DATE==YEST))==0){NA}else{
+# if(is.na(subset(WCA3.xtab,DATE==YEST)$Avg.636465)==T|nrow(subset(WCA3.xtab,DATE==YEST))==0){NA}else{
+if(nrow(subset(WCA3.xtab,DATE==YEST))>0){
   with(subset(WCA3.xtab,DATE==YEST),points(DOWY,Avg.636465,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
   # with(subset(WCA3.xtab,DATE==YEST),segments(DOWY,Avg.636465,DOWY,6.6,lty=2))
   # with(subset(WCA3.xtab,DATE==YEST),text(DOWY,6.5,paste(format(round(Avg.636465,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
@@ -1871,7 +1874,8 @@ lines(L29Canal.f~DOWY,subset(ENP.xtab,WY==CurWY-2),lwd=2,col=adjustcolor("forest
 lines(L29Canal.f~DOWY,subset(ENP.xtab,WY==CurWY-1),lwd=2,col=adjustcolor("blue",0.5),lty=1)
 lines(L29Canal.f~DOWY,subset(ENP.xtab,WY==CurWY),lwd=2,col="red",lty=1)
 
-if(is.na(subset(ENP.xtab,DATE==YEST)$L29Canal.f)==T|nrow(subset(ENP.xtab,DATE==YEST))==0){NA}else{
+# if(is.na(subset(ENP.xtab,DATE==YEST)$L29Canal.f)==T|nrow(subset(ENP.xtab,DATE==YEST))==0){NA}else{
+if(nrow(subset(ENP.xtab,DATE==YEST))>0){
   with(subset(ENP.xtab,DATE==YEST),points(DOWY,L29Canal.f,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
   # with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY,6.7,lty=2))
   # with(subset(ENP.xtab,DATE==YEST),text(DOWY,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
