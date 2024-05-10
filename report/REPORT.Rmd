@@ -595,8 +595,8 @@ srs.flow.da.xtab$month=as.numeric(format(srs.flow.da.xtab$Date.EST,"%m"))
 # dcast(srs.flow.da.xtab,CY~month,value.var ="TFlow.m2",sum )
 
 ### SRS inflows
-srs.flow.da.xtab$SRS.east=rowSums(cfs.to.acftd(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D")]),na.rm=T)/1000
-srs.flow.da.xtab$SRS.west=rowSums(cfs.to.acftd(srs.flow.da.xtab[,c("S333","S333N","S355A","S355B","minS356_S335")]),na.rm=T)/1000
+srs.flow.da.xtab$SRS.west=rowSums(cfs.to.acftd(srs.flow.da.xtab[,c("S12A","S12B","S12C","S12D")]),na.rm=T)/1000
+srs.flow.da.xtab$SRS.east=rowSums(cfs.to.acftd(srs.flow.da.xtab[,c("S333","S333N","S355A","S355B","minS356_S335")]),na.rm=T)/1000
 
 srs.flow.da.xtab.melt=melt(srs.flow.da.xtab[,c("Date.EST",'SRS.east',"SRS.west")],id.vars = "Date.EST")
 srs.flow.da.xtab.melt$DOY=as.numeric(format(srs.flow.da.xtab.melt$Date.EST,"%j"))
@@ -2089,8 +2089,8 @@ par(family="serif",mar=c(2,2,0.5,1),oma=c(1.25,3,1,1));
 # par(family="serif",mar=c(1,1.75,0.5,0.5),oma=c(1,2,1,0.5));
 layout(matrix(c(1:2,3,3),2,2,byrow=T),heights=c(1,0.4))
 
-site.val=c("SRS.east","SRS.west")
-site.val.lab=c("SRS East\n(S12s)","SRS West\n(S333s, S335s & min(S356, S335))")
+site.val=c("SRS.west","SRS.east")
+site.val.lab=c("SRS West\n(S12s)","SRS East\n(S333s, S335s & min(S356, S335))")
 #i=1
 for(i in 1:length(site.val)){
   plot(value~Date.EST,srs.flow.da.xtab.melt,type="n",ylim=ylim.val,xlim=xlim.val,xaxt="n",yaxt="n",xlab=NA,ylab=NA)
