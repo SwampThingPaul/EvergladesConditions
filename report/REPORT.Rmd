@@ -358,7 +358,7 @@ comp.dbkey=data.frame(DBKEY=c("N3466","06832"),Priority=c("P2","P1"))
 
 stg.da=data.frame()
 for(i in 1:nrow(comp.dbkey)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i])
   tmp$DBKEY=as.character(comp.dbkey$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -401,7 +401,7 @@ STG.locs=EAA.STG.locs=data.frame(STATION=c("S3_H","HILLSS2","NNRS2","S352","L8.4
 
 stg.dat=data.frame()
 for(i in 1:nrow(STG.locs)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],STG.locs$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],STG.locs$DBKEY[i])
   tmp$DBKEY=as.character(STG.locs$DBKEY[i])
   stg.dat=rbind(stg.dat,tmp)
 }
@@ -425,7 +425,7 @@ WCA1.dbkeys=data.frame(STATION=c("CA1-8T","CA1-9","CA1-7"),
 
 stg.da=data.frame()
 for(i in 1:nrow(WCA1.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],WCA1.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],WCA1.dbkeys$DBKEY[i])
   tmp$DBKEY=as.character(WCA1.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -450,7 +450,7 @@ WCA2.dbkeys=data.frame(STATION=c("S11B_H","CA217"),
 
 stg.da=data.frame()
 for(i in 1:nrow(WCA2.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],WCA2.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],WCA2.dbkeys$DBKEY[i])
   tmp$DBKEY=as.character(WCA2.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -472,7 +472,7 @@ WCA3.dbkeys=data.frame(STATION=c("CA3-62","CA3-63","CA3-64","CA3-65"),
 
 stg.da=data.frame()
 for(i in 1:nrow(WCA3.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],WCA3.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],WCA3.dbkeys$DBKEY[i])
   tmp$DBKEY=as.character(WCA3.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -503,7 +503,7 @@ ENP.dbkeys=data.frame(STATION=c("NESRS2","NP201","L29Canal"),
 
 stg.da=data.frame()
 for(i in 1:nrow(ENP.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],ENP.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],ENP.dbkeys$DBKEY[i])
   tmp$DBKEY=as.character(ENP.dbkeys$DBKEY[i])
   stg.da=rbind(stg.da,tmp)
 }
@@ -537,7 +537,7 @@ SRS.dbkeys=subset(SRS.dbkeys,!(SITE%in%c("S355A","S355B")))
 
 srs.flow=data.frame()
 for(i in 1:nrow(SRS.dbkeys)){
-  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],SRS.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],SRS.dbkeys$DBKEY[i])
   tmp$DBKEY=SRS.dbkeys$DBKEY[i]
   srs.flow=rbind(tmp,srs.flow)
   print(i)
@@ -619,7 +619,7 @@ FLAB.sal.dbkeys=data.frame(STATION=paste0("ENP",c("TB","GB","BK","MK","JK","WB",
                            DBKEY=c("63683","63617","63578","63667","63634","63695","63654"))
 flab.sal.da=data.frame()
 for(i in 1:nrow(FLAB.sal.dbkeys)){
-  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],FLAB.sal.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],FLAB.sal.dbkeys$DBKEY[i])
   tmp$DBKEY=as.character(FLAB.sal.dbkeys$DBKEY[i])
   flab.sal.da=rbind(flab.sal.da,tmp)
 }
@@ -644,7 +644,7 @@ flab.sal.da.sum$DATE.plt=date.fun(as.Date(flab.sal.da.sum$DOY,origin=paste0(form
 cal.flow=data.frame(DBKEY=c("DJ235","88280","DJ237","00865"),SITE=c(rep("S77",2),rep("S79",2)),priority=rep(c("P1","P2"),2))
 cal.flow.dat=data.frame()
 for(i in 1:nrow(cal.flow)){
-  tmp=DBHYDRO_daily(date.fun(paste(CurWY-3,"05-01",sep="-")),End.Date,cal.flow$DBKEY[i],3)
+  tmp=DBHYDRO_daily(date.fun(paste(CurWY-3,"05-01",sep="-")),End.Date,cal.flow$DBKEY[i])
   tmp$DBKEY=as.character(cal.flow$DBKEY[i])
   cal.flow.dat=rbind(tmp,cal.flow.dat)
 }
@@ -845,7 +845,7 @@ SLE.dbkeys=data.frame(STATION=c("GORDY","S49","S48","S80","S308","S308.DS"),
                        DBKEY=c("91295","91607","91606","DJ238","DJ239","06548"))
 q.da=data.frame()
 for(i in 1:nrow(SLE.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],SLE.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],SLE.dbkeys$DBKEY[i])
   tmp$DBKEY=as.character(SLE.dbkeys$DBKEY[i])
   q.da=rbind(q.da,tmp)
 }
@@ -947,7 +947,7 @@ LWL.dbkeys=data.frame(STATION=c("S44","S155","S41","S155A"),
                       CANAL=c("C17","C51","C16","C51W"))
 q.da=data.frame()
 for(i in 1:nrow(LWL.dbkeys)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],LWL.dbkeys$DBKEY[i],3)
+  tmp=DBHYDRO_daily(dates[1],dates[2],LWL.dbkeys$DBKEY[i])
   tmp$DBKEY=as.character(LWL.dbkeys$DBKEY[i])
   q.da=rbind(q.da,tmp)
 }
@@ -2282,7 +2282,7 @@ legend("center",legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form
 
 ```{r, CREFlow, echo=FALSE,fig.width=7,fig.height=5,fig.align='center',fig.cap="Daily and 14-day moving average discharge for S-79 relative to the Northern Estuaries RECOVER performance measure for the recent 30-day period."}
 
-max.q=max(subset(cal.flow.dat.xtab,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$S79,na.rm=T)
+max.q=with(subset(cal.flow.dat.xtab,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days")),max(c(S79,Q.14),na.rm=T))
 ylim.max=round(max.q+max.q*0.25,-3)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
@@ -2585,7 +2585,7 @@ CRE Salinity and Discharge - 6 months [plot](./plots/CRESalPlot.png)
 
 # max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$SLE.tot,na.rm=T)
 max.q=with(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days")),max(c(SLE.tot,Q.14),na.rm=T))
-ylim.max=round(max.q+max.q*0.25,-3)
+ylim.max=max(c(1400,round(max.q+max.q*0.25,-3)),na.rm=T)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
@@ -2631,7 +2631,7 @@ cfs** coming from the lake at **S-308**.
 
 ```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="S-308 (from Lake Okeechobee), S-80 (to Lower Fork),  C-44 Basin and North Fork (Gordy Rd, S49, S48) daily discharge. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
 
-max.q=with(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days")),max(c(NorthFork,S80,S308),na.rm=T))#
+max.q=with(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days")),max(c(NorthFork,S80,S308),na.rm=T))#
 # max.q=max(subset(SLE.q.dat,DATE%in%seq(End.Date-ddays(90),End.Date+ddays(3),"1 days"))$NorthFork,na.rm=T)
 ylim.max=roundUp(max.q+max.q*0.1);# round(max.q+max.q*0.25,0)
 
@@ -2776,8 +2776,8 @@ legend(0.75,0.15,legend=c("Poor(<5 or >35)","Fair (5-10 or 30-35)","Good(10-30)"
 
 ```{r, LWLFlow, echo=FALSE,fig.width=7,fig.height=5,fig.align='center',fig.cap="Daily and 14-day moving average discharge for discharge to the Lake Worth Lagoon for the recent 30-day period."}
 # LWL.q.dat
-max.q=max(subset(LWL.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$TFlow.cfs,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-3)
+max.q=with(subset(LWL.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days")),max(c(TFlow.cfs,S155A,Q.14),na.rm=T))
+ylim.max=round(max.q+max.q*0.25)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
