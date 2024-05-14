@@ -18,6 +18,14 @@ DBHYDRO_daily=function(SDATE, EDATE, DBK,dataonly=TRUE,period = "uspec",v_target
     # v_target_code <- "file_csv"
     # vert_datum <- 1 #1 = NGVD29; 2 = NAVD88
     
+  if(is.Date(SDATE)==F&is.Date(EDATE)==F){# |!(nchar(SDATE)==10&nchar(EDATE)==10)){
+    stop("Enter dates as a date. ")
+    # stop("Enter dates as character strings in YYYY-MM-DD format or as.Date(...)")
+  }
+  if(all(is.na(DBKEY))==T){
+    stop("Must specify either a dbkey")
+  }
+  
     DBK.val=paste("",DBK,"",collapse="/",sep="")
     SDATE=paste(format(SDATE,"%Y"),toupper(format(SDATE,"%m")),format(SDATE,"%d"),sep="");#In YYYYMMDD format
     EDATE=paste(format(EDATE,"%Y"),toupper(format(EDATE,"%m")),format(EDATE,"%d"),sep="");#In YYYYMMDD format
@@ -25,6 +33,7 @@ DBHYDRO_daily=function(SDATE, EDATE, DBK,dataonly=TRUE,period = "uspec",v_target
     qy <- list(v_period = period, v_start_date = SDATE, v_end_date = EDATE,
                v_report_type = "format6", v_target_code = v_target_code,
                v_run_mode = "onLine", v_js_flag = "Y", v_dbkey = DBK.val,v_datum = vert_datum,...)
+    qy=qy[is.na(qy)==FALSE]
     
     servfull <- "http://my.sfwmd.gov/dbhydroplsql/web_io.report_process"
     
@@ -45,11 +54,20 @@ DBHYDRO_daily=function(SDATE, EDATE, DBK,dataonly=TRUE,period = "uspec",v_target
     # dat.col.names=dat.col.names[!(dat.col.names%in%c("NA",""))]
     # dat.col.names=gsub(" ",".",dat.col.names);# just incase
     
-    REPORT=suppressMessages(read.csv(text = res, skip = i+1,stringsAsFactors = FALSE, row.names = NULL))
-    REPORT$Daily.Date=with(REPORT,as.POSIXct(as.character(Daily.Date),format="%d-%b-%Y",tz="America/New_York"))
-    REPORT$Date=REPORT$Daily.Date;# legacy variable
-    REPORT$Revision.Date=with(REPORT,as.POSIXct(as.character(Revision.Date),format="%d-%b-%Y",tz="America/New_York"))
-    REPORT=subset(REPORT,is.na(Date)==F);# clean up
+    if(metadata$FQ%in%c("BK")){
+      head.val=c("DATETIME","Station","DBKEY","Data.Value","Flag","Comment")
+      
+      REPORT=suppressMessages(read.csv(text = res, skip = i+1,stringsAsFactors = FALSE, row.names = NULL,col.names = head.val))
+      REPORT$DATETIME=as.POSIXct(REPORT$DATETIME,format="%d-%b-%Y %H:%M",tz="EST")
+      REPORT$DATE=as.POSIXct(format(REPORT$DATETIME,format="%Y-%m-%d"),tz="EST")
+      REPORT=subset(REPORT,is.na(DATE)==F);# clean up
+    }else{
+      REPORT=suppressMessages(read.csv(text = res, skip = i+1,stringsAsFactors = FALSE, row.names = NULL))
+      REPORT$Daily.Date=with(REPORT,as.POSIXct(as.character(Daily.Date),format="%d-%b-%Y",tz="America/New_York"))
+      REPORT$Date=REPORT$Daily.Date;# legacy variable
+      REPORT$Revision.Date=with(REPORT,as.POSIXct(as.character(Revision.Date),format="%d-%b-%Y",tz="America/New_York"))
+      REPORT=subset(REPORT,is.na(Date)==F);# clean up
+    }
     
     final=list(METADATA = metadata,REPORT = REPORT)
     
@@ -58,9 +76,6 @@ DBHYDRO_daily=function(SDATE, EDATE, DBK,dataonly=TRUE,period = "uspec",v_target
     }else{final}
   
 }
-
-
-
 
 DBHYDRO_breakpoint=function(SDATE,EDATE,DBK,col.names=c("DATETIME","Station","DBKEY","Data.Value","Flag","Comment"),timeout=200,offset=2){
   DBK.val=paste("",DBK,"",collapse="/",sep="")

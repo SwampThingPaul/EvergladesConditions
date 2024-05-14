@@ -73,9 +73,9 @@ knitr::opts_chunk$set(echo=FALSE,
 # }
 
 ## Libraries
-# library(AnalystHelper)
+library(AnalystHelper)
 # source("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/select_AnalystHelper_source.R")
-source("./select_AnalystHelper_source.R")
+# source("./select_AnalystHelper_source.R")
 library(reshape2)
 library(plyr)
 library(zoo)
@@ -2777,7 +2777,7 @@ legend(0.75,0.15,legend=c("Poor(<5 or >35)","Fair (5-10 or 30-35)","Good(10-30)"
 ```{r, LWLFlow, echo=FALSE,fig.width=7,fig.height=5,fig.align='center',fig.cap="Daily and 14-day moving average discharge for discharge to the Lake Worth Lagoon for the recent 30-day period."}
 # LWL.q.dat
 max.q=with(subset(LWL.q.dat,DATE%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days")),max(c(TFlow.cfs,S155A,Q.14),na.rm=T))
-ylim.max=round(max.q+max.q*0.25)
+ylim.max=roundUp(max.q)# round(max.q+max.q*0.25)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="7 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
