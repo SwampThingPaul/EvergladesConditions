@@ -395,21 +395,37 @@ stg.ops.rng=data.frame(Struct=c("S2","S3","S4","S5A","S5AS","S6","S7","S8","C10A
 )
 
 STG.locs=EAA.STG.locs=data.frame(STATION=c("S3_H","HILLSS2","NNRS2","S352","L8.441"),
-                    DBKEY=c("00537","00345","00432","40536","02854"),
+                    DBKEY=c("65448","00345","00432","40536","02854"),
                     CANAL=c("Miami","Hills","NNR","WPB","L8"))
+STG.locs=subset(STG.locs,STATION!="NNRS2");# data issue on DBHYRO SFWMD
 # AnalystHelper::DBHYDRO.meta.byDBKEY(STG.locs$DBKEY)
-
 stg.dat=data.frame()
 for(i in 1:nrow(STG.locs)){
   tmp=DBHYDRO_daily(dates[1],dates[2],STG.locs$DBKEY[i])
   tmp$DBKEY=as.character(STG.locs$DBKEY[i])
   stg.dat=rbind(stg.dat,tmp)
 }
-stg.dat=merge(stg.dat,STG.locs,"DBKEY")
+
+## for USGS
+STG.locs=rbind(STG.locs,
+               data.frame(STATION=c("NNRS2"),DBKEY=c("02283500"),CANAL=c("NNR"))
+)
+## Fill NNR site from USGS
+NNR.stage=readNWISdv("02283500","00065",format(dates[1],"%Y-%m-%d"),format(dates[2],"%Y-%m-%d"))|>
+  renameNWISColumns()
+NNR.stage$Date=date.fun(NNR.stage$Date,tz="America/New_York")
+
+stg.dat=rbind(stg.dat,
+              with(NNR.stage,data.frame(Station="NNRS2",DBKEY=site_no,Daily.Date=Date,Data.Value=GH,Qualifier=GH_cd,Revision.Date=NA,Date=Date))
+)
+              
 stg.dat$DATE=date.fun(stg.dat$Date)
+stg.dat=merge(stg.dat,STG.locs,"DBKEY")
+
 # stg.dat$month=as.numeric(format(stg.dat$Date,"%m"))
 # stg.dat$CY=as.numeric(format(stg.dat$Date,"%Y"))
 # stg.dat$WY=WY(stg.dat$Date)
+
 EAA_canals.stg.dat=stg.dat
 EAA_canals=dcast(stg.dat,DATE~STATION,value.var="Data.Value",mean)
 
@@ -417,6 +433,10 @@ EAA_canals$DOWY=hydro.day(EAA_canals$DATE)
 EAA_canals$WY=WY(EAA_canals$DATE)
 EAA_canals$DoY=as.numeric(format(EAA_canals$DATE,"%j"))
 EAA_canals$CY=as.numeric(format(EAA_canals$DATE,"%Y"))
+
+
+
+
 
 ## WCA1 --------------------------------------------------------------------
 WCA1.dbkeys=data.frame(STATION=c("CA1-8T","CA1-9","CA1-7"),
@@ -1287,7 +1307,7 @@ xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],
 # lwd.val=1
 layout(matrix(1:6,3,2,byrow=T))
 par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
-ylim.val.min=c(9,9,9,9,11)
+ylim.val.min=c(9,9,9,8,11)
 ylim.val.max=c(13,13,13,13,17)
 for(i in 1:length(site.vals)){
   ylim.val=c(ylim.val.min[i],ylim.val.max[i]);by.y=1;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
