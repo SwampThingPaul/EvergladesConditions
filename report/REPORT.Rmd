@@ -1535,7 +1535,7 @@ cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
-plot(LOIN.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+plot(WCA1.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(map.q,lines(Date,WCA1.kacft,col=cols[1],lwd=2))
 with(map.q,lines(Date,S10s.kacft,col=cols[2],lwd=2,lty=2))
@@ -1683,8 +1683,8 @@ map.q$WCA2.kacft=cfs.to.acftd(map.q$WCA2)/1000
 map.q$S11s.kacft=cfs.to.acftd(map.q$S11s)/1000
 map.q$EAA_WCA2.out.kacft=cfs.to.acftd(map.q$EAA_WCA2.out)/1000
 
-max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$WCA2.kacft,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-1)
+max.q=with(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days")),max(c(WCA2.kacft,S11s.kacft),na.rm=T))
+ylim.max=round(max.q+max.q*0.25,0)
 
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
@@ -1693,7 +1693,7 @@ cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
-plot(LOIN.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+plot(WCA2.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(map.q,lines(Date,WCA2.kacft,col=cols[1],lwd=2))
 with(map.q,lines(Date,S11s.kacft,col=cols[2],lwd=2,lty=2))
@@ -1862,9 +1862,9 @@ map.q$WCA3.kacft=cfs.to.acftd(map.q$WCA3)/1000
 map.q$S12sS333s.kacft=cfs.to.acftd(rowSums(map.q[,c("S12s","S333","S333N")]))/1000
 map.q$EAA_WCA3.kacft=cfs.to.acftd(map.q$EAA_WCA3 )/1000
 
-max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$WCA2.kacft,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-1)
-
+max.q=with(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days")),max(c(WCA3.kacft,S12sS333s.kacft),na.rm=T))
+ylim.max=round(max.q+max.q*0.25,0)
+# ylim.max=round(max.q+max.q*0.25,-1)
 
 ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
@@ -1872,7 +1872,7 @@ cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
-plot(LOIN.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+plot(WCA3.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(map.q,lines(Date,WCA3.kacft,col=cols[1],lwd=2))
 with(map.q,lines(Date,S12sS333s.kacft,col=cols[2],lwd=2,lty=2))
