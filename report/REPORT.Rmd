@@ -2162,7 +2162,8 @@ cols.val=c("cornsilk","lightgreen","lightblue","dodgerblue1","steelblue","pink")
 cols.labs=c("IOP","ERTP","Increment1","Increment 1.1/1.2","Increment 2","COP")
 txt.cols.val=c("maroon","hotpink","yellow")
 
-cols.df=data.frame(expand.grid(mon=1:12,CY=2012:2024))
+CurCY=as.numeric(format(Sys.Date(),"%Y"))
+cols.df=data.frame(expand.grid(mon=1:12,CY=2012:CurCY))
 cols.df$monCY.date=with(cols.df,date.fun(paste(CY,mon,"01",sep="-")))
 cols.df$col=NA
 cols.df$ops=NA
@@ -2173,18 +2174,20 @@ cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),
 cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"col"]=cols.val[3]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"col"]=cols.val[4]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"col"]=cols.val[5]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),date.fun("2024-12-01"),"months"),"col"]=cols.val[6]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),max(cols.df$monCY.date),"months"),"col"]=cols.val[6]
 
 cols.df[cols.df$monCY.date%in%seq(date.fun("2012-01-01"),date.fun("2012-09-01"),"months"),"ops"]=cols.labs[1]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),"months"),"ops"]=cols.labs[2]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"ops"]=cols.labs[3]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"ops"]=cols.labs[4]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"ops"]=cols.labs[5]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),date.fun("2024-12-01"),"months"),"ops"]=cols.labs[6]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),max(cols.df$monCY.date),"months"),"ops"]=cols.labs[6]
 
 cols.df[cols.df$monCY.date%in%seq(date.fun("2016-02-01"),date.fun("2016-11-01"),"months"),"txt.col"]=txt.cols.val[1]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2017-07-01"),date.fun("2017-12-01"),"months"),"txt.col"]=txt.cols.val[2]
 cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"txt.col"]=txt.cols.val[3]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-11-01"),date.fun("2021-01-01"),"months"),"txt.col"]=txt.cols.val[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2023-11-01"),date.fun("2024-03-01"),"months"),"txt.col"]=txt.cols.val[1]
 
 colmatrix=matrix(cols.df$col,ncol=12,byrow=T)
 txt.colmatrix=matrix(cols.df$txt.col,ncol=12,byrow=T)
@@ -2260,14 +2263,14 @@ eSRS.delive|>
 <br>
 
 ```{r}
-data.frame(LEGEND=c("IOP","ERTP","Increment 1","2016 Emergency Deviation","Increment 1.1/1.2","2017 Temporary Deviation","Increment 2","COP"))|>
+data.frame(LEGEND=c("IOP","ERTP","Increment 1","2016 Emergency Deviation","Increment 1.1/1.2","2017 Temporary Deviation","Increment 2","COP","2020 Temporary Deviation","2023 Temporary Deviation"))|>
   flextable()|>
   bold()|>
   bold(part="header")|>
   align(part="all",align="center")|>
   padding(padding=2,part="all")|>
-  bg(bg=c("cornsilk","lightgreen","lightblue","lightblue","dodgerblue1","dodgerblue1","steelblue","pink"))|>
-  color(color=c(rep("black",3),"maroon","black","hotpink","yellow","black"))|>
+  bg(bg=c("cornsilk","lightgreen","lightblue","lightblue","dodgerblue1","dodgerblue1","steelblue","pink","pink","pink"))|>
+  color(color=c(rep("black",3),"maroon","black","hotpink","yellow","black","hotpink","maroon"))|>
   autofit()
 ```
 
