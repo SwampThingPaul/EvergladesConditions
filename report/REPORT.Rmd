@@ -86,8 +86,30 @@ library(RcppRoll)
 library(dataRetrieval)
 library(downloadthis)
 
+library(sf)
+library(raster)
+library(EVERSpatDat)
+
+library(rvest)
 ## custom fun
 roundUp <- function(x) 10^ceiling(log10(x))
+
+ci.reverse.scaling.fun=function(DN){
+  10^(3.0 / 250.0 * DN - 4.2)
+}
+ci.scaling.fun=function(ci){
+  round(83.3 * (log10(ci[ci>0]) + 4.2))
+}
+decdate.fun=function(date){
+  Y=as.numeric(format(date,"%Y"))
+  start=date.fun(paste(Y,1,1,sep="-"))
+  end=date.fun(paste(Y+1,1,1,sep="-"))
+  sofar <- as.numeric(difftime(date, start, units = "secs"))
+  total <- as.numeric(difftime(end, start, units = "secs"))
+  Y + sofar / total
+}
+
+source("windrose_fun.R")
 
 ## webscrape tools
 # library(rvest)
@@ -99,9 +121,11 @@ roundUp <- function(x) 10^ceiling(log10(x))
 # library(rgeos)
 # library(tmap)
 # library(raster)
-##
-# wgs84=sp::CRS("+init=epsg:4326")
-# utm17=sp::CRS("+init=epsg:26917")
+
+# CRS
+nad83.pro=st_crs("EPSG:4269")
+utm17=st_crs("EPSG:26917")
+wgs84=st_crs("EPSG:4326")
 # tmap_mode("view")
 ###
 dates=seq(date.fun(date.fun(Sys.Date())-ddays(13)),date.fun(Sys.Date()),"1 days")
@@ -1256,6 +1280,335 @@ was **`r format(round(q.in.Lake+q.BF.Lake,0),big.mark=",")` AF**
 (`r format(round(q.in.Lake,0),big.mark=",")` AF from Fisheating Creek,
 S-71, S-72, S-84s, S-65EX, and S-65EX1)
 `r if(q.BF.Lake>0){paste(" with a total backflow volume of ","**",format(round(q.BF.Lake,0),big.mark=",")," AF** from **", v.val,"**",sep="")}`.
+
+### Lake Okeechobee Cyano HAB
+
+```{r HABdata}
+data("LOK")
+data("LOKLitt")
+
+LOK.area=as.numeric(st_area(LOK)-st_area(LOKLitt))
+
+## NOAA FTP image inventory ------------------------------------------------
+link.val="https://app.coastalscience.noaa.gov/habs_explorer/index.php?path=ajZiOVoxaHZNdE5nNytEb3RZdU5iYjNnK3AvTWRrYmNWbXU0K0YvMlA1UlBtTWZlRFV3R1RicVRYb2pxeVJBUA==&uri=VWtuM1UzbVNVN0RsZzJMeTJvNlNpM29OalF0WTFQQjVZVnpuS3o5bnh1Ym0vYWhtWEh4ck1hREVUamE4SDZ0M2tsd1M1OWg3UDJ0djIrNEkvbXliRUJ3WjkrKzdIcUYrN1JsZ1I5NFlsaHBZbUJWV0pHZ3NFZUVnQW56aTFIbEw=&type=bllEUXA3TmhSK21RVDlqbFYxMmEwdz09"
+
+rslt.table=rvest::read_html(link.val)
+
+link_val= rslt.table|>
+  html_elements(xpath = ".//section[@class='onecol habonecol']")|>
+  html_nodes('a')|>
+  html_attr("href")|>
+  as.data.frame()
+colnames(link_val)="link"
+
+link_txt=rslt.table|>
+  html_elements(xpath = ".//section[@class='onecol habonecol']")|>
+  html_text(trim=T)|>
+  as.data.frame()# |>(\(x) x[2:nrow(x),])(); # assumes first value is "Name"
+colnames(link_txt) = "name"
+
+link_txt=subset(link_txt,name!="Name")# link_txt[2:nrow(link_txt),]# assumes first value is "Name"
+
+str.val=strsplit(link_txt$name,"\\.")
+link_txt$date=date.fun(paste(as.numeric(substr(sapply(str.val,"[",2),1,4)),
+                             as.numeric(substr(sapply(str.val,"[",3),1,2)),
+                             as.numeric(substr(sapply(str.val,"[",3),3,4)),sep="-"))
+link_txt$product=sapply(str.val,"[",9)
+link_txt$AOI=sapply(str.val,"[",10)
+
+noaa.image.inventory=cbind(link_txt,link_val)|>
+  subset(product=="CIcyano")
+noaa.image.inventory$fname=with(noaa.image.inventory,paste0(product,"_",AOI,"_",format(date,"%Y%m%d"),".tif"))
+
+## Cyano coverage time-series
+cyano_area = read.csv("cyano_area.csv")
+# cyano_area = read.csv("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/cyano_area.csv")
+cyano_area$date = date.fun(cyano_area$date)
+
+## update for missing data
+noaa.image.inventory=subset(noaa.image.inventory,date>max(cyano_area$date))
+
+## data download  ------------------------------------------------
+data.path="./RSdata"
+# data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
+
+if(nrow(noaa.image.inventory)!=0){
+  for(i in 1:nrow(noaa.image.inventory)){
+  
+  url.link=noaa.image.inventory$link[i]
+  
+  hd=httr::HEAD(url.link)
+  if(hd$all_headers[[1]]$status!=200){next}else{
+    try(download.file(url.link,paste(data.path, noaa.image.inventory$fname[i],sep="/"),mode="wb",method="wininet"))
+  }
+}
+}
+
+## local file inventory
+local.image.inventory = data.frame(fname=list.files(data.path))
+str.val=strsplit(local.image.inventory$fname,"_|\\.")
+local.image.inventory$date=date.fun(paste(substr(sapply(str.val,"[",3),1,4),
+                                           substr(sapply(str.val,"[",3),5,6),
+                                           substr(sapply(str.val,"[",3),7,8),sep="-"))
+
+## update for missing data
+local.image.inventory1=subset(local.image.inventory,date>max(cyano_area$date))
+if(nrow(local.image.inventory1)!=0){
+  cyano_area=cyano_area[,c("date", "cloud.area", "bloom.area.m2", "vis.bloom")]
+for(i in 1:nrow(local.image.inventory1)){
+  tmp.raster=raster::raster(paste(data.path, local.image.inventory1$fname[i],sep="/"))
+  
+  tmp.raster=mask(tmp.raster,st_buffer(LOK,500))
+  tmp.raster[tmp.raster==255]=NA; # No Data
+  # plot(tmp.raster)
+  # crs(tmp.raster)
+  # tmp.raster>250
+  # tmp.raster%in%c(250,251,253,254,255)
+  # 251 = CI adj; 252 = land; 253 = clouds; 254 = mixed pixels; 255 = No data; 0 = nodetect
+  
+  cloud.area=tmp.raster>253
+  # cloud.area=tmp.raster[!tmp.raster%in%c(253,254,250)]
+  # cloud.area=tmp.raster%in%c(253)
+  cloud.area.raster=cloud.area
+  # cloud.area=cloud.area==1
+  cloud.area=cellStats(cloud.area,sum)*raster::res(cloud.area)[1]*raster::res(cloud.area)[2]
+  
+  # remove cloud/no data values (see tif header)
+  # 0= nodetect
+  # 250 = saturated; 251 = ci adj; 252 = land; 253 = cloud;
+  # 254 = mixed pixel; 255 = no data
+  
+  # vals=c(0,250,251,252,253,254,255)
+  vals=c(0,250,251,252,253,254,255)
+  tmp.raster[tmp.raster%in%vals]=NA
+  
+  tmp.raster=calc(tmp.raster,fun=function(x) x*1)
+  # ci.scale=calc(tmp.raster,fun=function(x) ci.scaling.fun(x))
+  rev.scale=calc(tmp.raster,fun=ci.reverse.scaling.fun)*100000000
+  
+  ## Bloom area
+  area=rev.scale>0
+  val=cellStats(area,sum)*raster::res(area)[1]*raster::res(area)[2]
+  # val*3.86102e-7 # converts from m2 to mi2
+  
+  ## Visible bloom area
+  area2=rev.scale>(1000*1000)
+  val2=cellStats(area2,sum)*raster::res(area2)[1]*raster::res(area2)[2]
+  
+  tmp.rslt=data.frame(date=local.image.inventory1$date[i],
+                      cloud.area=cloud.area,
+                      bloom.area.m2=val,
+                      vis.bloom=val2) # greater 1e+6
+  cyano_area=rbind(cyano_area,tmp.rslt)
+  
+}
+}else{
+  curr.dat=subset(local.image.inventory,date==max(local.image.inventory$date,na.rm=T))
+  tmp.raster=raster::raster(paste(data.path, curr.dat$fname,sep="/"))
+  tmp.raster=mask(tmp.raster,st_buffer(LOK,500))
+  tmp.raster[tmp.raster==255]=NA; # No Data
+  
+  cloud.area=tmp.raster>253
+  cloud.area.raster=cloud.area
+  
+  vals=c(0,250,251,252,253,254,255)
+  tmp.raster[tmp.raster%in%vals]=NA
+  tmp.raster=calc(tmp.raster,fun=function(x) x*1)
+  rev.scale=calc(tmp.raster,fun=ci.reverse.scaling.fun)*100000000
+}
+
+cyano_area=cyano_area|>
+  mutate(cloud.area.per=cloud.area/as.numeric(LOK.area),
+         bloom.area.mi2=bloom.area.m2*3.86102e-7,
+         bloom.area.per=(bloom.area.m2/as.numeric(LOK.area))*100,
+         date=date.fun(date),
+         decdate=decdate.fun(date),
+         vis.bloom.mi2=vis.bloom*3.86102e-7)
+
+write.csv(cyano_area,"cyano_area.csv",row.names = F); # for rmarkdown
+# write.csv(cyano_area,"C:/Julian_LaCie/_GitHub/EvergladesConditions/report/cyano_area.csv",row.names = F)
+
+date.val=subset(cyano_area,date==max(cyano_area$date))$date
+algae.cov=subset(cyano_area,date==max(cyano_area$date))$bloom.area.mi2
+algae.cov.per=subset(cyano_area,date==max(cyano_area$date))$bloom.area.per
+
+## wind data  ------------------------------------------------
+dates=c(date.val-(3*86400),date.val)
+
+dbkeys.bk=data.frame(SITE="LZ40",DBKEY=c("IY031","IY032"),param=c("WNDD","WNDS"))
+wnd.dat2=DBHYDRO_daily(dates[1],dates[2],dbkeys.bk$DBKEY,vert_datum = NA)
+wnd.dat2=merge(wnd.dat2,dbkeys.bk,"DBKEY")
+wnd.dat.xtab=dcast(wnd.dat2,DATETIME~param,value.var = "Data.Value",mean)
+wnd.dat.xtab$WNDS.ms= wnd.dat.xtab$WNDS*0.44704
+wnd.dat.xtab$u=wnd.dat.xtab$WNDS.ms*cos(wnd.dat.xtab$WNDD*pi/180)
+wnd.dat.xtab$v=wnd.dat.xtab$WNDS.ms*sin(wnd.dat.xtab$WNDD*pi/180)
+
+# wnd.dat.xtab=subset(wnd.dat.xtab,date.fun(wnd.dat.xtab$DATETIME)%in%date.val)
+
+```
+
+```{r NOAA RS Plot2,fig.width=7,fig.height=5.5,fig.align='center',fig.cap="Cyanobacteria Algal Index across Lake Okeechobee. Percent area based on open water coverage (Lake Area minus Littoral Zone). Windrose plot (bottom right) summarizing breakpoint wind data for the last 3 days using Tukey five-number summarise (i.e. boxplot). HAB Data from NOAA NCCOS HAB data explorer. Wind Data from SFWMD site LZ40.Data are provisional and subject to change."}
+par(family="serif",mar=c(0.5,0.5,0.5,0.5),oma=c(0.1,0.1,0.1,0.1));
+layout(matrix(c(1,1,2,3),2,2,byrow = F),widths=c(1,0.5))
+
+b=c(0,20,100,500,1000,6300)*1000
+cols=c(viridisLite::turbo(249,direction=1))
+
+plot(st_geometry(LOK),lwd=0.05)
+plot(st_geometry(LOKLitt),lwd=0.05,col=adjustcolor("honeydew2",0.5),border=NA,add=T)
+# plot(st_geometry(LOK),lwd=0.05,add=T)
+image(rev.scale,add=T,col = cols)
+image(cloud.area.raster,add=T,col=c(NA,"grey"))
+if(sum(is.na(getValues(rev.scale)))/length(getValues(rev.scale))<0.75){
+  plot(rasterToContour(rev.scale,levels=b,nlevels=length(b)),col="black",lwd=2,add=T)}
+mapmisc::scaleBar(LOK,"bottomright",bty="n",cex=1,seg.len=4,outer=F)
+mtext(side=3,line=-3,adj=0,paste("Date: ",format(date.val,"%m-%d-%Y"),
+                                   "\nData Source: NOAA NCCOS\nAlgae Coverage: ",
+                                   round(algae.cov)," mi\u00B2 (",round(algae.cov.per)," %)",sep=""))
+
+
+plot(0:1,0:1,ann=F,axes=F,type="n")
+# leg.fun(b,cols,leg.title= expression(paste("CI"["Cyano"]," (cells mL"^"-1","x1000)")),leg.type="continuous")
+b2=b/1000
+l.b=length(b2)
+labs=b2
+n.bks=length(b2) -1
+top.val=0.8
+bot.val=0.2
+mid.v.val=bot.val+(top.val-bot.val)/2
+x.max=0.3
+x.min=0
+mid.val=x.min+(x.max-x.min)/2
+txt.offset.val=-0.01
+lab.pos=seq(bot.val,top.val,length.out=l.b)
+legend_image=as.raster(matrix(rev(cols),ncol=1))
+rasterImage(legend_image,x.min,bot.val,x.max,top.val)
+text(x=x.max, y = lab.pos, labels = format(b2),cex=0.75,adj=0,pos=4,offset=0.5)
+segments(rep(x.min,l.b),lab.pos,rep(x.max,l.b),lab.pos,lwd=2)
+## add cloud
+legend_image=as.raster(matrix("grey",ncol=1))
+rasterImage(legend_image,x.min,bot.val-0.05,x.max,bot.val)
+text(x=x.max, y = bot.val-0.025, labels = "Clouds/Invalid data",cex=0.5,adj=0,pos=4,offset=0.5)
+## add littoral zone
+legend_image=as.raster(matrix(adjustcolor("honeydew2",0.5),ncol=1))
+rasterImage(legend_image,x.min,bot.val-0.1,x.max,bot.val-0.05)
+text(x=x.max, y = bot.val-0.075, labels = "Littoral Zone",cex=0.5,adj=0,pos=4,offset=0.5)
+text(x=mid.val,y=top.val,expression(paste("CI"["Cyano"]," (cells mL"^"-1","x1000)")),adj=0,cex=0.8,pos=3,xpd=NA)
+
+par(mar=c(1.5,1.5,0.5,1.5))
+wind_dat=windrose.calc(u,v,wnd.dat.xtab)
+# windrose_plot(wind_dat,"fivenum","oceanographic",lab.col="black",max.val=roundUp(max(wind_dat$fives,na.rm=T)),xpd=NA)
+windrose_plot(wind_dat,"fivenum","oceanographic",max.val=roundUp(max(wind_dat$fives,na.rm=T)),lab.col="black",xpd=NA)
+axs.lab=seq(0,roundUp(max(wind_dat$fives,na.rm=T)),length.out=3)
+xx = seq(0,-1,length.out=length(axs.lab))
+axis_fun(1,xx,xx,axs.lab,line=-1.2,axisLine=-0.7)
+mtext(side=3,adj=0,"LZ40 Wind Data (m s\u207B\u00B9)",line=-1,cex=0.8,font=2)
+
+
+```
+
+
+```{r NOAA RS Plot,fig.width=6.5,fig.height=5,fig.align='center',fig.cap="Cyanobacteria Algal Index across Lake Okeechobee. Percent area based on open water coverage (Lake Area minus Littoral Zone). Data from NOAA NCCOS HAB data explorer.Data are provisional and subject to change.",eval=F,include=F}
+
+par(family="serif",mar=c(0.5,0.5,0.5,0.5),oma=c(0.1,0.1,0.1,0.1));
+layout(matrix(1:2,1,2,byrow = T),widths=c(1,0.4))
+
+b=c(0,20,100,500,1000,6300)*1000
+cols=c(viridisLite::turbo(249,direction=1))
+
+plot(st_geometry(LOK),lwd=0.05)
+plot(st_geometry(LOKLitt),lwd=0.05,col=adjustcolor("honeydew2",0.5),border=NA,add=T)
+image(rev.scale,add=T,col = cols)
+image(cloud.area.raster,add=T,col=c(NA,"grey"))
+if(sum(is.na(getValues(rev.scale)))/length(getValues(rev.scale))<0.75){
+  plot(rasterToContour(rev.scale,levels=b,nlevels=length(b)),col="black",lwd=2,add=T)}
+mapmisc::scaleBar(LOK,"bottomright",bty="n",cex=1,seg.len=4,outer=F)
+mtext(side=3,line=-2.5,adj=0,paste("Date: ",format(date.val,"%m-%d-%Y"),
+                                   "\nData Source: NOAA NCCOS\nAlgae Coverage: ",
+                                   round(algae.cov)," mi\u00B2 (",round(algae.cov.per)," %)",sep=""))
+
+
+plot(0:1,0:1,ann=F,axes=F,type="n")
+# leg.fun(b,cols,leg.title= expression(paste("CI"["Cyano"]," (cells mL"^"-1","x1000)")),leg.type="continuous")
+b2=b/1000
+l.b=length(b2)
+labs=b2
+n.bks=length(b2) -1
+top.val=0.8
+bot.val=0.2
+mid.v.val=bot.val+(top.val-bot.val)/2
+x.max=0.3
+x.min=0
+mid.val=x.min+(x.max-x.min)/2
+txt.offset.val=-0.01
+lab.pos=seq(bot.val,top.val,length.out=l.b)
+legend_image=as.raster(matrix(rev(cols),ncol=1))
+rasterImage(legend_image,x.min,bot.val,x.max,top.val)
+text(x=x.max, y = lab.pos, labels = format(b2),cex=0.75,adj=0,pos=4,offset=0.5)
+segments(rep(x.min,l.b),lab.pos,rep(x.max,l.b),lab.pos,lwd=2)
+## add cloud
+legend_image=as.raster(matrix("grey",ncol=1))
+rasterImage(legend_image,x.min,bot.val-0.05,x.max,bot.val)
+text(x=x.max, y = bot.val-0.025, labels = "Clouds/Invalid data",cex=0.5,adj=0,pos=4,offset=0.5)
+## add littoral zone
+legend_image=as.raster(matrix(adjustcolor("honeydew2",0.5),ncol=1))
+rasterImage(legend_image,x.min,bot.val-0.1,x.max,bot.val-0.05)
+text(x=x.max, y = bot.val-0.075, labels = "Littoral Zone",cex=0.5,adj=0,pos=4,offset=0.5)
+text(x=mid.val,y=top.val,expression(paste("CI"["Cyano"]," (cells mL"^"-1","x1000)")),adj=0,cex=0.8,pos=3,xpd=NA)
+
+```
+
+<br>
+
+```{r NOAA LOK area,fig.width=6.5,fig.height=5,fig.align='center',fig.cap="Daily cloud cover and cyanobacteria algal bloom coverage of Lake Okeechobee. Percent area based on open water coverage (Lake Area minus Littoral Zone). Data from NOAA NCCOS HAB data explorer.Data are provisional and subject to change. "}
+par(family="serif",mar=c(1,3,0.5,2),oma=c(2,2,0.5,2))
+layout(matrix(1:2,2,1),heights=c(0.5,1))
+
+xlim.val=c(date.fun("2024-01-01"),date.fun(Sys.Date()+lubridate::duration(1,"months")));xmaj=seq(xlim.val[1],xlim.val[2],"1 months");xmin=seq(xlim.val[1],xlim.val[2],"1 days")
+
+ylim.val=c(0,1);by.y=0.2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+plot(cloud.area.per~date,cyano_area,axes=F,ann=F,type="n",ylim=ylim.val,xlim=xlim.val,yaxs="i")
+abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.75)
+with(cyano_area,pt_line(date,cloud.area.per,2,"grey",2,21,"grey"))
+axis_fun(2,ymaj,ymin,ymaj*100)
+# axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"))
+axis_fun(1,xmaj,xmin,NA)
+box(lwd=1)
+mtext(side=2,line=2.5,"Cloud Cover (%)")
+mtext(side=3,adj=1,"Data Source: NOAA NCCOS",font=3)
+mtext(side=3,adj=0,"Lake Okeechobee",font=3)
+
+ylim.val=c(0,max(cyano_area$bloom.area.mi2)*1.10);by.y=100;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+plot(cloud.area.per~date,cyano_area,axes=F,ann=F,type="n",ylim=ylim.val,xlim=xlim.val,yaxs="i")
+abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.75)
+with(cyano_area,pt_line(date,bloom.area.mi2,1,"dodgerblue1",2,21,"dodgerblue1",pt.lwd=0.1,cex=1.25))
+with(subset(cyano_area,date==max(cyano_area$date)),
+     text(date,bloom.area.mi2,paste0(round(bloom.area.mi2)," mi\u00B2\n(",round(bloom.area.per),"%)"),pos=4,offset=0.5,cex=0.75))
+# with(cyano_area,pt_line(date,vis.bloom,2,
+#                         adjustcolor("grey",0.5),2,21,adjustcolor("grey",0.5),pt.lwd=0.1,cex=1.25))
+k.mod=loess(bloom.area.mi2~decdate,subset(cyano_area,bloom.area.mi2>0&cloud.area.per<0.30))
+x.val=seq(min(cyano_area$decdate),max(cyano_area$decdate),length.out=100)
+pred.mod=predict(k.mod,data.frame(decdate=x.val))
+lines(date.fun(lubridate::date_decimal(x.val),form="%F %R"),pred.mod,col="red",lwd=2)
+axis_fun(2,ymaj,ymin,ymaj)
+axis_fun(1,xmaj,xmin,format(xmaj,"%b-%Y"),line=-0.5)
+axis_fun(1,xmaj,xmin,NA)
+box(lwd=1)
+mtext(side=1,line=1.5,"Date (Month-Year)")
+mtext(side=2,line=2.5,"Cyanobacteria Algal Bloom\ncoverage (mi\u00B2)")
+
+ymaj2=(LOK.area*3.861e-7)*seq(0,1,0.2);ymin2=(LOK.area*3.861e-7)*seq(0,1,0.1)
+axis_fun(4,ymaj2,ymin2,round((ymaj2/(LOK.area*3.861e-7))*100,0))
+mtext(side=4,line=2.5,"Cyanobacteria Algal Bloom\ncoverage (% LOK)")
+legend("topleft",legend=c("Smoothed Trend"),
+       lty=c(1),lwd=c(1),col=c("red"),
+       pch=c(NA),pt.bg=c(NA),
+       pt.cex=1.25,ncol=1,cex=0.75,bty="n",y.intersp=1,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0)
+
+```
+
+
+
 
 ------------------------------------------------------------------------
 
