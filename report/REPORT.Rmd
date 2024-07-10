@@ -1289,6 +1289,10 @@ data("LOKLitt")
 
 LOK.area=as.numeric(st_area(LOK)-st_area(LOKLitt))
 
+data.path="./RSdata"
+# data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
+
+
 ## NOAA FTP image inventory ------------------------------------------------
 link.val="https://app.coastalscience.noaa.gov/habs_explorer/index.php?path=ajZiOVoxaHZNdE5nNytEb3RZdU5iYjNnK3AvTWRrYmNWbXU0K0YvMlA1UlBtTWZlRFV3R1RicVRYb2pxeVJBUA==&uri=VWtuM1UzbVNVN0RsZzJMeTJvNlNpM29OalF0WTFQQjVZVnpuS3o5bnh1Ym0vYWhtWEh4ck1hREVUamE4SDZ0M2tsd1M1OWg3UDJ0djIrNEkvbXliRUJ3WjkrKzdIcUYrN1JsZ1I5NFlsaHBZbUJWV0pHZ3NFZUVnQW56aTFIbEw=&type=bllEUXA3TmhSK21RVDlqbFYxMmEwdz09"
 
@@ -1329,20 +1333,18 @@ cyano_area$date = date.fun(cyano_area$date)
 noaa.image.inventory=subset(noaa.image.inventory,date>max(cyano_area$date))
 
 ## data download  ------------------------------------------------
-data.path="./RSdata"
-# data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
-
-if(nrow(noaa.image.inventory)!=0){
-  for(i in 1:nrow(noaa.image.inventory)){
-  
-  url.link=noaa.image.inventory$link[i]
-  
-  hd=httr::HEAD(url.link)
-  if(hd$all_headers[[1]]$status!=200){next}else{
-    try(download.file(url.link,paste(data.path, noaa.image.inventory$fname[i],sep="/"),mode="wb",method="wininet"))
-  }
-}
-}
+## moved data download to seperate script
+# if(nrow(noaa.image.inventory)!=0){
+#   for(i in 1:nrow(noaa.image.inventory)){
+#   
+#   url.link=noaa.image.inventory$link[i]
+#   
+#   hd=httr::HEAD(url.link)
+#   if(hd$all_headers[[1]]$status!=200){next}else{
+#     try(download.file(url.link,paste(data.path, noaa.image.inventory$fname[i],sep="/"),mode="wb",method="wininet"))
+#   }
+# }
+# }
 
 ## local file inventory
 local.image.inventory = data.frame(fname=list.files(data.path))
