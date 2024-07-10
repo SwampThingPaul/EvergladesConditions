@@ -37,7 +37,7 @@ jobs:
         shell: Rscript {0}
       - name: Download data
         run: |
-          source("./report/download_noaa_data.R")
+          source("./report/NOAA_RS_Download.R")
         shell: Rscript {0}
         
       - name: Render Site
