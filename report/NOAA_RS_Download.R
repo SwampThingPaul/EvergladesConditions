@@ -7,12 +7,14 @@ library(rvest)
 library(httr)
 
 ## sets data.path depending on if on local machine or not
-if(grep('TEFP',Sys.info()["nodename"])==1){
-  data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
-}else{
-  data.path="./RSdata"
-}
+# if(grep('TEFP',Sys.info()["nodename"])==1){
+#   data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
+# }else{
+#   data.path="./RSdata"
+# }
 
+# data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
+data.path="./RSdata"
 ## NOAA FTP image inventory ------------------------------------------------
 link.val="https://app.coastalscience.noaa.gov/habs_explorer/index.php?path=ajZiOVoxaHZNdE5nNytEb3RZdU5iYjNnK3AvTWRrYmNWbXU0K0YvMlA1UlBtTWZlRFV3R1RicVRYb2pxeVJBUA==&uri=VWtuM1UzbVNVN0RsZzJMeTJvNlNpM29OalF0WTFQQjVZVnpuS3o5bnh1Ym0vYWhtWEh4ck1hREVUamE4SDZ0M2tsd1M1OWg3UDJ0djIrNEkvbXliRUJ3WjkrKzdIcUYrN1JsZ1I5NFlsaHBZbUJWV0pHZ3NFZUVnQW56aTFIbEw=&type=bllEUXA3TmhSK21RVDlqbFYxMmEwdz09"
 
