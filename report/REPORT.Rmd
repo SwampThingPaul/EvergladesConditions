@@ -1438,7 +1438,7 @@ algae.cov.per=subset(cyano_area,date==max(cyano_area$date))$bloom.area.per
 dates=c(date.val-(3*86400),date.val)
 
 dbkeys.bk=data.frame(SITE="LZ40",DBKEY=c("IY031","IY032"),param=c("WNDD","WNDS"))
-wnd.dat2=DBHYDRO_daily(dates[1],dates[2],dbkeys.bk$DBKEY,vert_datum = NA)
+wnd.dat2=DBHYDRO_breakpoint(dates[1],dates[2],dbkeys.bk$DBKEY,vert_datum = NA)
 wnd.dat2=merge(wnd.dat2,dbkeys.bk,"DBKEY")
 wnd.dat.xtab=dcast(wnd.dat2,DATETIME~param,value.var = "Data.Value",mean)
 wnd.dat.xtab$WNDS.ms= wnd.dat.xtab$WNDS*0.44704
