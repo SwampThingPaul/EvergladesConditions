@@ -72,5 +72,8 @@ if(nrow(noaa.image.inventory)!=0){
     if(hd$all_headers[[1]]$status!=200){next}else{
       try(download.file(url.link,paste(data.path, noaa.image.inventory$fname[i],sep="/"),mode="wb",method="wininet"))
     }
+    cat(paste0("Data Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="NOAADownloadLog.txt",append=T)
   }
+}else{
+  cat(paste0("Data Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="NOAADownloadLog.txt",append=T)
 }
