@@ -15,7 +15,7 @@ library(httr)
 
 # wd = "C:/Julian_LaCie/_GitHub/EvergladesConditions/report"
 # data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
-data.path="/RSdata"
+data.path="./report/RSdata"
 ## NOAA FTP image inventory ------------------------------------------------
 link.val="https://app.coastalscience.noaa.gov/habs_explorer/index.php?path=ajZiOVoxaHZNdE5nNytEb3RZdU5iYjNnK3AvTWRrYmNWbXU0K0YvMlA1UlBtTWZlRFV3R1RicVRYb2pxeVJBUA==&uri=VWtuM1UzbVNVN0RsZzJMeTJvNlNpM29OalF0WTFQQjVZVnpuS3o5bnh1Ym0vYWhtWEh4ck1hREVUamE4SDZ0M2tsd1M1OWg3UDJ0djIrNEkvbXliRUJ3WjkrKzdIcUYrN1JsZ1I5NFlsaHBZbUJWV0pHZ3NFZUVnQW56aTFIbEw=&type=bllEUXA3TmhSK21RVDlqbFYxMmEwdz09"
 
@@ -73,8 +73,8 @@ if(nrow(noaa.image.inventory)!=0){
     if(hd$all_headers[[1]]$status!=200){next}else{
       try(download.file(url.link,paste(data.path, noaa.image.inventory$fname[i],sep="/"),mode="wb",method="wininet"))
     }
-    cat(paste0("\nData Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="NOAADownloadLog.txt",append=T)
+    cat(paste0("\nData Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="./report/NOAADownloadLog.txt",append=T)
   }
 }else{
-  cat(paste0("\nData Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="NOAADownloadLog.txt",append=T)
+  cat(paste0("\nData Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="./report/NOAADownloadLog.txt",append=T)
 }
