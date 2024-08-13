@@ -110,7 +110,7 @@ decdate.fun=function(date){
 }
 
 source("windrose_fun.R")
-
+# source("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/windrose_fun.R")
 ## webscrape tools
 # library(rvest)
 # library(jsonlite)
@@ -1500,8 +1500,9 @@ text(x=mid.val,y=top.val,expression(paste("CI"["Cyano"]," (cells mL"^"-1","x1000
 par(mar=c(1.5,1.5,0.5,1.5))
 wind_dat=windrose.calc(u,v,wnd.dat.xtab)
 # windrose_plot(wind_dat,"fivenum","oceanographic",lab.col="black",max.val=roundUp(max(wind_dat$fives,na.rm=T)),xpd=NA)
-windrose_plot(wind_dat,"fivenum","oceanographic",max.val=roundUp(max(wind_dat$fives,na.rm=T)),lab.col="black",xpd=NA)
-axs.lab=seq(0,roundUp(max(wind_dat$fives,na.rm=T)),length.out=3)
+windrose_plot(wind_dat,"fivenum","oceanographic",max.val=round(max(wind_dat$fives,na.rm=T)*1.5),lab.col="black",xpd=NA)
+# axs.lab=seq(0,roundUp(max(wind_dat$fives,na.rm=T)),length.out=3)
+axs.lab=seq(0,round(max(wind_dat$fives,na.rm=T)*1.5),length.out=3)
 xx = seq(0,-1,length.out=length(axs.lab))
 axis_fun(1,xx,xx,axs.lab,line=-1.2,axisLine=-0.7)
 mtext(side=3,adj=0,"LZ40 Wind Data (m s\u207B\u00B9)",line=-1,cex=0.8,font=2)
