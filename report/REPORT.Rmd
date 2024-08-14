@@ -406,6 +406,8 @@ LakeO.xtab$recess_30day=with(LakeO.xtab,c(rep(NA,30),diff(LOK.stage,lag=30)))
 LakeO.xtab$DoY=as.numeric(format(LakeO.xtab$DATE,"%j"))
 LakeO.xtab$CY=as.numeric(format(LakeO.xtab$DATE,"%Y"))
 tail(LakeO.xtab)
+LakeO.xtab$LOK.stage[LakeO.xtab$LOK.stage==0]=NA
+
 # writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("DATE")]))
 # writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("LOK.stage")]))
 ## EAA ---------------------------------------------------------------------
@@ -1086,7 +1088,7 @@ rbind(q.dat.7day,meanQ,sumQ)%>%
 
 ## Lake Okeechobee
 
-```{r LORSplot,echo=FALSE,fig.width=7,fig.height=5,fig.align='center',fig.cap=paste0("Lake Okeechobee daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years relative to the Lake Okeechobee Regulation Schedule (LORS).")}
+```{r LORSplot,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap=paste0("Lake Okeechobee daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years relative to the Lake Okeechobee Regulation Schedule (LORS).")}
 # LORS.highlakemange=data.frame(DATE=date.fun(c("2022-01-01","2022-04-01","2022-06-01","2022-09-15","2022-11-01","2022-12-31")),
 #                      STG=c(17.25,17.25,16.00,16.50,17.25,17.25))
 # LORS.high=data.frame(DATE=date.fun(c("2022-01-01","2022-04-01","2022-06-01",,"2022-09-15","2022-11-01","2022-12-31")),
@@ -1100,21 +1102,132 @@ rbind(q.dat.7day,meanQ,sumQ)%>%
 # LORS.BenUse=data.frame(DATE=date.fun(c("2022-01-01","2022-04-01","2022-06-01","2022-10-01","2022-12-31")),
 #                      STG=c(12.15,11.68,10.52,12.99,12.16))
 # LORS=read.csv("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/LORS.csv")
-LORS=read.csv("LORS.csv")
-LORS$Year=CurWY-1
-LORS$Date2=with(LORS,date.fun(paste(Year,Month,Day,sep="-")))
+# LORS=read.csv("LORS.csv")
+# LORS$Year=CurWY-1
+# LORS$Date2=with(LORS,date.fun(paste(Year,Month,Day,sep="-")))
+# 
+# LORS2=LORS
+# LORS2$Year=CurWY
+# LORS2$Date2=with(LORS2,date.fun(paste(Year,Month,Day,sep="-")))
+# 
+# LORS.gaph2Yrs=rbind(LORS,LORS2)
+# rm(LORS,LORS2)
+# LORS.gaph2Yrs$Date2=date.fun(LORS.gaph2Yrs$Date2)
+# LORS.gaph2Yrs$DOWY=hydro.day(LORS.gaph2Yrs$Date2)
+# LORS.gaph2Yrs$WY=WY(LORS.gaph2Yrs$Date2)
 
-LORS2=LORS
-LORS2$Year=CurWY
-LORS2$Date2=with(LORS2,date.fun(paste(Year,Month,Day,sep="-")))
+LORS08.sch.bk= data.frame(
+  day = c(1, 2, 2, 16, 2, 1, 2, 2, 16, 2, 1, 1, 1, 16, 2, 1, 1, 1, 16, 2, 1, 
+          16, 16, 1, 16, 1, 1, 1, 16, 1, 16, 1, 16, 1, 2, 1, 1, 16, 1, 16, 1,
+          16, 1, 2, 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1), 
+  month = c(1, 4, 6, 9, 11, 1, 4, 6, 9, 11, 1, 4, 6, 9, 11, 1, 4, 6, 9, 11, 
+            1, 2, 4, 6, 9, 10, 12, 1, 2, 4, 4, 6, 9, 10, 11, 12, 1, 2, 4, 4,
+            6, 9, 10, 11, 12, 1, 9, 10, 1, 4, 5, 6, 6, 10, 10, 11, 12),
+  variable = c("ZONE.B", "ZONE.B", "ZONE.B", "ZONE.B", "ZONE.B", "ZONE.C", 
+               "ZONE.C", "ZONE.C", "ZONE.C", "ZONE.C", "ZONE.C1", "ZONE.C1",
+               "ZONE.C1", "ZONE.C1", "ZONE.C1", "ZONE.D", "ZONE.D", "ZONE.D", 
+               "ZONE.D", "ZONE.D", "ZONE.D0", "ZONE.D0", "ZONE.D0", "ZONE.D0",
+               "ZONE.D0", "ZONE.D0", "ZONE.D0", "ZONE.D1", "ZONE.D1", 
+               "ZONE.D1", "ZONE.D1", "ZONE.D1", "ZONE.D1", "ZONE.D1",
+               "ZONE.D1", "ZONE.D1", "ZONE.D2", "ZONE.D2", "ZONE.D2", 
+               "ZONE.D2", "ZONE.D2", "ZONE.D2", "ZONE.D2", "ZONE.D2",
+               "ZONE.D2", "ZONE.E", "ZONE.E", "ZONE.E", "ZONE.SSM",
+               "ZONE.SSM", "ZONE.SSM", "ZONE.SSM", "ZONE.SSM", "ZONE.SSM",
+               "ZONE.SSM", "ZONE.SSM", "ZONE.SSM"), 
+  value = c(17.25, 17.25, 16, 16.5, 17.25, 16.88, 16.5, 15.5, 16.13, 16.88, 
+            15.25, 14.5, 14, 14.75, 15.25, 16.25, 15.5, 15, 15.75, 16.25, 14,
+            13.5, 13.5, 13, 14, 14.5, 14.5, 14.75, 14.29, 14.17, 14.13, 13.67,
+            14.58, 14.97, 15.08, 15.08, 15.5, 15.08, 14.83, 14.75, 14.33, 
+            15.17, 15.44, 15.67, 15.67, 12.6, 12.6, 13, 12.16, 11.7, 10.95, 
+            10.5, 10.5, 13, 13, 12.8, 12.4))  
 
-LORS.gaph2Yrs=rbind(LORS,LORS2)
-rm(LORS,LORS2)
-LORS.gaph2Yrs$Date2=date.fun(LORS.gaph2Yrs$Date2)
-LORS.gaph2Yrs$DOWY=hydro.day(LORS.gaph2Yrs$Date2)
-LORS.gaph2Yrs$WY=WY(LORS.gaph2Yrs$Date2)
+vals <- c(-3, -2, -1, 0, 1)
+fill=data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
+
+n_row_vals = nrow(LORS08.sch.bk)
+tot_row = n_row_vals*length(vals)
+date_mat =matrix(NA,nrow=tot_row,ncol=1) # data.frame(Date = rep(NA,tot_row))
+
+for (i in seq_along(vals)) {
+  start_idx <- (i - 1) * n_row_vals + 1
+  end_idx <- i * n_row_vals
+  date_mat[start_idx:end_idx, 1] <- date.fun(
+    paste(CurWY + vals[i], LORS08.sch.bk$month, LORS08.sch.bk$day, sep = "-")
+  )
+}
+date_mat = data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01")))
+
+LORS08.sch.bk = cbind(LORS08.sch.bk,date_mat)|>
+  dcast(Date~variable,value.var = "value",mean)|>
+  merge(fill,"Date",all.y=T)
+
+LORS08.sch.bk[-1] = lapply(LORS08.sch.bk[-1],dat.interp)
+
+
+LOSOM.sch.bk = data.frame(
+  day = c(1, 2, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1,
+          1, 2, 22, 2, 2, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1), 
+  month = c(1, 4, 6, 11, 1, 6, 11, 1, 6, 11, 1, 4, 5, 6, 6, 10, 10, 11, 12,
+            1, 4, 5, 6, 6, 8, 10, 11, 1, 4, 5, 6, 6, 10, 11, 1, 4, 5, 6, 6,
+            10, 10, 11, 12), 
+  variable = c("ZONE.A", "ZONE.A", "ZONE.A", "ZONE.A", "ZONE.BC", "ZONE.BC", 
+               "ZONE.BC",  "ZONE.BXX", "ZONE.BXX", "ZONE.BXX", "ZONE.D",
+               "ZONE.D", "ZONE.D",  "ZONE.D", "ZONE.D", "ZONE.D", "ZONE.D",
+               "ZONE.D", "ZONE.D", "ZONE.D1",  "ZONE.D1", "ZONE.D1", "ZONE.D1", 
+               "ZONE.D1", "ZONE.D1", "ZONE.D1", "ZONE.D1", "ZONE.D2", 
+               "ZONE.D2", "ZONE.D2", "ZONE.D2", "ZONE.D2", "ZONE.D2",
+               "ZONE.D2", "ZONE.D3", "ZONE.D3", "ZONE.D3", "ZONE.D3",
+               "ZONE.D3", "ZONE.D3", "ZONE.D3", "ZONE.D3", "ZONE.D3"), 
+  value = c(17.25, 17.25, 16.5, 17.25, 16.85, 16.1, 16.85, 16.85, 16.1, 16.85,
+            12.16,  11.7, 10.95, 10.5, 10.5, 13, 13, 12.8, 12.4, 14.49, 13.94,
+            13.04, 12.5, 14.5, 14.5, 15.5, 15.5, 13.66, 13.2, 12.45, 12, 14.5,
+            14.5, 15, 12.16, 11.7, 10.95, 10.5, 10.5, 13, 13, 12.8, 12.4)
+)
+## LOSOM data in NAVD88? 
+# LOSOM.sch.bk$value = LOSOM.sch.bk$value - 1.25 # NAVD to NGVD conversion
+
+
+n_row_vals = nrow(LOSOM.sch.bk)
+tot_row = n_row_vals*length(vals)
+date_mat =matrix(NA,nrow=tot_row,ncol=1) # data.frame(Date = rep(NA,tot_row))
+
+for (i in seq_along(vals)) {
+  start_idx <- (i - 1) * n_row_vals + 1
+  end_idx <- i * n_row_vals
+  date_mat[start_idx:end_idx, 1] <- date.fun(
+    paste(CurWY + vals[i], LOSOM.sch.bk$month, LOSOM.sch.bk$day, sep = "-")
+  )
+}
+date_mat = data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01")))
+
+LOSOM.sch.bk = cbind(LOSOM.sch.bk,date_mat)|>
+  dcast(Date~variable,value.var = "value",mean)|>
+  merge(fill,"Date",all.y=T)
+
+LOSOM.sch.bk[-1] = lapply(LOSOM.sch.bk[-1],dat.interp);
+
+# LORS.gaph2Yrs$Date2=date.fun(LORS.gaph2Yrs$Date2)
+# LORS.gaph2Yrs$DOWY=hydro.day(LORS.gaph2Yrs$Date2)
+# LORS.gaph2Yrs$WY=WY(LORS.gaph2Yrs$Date2)
+
+# plot(ZONE.B~Date,subset(LORS08.sch.bk,as.numeric(format(Date,'%Y'))==2023),ylim=c(9,18),type="l")
+# lines(ZONE.A~Date,subset(LOSOM.sch.bk,as.numeric(format(Date,'%Y'))==2023))
+
+
+LORS08.sch.bk= LORS08.sch.bk|>
+  mutate(DOWY = hydro.day(Date),
+         WY = WY(Date))|>
+  subset(Date<date.fun("2024-08-12"))
+
+LOSOM.sch.bk = LOSOM.sch.bk|>
+  mutate(DOWY = hydro.day(Date),
+         WY = WY(Date))|>
+  subset(Date>=date.fun("2024-08-12"))
+
+
+
 ## Plot
-HighLakeLab.x=date.fun(paste(CurWY-1,9,1,sep="-"))
+HighLakeLab.x=date.fun(paste(CurWY-1,5,1,sep="-"))
 WSMLab.x=date.fun(paste(CurWY-1,9,1,sep="-"))
 BENLab.x=date.fun(paste(CurWY-1,7,15,sep="-"))
 BASELab.x=date.fun(paste(CurWY,4,1,sep="-"))
@@ -1142,29 +1255,48 @@ ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 par(family="serif",mar=c(0.5,1.5,1,1.5),oma=c(0.5,3,1,3));
 layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 
-plot(High~DOWY,LORS.gaph2Yrs,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
+plot(ZONE.B~DOWY,LORS08.sch.bk,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=seq(9,18,1),v=hydro.day(xmin),lwd=1,col="grey",lty=3)
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(High~DOWY,lwd=2,col="black"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(Intermediate~DOWY,lwd=2,col="black"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(Low~DOWY,lwd=2,col="black"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(BaseFlow~DOWY,lwd=2,col="black"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(BeneficialUse~DOWY,lwd=2,col="black"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(WSM~DOWY,lwd=2,col="grey"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(Inter1ft~DOWY,lwd=2,lty=5,col="black"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(LowLow~DOWY,lwd=2,lty=5,col="grey"))
-with(subset(LORS.gaph2Yrs,WY==CurWY),lines(LowMid~DOWY,lwd=2,lty=5,col="grey"))
-text(HighLakeLab.x,17.5,"High Lake Management Band",font=2)
-text(WSMLab.x,9.5,"Water Shortage Management Band",font=2)
-text(BENLab.x,12,"Beneficial Use",font=2)
-text(BASELab.x,13,"Base Flow",font=2)
-text(HIGHLab.x,17,"High",font=2)
-text(InterLab.x,16.25,"Intermediate ",font=2,cex=0.75)
-text(LowLab.x,14.5,"Low",font=2,cex=0.75)
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.B~DOWY,lwd=2,col="black"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C~DOWY,lwd=2,col="black"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C1~DOWY,lwd=2,col="black"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.D~DOWY,lwd=2,lty=1,col="black"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.D0~DOWY,lwd=2,col="black"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.D1~DOWY,lwd=2,lty=2,col="grey"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.D2~DOWY,lwd=2,lty=2,col="grey"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.E~DOWY,lwd=2,lty=1,col="black"))
+with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.SSM~DOWY,lwd=2,lty=1,col="grey"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(High~DOWY,lwd=2,col="black"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(Intermediate~DOWY,lwd=2,col="black"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(Low~DOWY,lwd=2,col="black"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(BaseFlow~DOWY,lwd=2,col="black"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(BeneficialUse~DOWY,lwd=2,col="black"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(WSM~DOWY,lwd=2,col="grey"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(Inter1ft~DOWY,lwd=2,lty=5,col="black"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(LowLow~DOWY,lwd=2,lty=5,col="grey"))
+# with(subset(LORS.gaph2Yrs,WY==CurWY),lines(LowMid~DOWY,lwd=2,lty=5,col="grey"))
+text(10,17.5,"High Lake Management Band",font=2,pos = 4)
+text(10,9.5,"Water Shortage Management Band",font=2,pos = 4)
+text(10,12,"Beneficial Use",font=2,pos = 4)
+text(10,12.8,"Base Flow",font=2,pos = 4)
+text(45,15.8,"High",font=2)
+text(15,15.4,"Intermediate ",font=2,cex=0.75,pos = 4)
+text(30,13.5,"Low",font=2,cex=0.75,pos = 4)
+
+with(subset(LOSOM.sch.bk,WY==CurWY),lines(ZONE.A~DOWY,lwd=2,col="black"))
+with(subset(LOSOM.sch.bk,WY==CurWY),lines(ZONE.BC~DOWY,lwd=2,col="black"))
+with(subset(LOSOM.sch.bk,WY==CurWY),lines(ZONE.D~DOWY,lwd=2,col="grey"))
+text(246,17.5,"Zone A",font=2)
+text(290,16.8,"Zone BC",font=2,pos = 4)
+text(277,14.3,"Zone D",font=2,pos = 4)
+abline(v=hydro.day(date.fun("2024-08-12")),lty=2,lwd=2)
+text(hydro.day(date.fun("2024-08-12")),10.5,"LORS08",pos=2,col="red")
+text(hydro.day(date.fun("2024-08-12")),10.5,"LOSOM",pos=4,col="blue")
 
 with(subset(LakeO.xtab,WY==CurWY-2),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("forestgreen",0.5),lty=1))
 with(subset(LakeO.xtab,WY==CurWY-1),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("blue",0.5),lty=1))
 with(subset(LakeO.xtab,WY==CurWY),lines(DOWY,LOK.stage,lwd=4,col="red",lty=1))
-if(is.na(subset(LakeO.xtab,DATE==YEST)$LOK.stage)==T|nrow(subset(LakeO.xtab,DATE==YEST))==0){NA}else{
+if(is.na(subset(LakeO.xtab,DATE==YEST)$LOK.stage)==T|nrow(subset(LakeO.xtab,DATE==YEST))==0){}else{
 with(subset(LakeO.xtab,DATE==YEST),points(DOWY,LOK.stage,pch=21,bg=adjustcolor("grey",0.5),col="gray",lwd=0.1,cex=1.25))
 if(subset(LakeO.xtab,DATE==YEST)$DOWY>300){
   with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY-30,10.6,lty=2))
@@ -2408,7 +2540,7 @@ ENP.q.tab[,vars]%>%
 # srs.flow.da.xtab$TFlow.kacft
 
 max.q=max(subset(srs.flow.da.xtab,Date.EST%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days"))$TFlow.kacft,na.rm=T)
-ylim.max=round(max.q+max.q*0.25,-1)
+ylim.max=ceiling(max.q) - ceiling(max.q) %% 2
 
 srs.flow.da.xtab$S12s=cfs.to.acftd(rowSums(srs.flow.da.xtab[,c(paste0("S12",LETTERS[1:4]))],na.rm=T))/1000
 srs.flow.da.xtab$S333s=cfs.to.acftd(rowSums(srs.flow.da.xtab[,c("S333","S333N")],na.rm=T))/1000
@@ -2550,7 +2682,6 @@ txt.colmatrix=matrix(cols.df$txt.col,ncol=12,byrow=T)
 cur.month=month.abb[as.numeric(format(Sys.Date(),"%m"))]
 
 ### 
-
 SRS.delive=dcast(subset(srs.flow.da.xtab,CY>2011),CY~month,value.var ="SRS.del",fun.aggregate = function(x) round(sum(x,na.rm=T)))
 SRS.delive$Total=rowSums(SRS.delive[,2:ncol(SRS.delive)])
 colnames(SRS.delive)=c("Year",month.abb,"Total")
@@ -2582,6 +2713,24 @@ SRS.delive|>
 
 ```
 
+<br>
+```{r SRSDelv_plot, echo=FALSE,fig.width=8,fig.height=3.5,fig.align='center',fig.cap="Water Deliveries into Shark River Slough (S12s + S333 + S333N + S356 - S334) from January 2012 to current. Color correspond to operational changes reflected in the table above."}
+SRS_del = ddply(subset(srs.flow.da.xtab,CY>2011),c("CY","month"),summarise,Tflow = sum(SRS.del,na.rm=T)/1000)
+
+ylim.val=c(0,400);by.y=100;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+xmaj.lab = subset(SRS_del,month == 1)$CY
+xmaj.x = seq(1,nrow(SRS_del),12)
+
+par(family="serif",mar=c(1,2,0.5,1),oma=c(2.5,2,1.25,1));
+x = barplot(SRS_del$Tflow,col=NA,border=NA,ylim = ylim.val,space=0,axes=F)
+abline(h=ymaj,v=xmaj.x,lty=3,col="grey",lwd=0.5)
+x = barplot(SRS_del$Tflow,col=cols.df$col,ylim = ylim.val,space=0,axes=F,add=T)
+axis_fun(1,x[xmaj.x],x,xmaj.lab,line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
+mtext(side=1,line=1.5,"Calendar Year")
+mtext(side=2,line=2.5,"Discharge (kAc-Ft Mon)")#\u207B\u00B9)")
+
+```
 <br>
 
 ```{r eastTT_all}
@@ -2615,6 +2764,7 @@ eSRS.delive|>
   padding(padding=1.5, part='footer')|>
   autofit()
 ```
+
 
 <br>
 
