@@ -78,3 +78,4 @@ if(nrow(noaa.image.inventory)!=0){
 }else{
   cat(paste0("\nData Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="./report/NOAADownloadLog.txt",append=T)
 }
+
