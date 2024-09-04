@@ -233,9 +233,9 @@ for(i in 1:(length(dates))){
   S155A=strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</")[[1]][1]
   
   # other LOK inflows
-  grep("inflows",mapdata)
-  mapdata[213]
-  tmp=strsplit(mapdata[213],"<br>|>")[[1]]
+  val = grep("Other inflows",mapdata)
+  # mapdata[213]
+  tmp=strsplit(mapdata[val],"<br>|>")[[1]]
   OtherLOKInflow=sum(as.numeric(sapply(strsplit(tmp[grepl(" inflows",tmp)],":"),"[")[2,]))
   
   val=grep("../plots/ok8hhp.pdf",mapdata)

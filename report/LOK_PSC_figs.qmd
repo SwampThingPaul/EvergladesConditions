@@ -1,6 +1,6 @@
 ---
 title: |
-  | Lake Okeechoee
+  | Lake Okeechobee
   | Periodic Scientist Call
 author:
   - name: "Paul Julian"
