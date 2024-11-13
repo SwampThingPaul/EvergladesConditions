@@ -657,7 +657,90 @@ srs.flow.da.sum=ddply(subset(srs.flow.da.xtab.melt,WY!=CurWY),c("variable","DOY"
                       max.val=max(value,na.rm=T))
 srs.flow.da.sum$DATE.plt=date.fun(as.Date(srs.flow.da.sum$DOY,origin=paste0(format(End.Date,"%Y"),"-01-01")))
 
+## L29 Daliy -------------------------------------------------------------------
+# Define your data frame with STATION and DBKEY
+L29.da.dbkeys <- data.frame(
+  STATION = c("S334_HW", "S333N_TW", "S333_TW"),
+  DBKEY = c("DJ184", "40367", "AJ015"),
+  loc = c("S334","S333","S333")
+)
 
+# Use lapply with tryCatch to handle errors
+L29_da_stg_list <- lapply(L29.da.dbkeys$DBKEY, function(dbkey) {
+  # Attempt to retrieve data and handle errors
+  tryCatch({
+    tmp <- DBHYDRO_daily(dates[1], dates[2], dbkey)
+    tmp$DBKEY <- as.character(dbkey)
+    tmp
+  }, error = function(e) {
+    message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
+    NULL  # Return NULL if there's an error
+  })
+})
+
+# Remove any NULL elements (i.e., those that caused errors) from the list
+L29_stg_list <- Filter(Negate(is.null), L29_da_stg_list)
+
+# Combine all data frames in the list into one data frame
+L29.stg.da <- do.call(rbind, L29_stg_list)|>
+  merge(L29.da.dbkeys, by = "DBKEY")|># Merge the combined data with the dbkeys data frame
+  mutate(Date.EST = date.fun(Date))
+
+L29.stg.da.xtab <- dcast(L29.stg.da,Date.EST~STATION,value.var="Data.Value",mean,na.rm=T)
+# plot(S333N_TW~S333_TW,L29.stg.da.xtab);abline(0,1)
+
+L29.stg.da.loc <- ddply(L29.stg.da,c("Date.EST","loc"),summarise,mean.val = mean(Data.Value,na.rm=T),sd.val = sd(Data.Value,na.rm=T))
+# plot(sd.val~Date.EST,subset(L29.stg.da.loc,loc=="S333"))
+
+
+
+## L29 Breakpoint -------------------------------------------------------------------
+L29.bk.dbkeys <- data.frame(
+  STATION = c("S334_HW", "S333N_TW", "S333_TW"),
+  DBKEY = c("IY636", "40368", "AJ016"),
+  loc = c("S334","S333","S333")
+)
+
+L29.bk.dbkeys2 <- L29.bk.dbkeys|>
+  merge(ddply(L29.stg.da,"STATION",summarise,Max.Date = max(Date.EST)),"STATION")
+L29.bk.dbkeys2 <- split(L29.bk.dbkeys2,seq_len(nrow(L29.bk.dbkeys2)))
+
+L29_bk_stg_list <- lapply(L29.bk.dbkeys2,function(dat) {
+  # Attempt to retrieve data and handle errors
+  tryCatch({
+    tmp <- DBHYDRO_daily(dat$Max.Date, dates[2]-86400, dat$DBKEY)
+    tmp$DBKEY <- as.character(dat$DBKEY)
+    tmp
+  }, error = function(e) {
+    message(sprintf("Skipping DBKEY %s due to error: %s", dat$DBKEY, e$message))
+    NULL  # Return NULL if there's an error
+  })
+})
+
+L29_bk_stg_list <- Filter(Negate(is.null), L29_bk_stg_list)
+
+# Combine all data frames in the list into one data frame
+L29.stg.bk <- do.call(rbind, L29_bk_stg_list)|>
+  merge(L29.bk.dbkeys, by = "DBKEY")|># Merge the combined data with the dbkeys data frame
+  mutate(Date.EST = date.fun(DATE))
+
+L29.stg.bk.calc.da <- ddply(L29.stg.bk,c("STATION","loc","Date.EST"),summarise,
+      mean.val.da = mean(Data.Value,na.rm=T),
+      N.val.da = N.obs(Data.Value),
+      sd.val.da = sd(Data.Value,na.rm=T),
+      scrn = ifelse(N.val.da<24,NA,1))
+
+L29.stg.bk.calc.da2 <- ddply(L29.stg.bk.calc.da,c("Date.EST","loc"),summarise,
+      mean.val = mean(mean.val.da*scrn,na.rm=T),
+      sd.val = sd(mean.val.da*scrn,na.rm=T))
+
+L29.stg.da.loc <- rbind(L29.stg.da.loc,L29.stg.bk.calc.da2)
+
+L29.stg.da.loc.xtab <- dcast(L29.stg.da.loc,Date.EST~loc,value.var="mean.val",mean)
+L29.stg.da.loc.xtab$L29 <- round(rowMeans(L29.stg.da.loc.xtab[,c("S333","S334")],na.rm=T),2)
+
+L29.stg.da.loc.xtab$DOWY <- hydro.day(L29.stg.da.loc.xtab$Date.EST)
+L29.stg.da.loc.xtab$WY <- WY(L29.stg.da.loc.xtab$Date.EST)
 
 
 ## FLAB ---------------------------------------------------------------------
@@ -2427,27 +2510,27 @@ layout(matrix(1:4,2,2,byrow=T),heights=c(1,0.25))
 
 ylim.val=c(6,10);by.y=0.5;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 
-plot(L29Canal.f~DOWY,ENP.xtab,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
+plot(L29~DOWY,L29.stg.da.loc.xtab,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=ymaj,v=hydro.day(xmin),lwd=1,col="grey",lty=3)
-lines(L29Canal.f~DOWY,subset(ENP.xtab,WY==CurWY-2),lwd=2,col=adjustcolor("forestgreen",0.5),lty=1)
-lines(L29Canal.f~DOWY,subset(ENP.xtab,WY==CurWY-1),lwd=2,col=adjustcolor("blue",0.5),lty=1)
-lines(L29Canal.f~DOWY,subset(ENP.xtab,WY==CurWY),lwd=2,col="red",lty=1)
+lines(L29~DOWY,subset(L29.stg.da.loc.xtab,WY==CurWY-2),lwd=2,col=adjustcolor("forestgreen",0.5),lty=1)
+lines(L29~DOWY,subset(L29.stg.da.loc.xtab,WY==CurWY-1),lwd=2,col=adjustcolor("blue",0.5),lty=1)
+lines(L29~DOWY,subset(L29.stg.da.loc.xtab,WY==CurWY),lwd=2,col="red",lty=1)
 
 # if(is.na(subset(ENP.xtab,DATE==YEST)$L29Canal.f)==T|nrow(subset(ENP.xtab,DATE==YEST))==0){NA}else{
-if(nrow(subset(ENP.xtab,DATE==YEST))>0){
-  with(subset(ENP.xtab,DATE==YEST),points(DOWY,L29Canal.f,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
+if(nrow(subset(L29.stg.da.loc.xtab,Date.EST==YEST))>0){
+  with(subset(L29.stg.da.loc.xtab,Date.EST==YEST),points(DOWY,L29,pch=21,bg=adjustcolor("red",0.5),col="red",lwd=0.1,cex=1.25))
   # with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY,6.7,lty=2))
   # with(subset(ENP.xtab,DATE==YEST),text(DOWY,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft"),cex=0.8,xpd=NA))
   
-  if(subset(ENP.xtab,DATE==YEST)$DOWY>300){
-    with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY-30,6.7,lty=2))
-    with(subset(ENP.xtab,DATE==YEST),text(DOWY-30,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
-  }else if(subset(ENP.xtab,DATE==YEST)$DOWY<30){
-    with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY+30,6.7,lty=2))
-    with(subset(ENP.xtab,DATE==YEST),text(DOWY+30,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+  if(subset(L29.stg.da.loc.xtab,Date.EST==YEST)$DOWY>300){
+    with(subset(L29.stg.da.loc.xtab,Date.EST==YEST),segments(DOWY,L29,DOWY-30,6.7,lty=2))
+    with(subset(L29.stg.da.loc.xtab,Date.EST==YEST),text(DOWY-30,6.6,paste(format(round(L29,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  }else if(subset(L29.stg.da.loc.xtab,Date.EST==YEST)$DOWY<30){
+    with(subset(L29.stg.da.loc.xtab,Date.EST==YEST),segments(DOWY,L29,DOWY+30,6.7,lty=2))
+    with(subset(L29.stg.da.loc.xtab,Date.EST==YEST),text(DOWY+30,6.6,paste(format(round(L29,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
   }else{
-    with(subset(ENP.xtab,DATE==YEST),segments(DOWY,L29Canal.f,DOWY,6.7,lty=2))
-    with(subset(ENP.xtab,DATE==YEST),text(DOWY,6.6,paste(format(round(L29Canal.f,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
+    with(subset(L29.stg.da.loc.xtab,Date.EST==YEST),segments(DOWY,L29,DOWY,6.7,lty=2))
+    with(subset(L29.stg.da.loc.xtab,Date.EST==YEST),text(DOWY,6.6,paste(format(round(L29,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
   }
   
 }
