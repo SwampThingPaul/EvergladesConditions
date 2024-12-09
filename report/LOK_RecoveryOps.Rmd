@@ -1078,4 +1078,20 @@ legend("center",
 mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
 ```
 
-## {-}
+## Data Sources
+
+All data were retrieved from SFWMD DBhydro between `r format(dates[1],"%d %b %Y")` and `r format(dates[2],"%d %b %Y")` from the following DBKeys. 
+
+```{r ,echo=F}
+meta.dat <- DBHYDRO.meta.byDBKEY(c(LOK.da.dbkeys$DBKEY,LOK.etpi.dbkeys$DBKEY,LOK.Q.dbkeys$DBKEY))
+meta.dat <- meta.dat[match(c(LOK.da.dbkeys$DBKEY,LOK.etpi.dbkeys$DBKEY,LOK.Q.dbkeys$DBKEY),meta.dat$DBKEY),]
+
+meta.dat[,c(1:9,20)]|>
+  flextable()|>
+  fontsize(size=9,part="body")|>
+  fontsize(size=11,part="header")|>
+  padding(padding=1,part="all")|>
+  autofit()
+```
+
+<br>
