@@ -1,0 +1,52 @@
+## from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
+name: Render & Deploy Site
+on:
+  push:
+  schedule:
+    - cron: '0 5 * * 1'
+
+jobs:
+  render:
+    name: Render report
+    # runs-on: macos-latest
+    # runs-on: windows-latest
+    runs-on: windows-2019
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3.0' 
+      - uses: r-lib/actions/setup-pandoc@v2
+      - name: Install rmarkdown
+        run: |
+          install.packages("remotes")
+          remotes::install_github("gagolews/stringi")
+          remotes::install_github("davidgohel/officer")
+          remotes::install_github("davidgohel/flextable")
+          # remotes::install_github("tidyverse/magrittr")
+          install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
+                  "dataRetrieval","downloadthis",
+                  "rvest","labeling"))
+          remotes::install_github("SwampThingPaul/AnalystHelper")
+          remotes::install_github("SwampThingPaul/EVERSpatDat")
+        shell: Rscript {0}
+
+      - name: Render Site
+        run: |
+          rmarkdown::render("./report/LOK_RecoveryOps.Rmd", output_format = "html_document")
+        shell: Rscript {0}
+      
+      - name: setup git config
+        run: |
+          # setup the username and email.
+          git config user.name "SwampThingPaul"
+          git config user.email "<>"
+      
+      - name: Commit results
+        run: |
+          git add -A 
+          git commit -m 'update report' || echo "No changes to commit"
+          git pull --ff-only
+          git push origin || echo "No changes to commit"
