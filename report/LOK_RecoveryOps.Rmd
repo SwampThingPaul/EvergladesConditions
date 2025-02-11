@@ -24,9 +24,11 @@ dst.check=lubridate::dst(as.POSIXct(up.date))
 library(AnalystHelper)
 library(reshape2)
 library(plyr)
+library(zoo)
 library(flextable)
 
 library(downloadthis)
+library(labeling)
 
 forFUN <- function(forecast_horizon,
                    I_forecast,
@@ -101,6 +103,7 @@ Q.fac=c(0.2,0.4,0.6,0.8,1.2,1.7,2.1)
 
 ## Dates
 TODAY <- date.fun(Sys.Date())
+YEST <- TODAY - 86400
 TODAY.DOY <- TODAY|>
   format("%j")|>
   as.numeric()
@@ -157,6 +160,8 @@ LOSOM.sch.bk = cbind(LOSOM.sch.bk,date_mat)|>
 
 LOSOM.sch.bk[-1] = lapply(LOSOM.sch.bk[-1],dat.interp);
 
+## Lake Recovery started Dec 7
+lake.rec <- date.fun("2024-12-07")
 
 ```
 
@@ -380,6 +385,7 @@ data.frame(Scenario =c(1:7),
 ## Results {.tabset}
 
 ```{r data, include=FALSE}
+
 dates = date.fun(c("2015-05-01","2025-04-30"))
 
 # Stage Data --------------------------------------------------------------
@@ -413,6 +419,17 @@ LOK.stg.da <- dcast(LOK.stg.da,Date.EST~Priority,value.var = "Data.Value",mean,n
 if(sum(names(LOK.stg.da)%in%c("P1"))==0){LOK.stg.da$P1 <- NA}
 LOK.stg.da$STG29 <- with(LOK.stg.da,ifelse(is.na(P1)==T,P2,P1))
 
+if(is.na(subset(LOK.stg.da,Date.EST==YEST)$STG29)){
+  map.url <- paste0("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/",format(YEST,"%m%d"),"/StatusDaily.htm")
+  mapdata <- readLines(map.url)
+  val <- grep("../plots/ok8hhp.pdf",mapdata)
+  LakeStage <- as.numeric(strsplit(mapdata[val[1]],"\\s+")[[1]][6])
+  
+  LOK.stg.da[LOK.stg.da$Date.EST==YEST,"STG29"] <- LakeStage
+  
+}
+
+# tail(LOK.stg.da)
 # Interpolation functions
 get_LOK_area <- approxfun(LOK.stg.area.vol$STG29.ft, LOK.stg.area.vol$area.acres, rule = 2)    # Volume -> Area
 get_LOK_stage <- approxfun(LOK.stg.area.vol$volume.acft, LOK.stg.area.vol$STG29.ft, rule = 2)  # Volume -> Stage
@@ -506,10 +523,13 @@ LOK.stg.da.ET$ETLoss.LL_30d <- zoo::rollapply(LOK.stg.da.ET$ETLoss.LL,30,mean,al
 # Flows -------------------------------------------------------------------
 LOK.Q.dbkeys <- data.frame(
   DBKEY = c("AL760","91656","91687","91686","91675","91668",
-            "91513","91508","91510","02855"),
+            "91513","91508","91510","02855",
+            "DJ235","DJ239"),
   SITE = c("S65EX1","S65E","S84","S84X","S72","S71",
-              "S354","S351","S352","L8.441"),
-  loc = c(rep("inflow_North",6),rep("outflow_South",4))
+              "S354","S351","S352","L8.441",
+           "S77","S308"),
+  loc = c(rep("inflow_North",6),rep("outflow_South",4),
+          "CRE","SLE")
 )
 
 LOK_Q_list <- lapply(LOK.Q.dbkeys$DBKEY, function(dbkey) {
@@ -528,11 +548,16 @@ LOK_Q_list <- lapply(LOK.Q.dbkeys$DBKEY, function(dbkey) {
 # Remove any NULL elements (i.e., those that caused errors) from the list
 LOK_Q_list <- Filter(Negate(is.null), LOK_Q_list)
 
+loc.dir <- data.frame(loc = c("inflow_North", "outflow_South", "CRE", "SLE"),
+                      flow.dir = c("Inflow","Outflow",NA,NA))
+
 LOK.Q.da <- do.call(rbind, LOK_Q_list)|>
   merge(LOK.Q.dbkeys, by = "DBKEY")|>
+  merge(loc.dir,by="loc")|>
   mutate(Date.EST = date.fun(Date),
-         flow.dir = ifelse(loc=="outflow_South"&Data.Value<0,"Inflow","Outflow"))
-LOK.Q.da$flow.dir <- with(LOK.Q.da,ifelse(loc=="inflow_North","Inflow",as.character(flow.dir)))
+         flow.dir = ifelse(flow.dir=="Outflow"&Data.Value<0,"Inflow","Outflow")
+         )
+# LOK.Q.da$flow.dir <- with(LOK.Q.da,ifelse(loc=="inflow_North","Inflow",as.character(flow.dir)))
 
 LOK.Q.da_total <- dcast(LOK.Q.da,Date.EST~flow.dir,
                         value.var = "Data.Value",
@@ -577,467 +602,175 @@ leg.txt = c("CRE 2100 cfs; SLE 1400 cfs;\nEAA 0 cfs",
             "CRE 2100 cfs; SLE 0 cfs;\nEAA Hist Median + 300 cfs (1 FEB)",
             "CRE 2100 cfs; SLE 150 cfs;\nEAA Hist Median + 300 cfs (1 FEB)"
             )
+
+subset(LOK.stg.da,Date.EST==lake.rec)
+
+Q.sum <- ddply(LOK.Q.da,c("loc","Date.EST"),summarise,TFlow = sum(abs(Data.Value),na.rm=T))
+Q.sum$MA.14d <- with(Q.sum,ave(TFlow,loc,FUN = function(x) rollapply(x,width=14,FUN=mean, na.rm=T,align="right",fill=NA)))
+
+# library(ggplot2)
+# ggplot(subset(Q.sum,Date.EST>lake.rec-(2*86400)),aes(x=Date.EST,y=TFlow))+
+#   geom_point()+
+#   facet_wrap(~loc,scales="free")
+
+
 ```
 
-### Scenario 1
+At the start of the lake recovery period (`r format(lake.rec,"%b %d")`), lake Okeechobee stage was at `r subset(LOK.stg.da,Date.EST==lake.rec)$STG29` Ft NGVD29. Yesterday (`r format(YEST,"%b, %d %Y")`), lake Okeechobee stage was at `r subset(LOK.stg.da,Date.EST==YEST)$STG29` Ft NGVD29. As of yesterday, the 14-day moving average for inflows north and outflows east, west and south were `r round(subset(Q.sum,loc=="inflow_North"&Date.EST==YEST)$MA.14d)`, `r round(subset(Q.sum,loc=="SLE"&Date.EST==YEST)$MA.14d)`, `r round(subset(Q.sum,loc=="CRE"&Date.EST==YEST)$MA.14d)` and `r round(subset(Q.sum,loc=="outflow_South"&Date.EST==YEST)$MA.14d)`cfs. 
 
-```{r S1Calc,echo = F}
-LOK_HMF_S1 <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(0)*rep(Q.fac,num.weeks), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
-  ET =  ET.dat$med.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S1.UCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(0)*rep(Q.fac,num.weeks), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90), 
-  ET =  ET.dat$Q90.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S1.LCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(0)*rep(Q.fac,num.weeks), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
-  ET =  ET.dat$Q10.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
+```{r Q,echo=FALSE,results='hide',fig.width=7,fig.height=6,fig.align='center',fig.cap="Daily and 14-day moving average discharge volumes for inflows north and outflows east, west and south"}
+par(family="serif",mar=c(1,3,0.25,0.5),oma=c(3,2.5,1,0.1));
+layout_matrix <- matrix(c(0,  1,  0, 
+                          2,  0,  3, 
+                          0,  4,  0), 
+                        nrow = 3, byrow = TRUE)
+layout(layout_matrix)#,heights=c(0.8,0.8,0.8),widths=c(0.8,0.8,0.8))
+
+locs <- c("inflow_North", "CRE", "SLE", "outflow_South")
+locs.labs <- c("Inflow North","Outflow West (CRE)","Outflow East (SLE)","Outflow South (EAA)")
+maxQ <- aggregate(TFlow~loc,data=subset(Q.sum,Date.EST>lake.rec-(2*86400)),max,na.rm=T)|>
+  mutate(TFlow = TFlow*1.1)
+
+for(i in 1:4){
+ylim.val <- c(0,subset(maxQ,loc==locs[i])$TFlow);# by.y <- NA; ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
+ymaj <- labeling::heckbert(ylim.val[1],ylim.val[2],5)
+ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)# labeling::heckbert(ylim.val[1],ylim.val[2],10)
+xlim.val <- c(lake.rec-(2*86400),YEST+(14*86400)); xmaj <- seq(xlim.val[1],xlim.val[2],"30 days"); xmin <- seq(xlim.val[1],xlim.val[2],"15 days")
+
+plot(TFlow~Date.EST,Q.sum,type="n",ann=F,axes=F,ylim=ylim.val,xlim=xlim.val)
+abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.5)
+with(subset(Q.sum,loc==locs[i]),pt_line(Date.EST,TFlow,2,"lightblue",1,21,"dodgerblue1",pt.lwd = 0.1))
+lines(MA.14d~Date.EST,subset(Q.sum,loc==locs[i]),col="red")
+points(MA.14d~Date.EST,subset(Q.sum,loc==locs[i]&Date.EST==YEST),pch=19,col="red")
+with(subset(Q.sum,loc==locs[i]&Date.EST==YEST),text(Date.EST,MA.14d,round(MA.14d),pos=4,offset=0.5,font=4,cex=0.75,col="red"))
+axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
+mtext(side=3,locs.labs[i],font=2)
+if(i==2){mtext(side=2,line=3,"Discharge (cfs)")}
+if(i==4){mtext(side=1,line=2,"Date (Month-Day)")}
+}
 ```
 
-```{r S1,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #1."}
-j <- 1
-par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
-layout(matrix(1:2,1,2),widths=c(1,0.5))
 
-xlim.val=date.fun(c("2024-11-20","2025-04-30"));by.x=10;xmaj=seq(xlim.val[1],xlim.val[2],"2 months");xmin=seq(xlim.val[1],xlim.val[2],"1 months")
-ylim.val=c(10,17.5);by.y=2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 
-plot(STG29~Date.EST,LOK.stg.da,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
-abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
-lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
-lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
-# shaded.range(LOK_HMF_S1.UCI$Date_forecast,LOK_HMF_S1.LCI$Stage,LOK_HMF_S1.UCI$Stage,s.cols[j],lty=0)
-lines(Stage~Date_forecast,LOK_HMF_S1,lwd=2,col=s.cols[j],lty=1)
-# lines(Stage~Date_forecast,LOK_HMF_S1.UCI,col=s.cols[j],lty=2,lwd=1)
-# lines(Stage~Date_forecast,LOK_HMF_S1.LCI,col=s.cols[j],lty=2,lwd=1)
-abline(h=12,col="hotpink",lwd=2,lty=2)
-abline(h=11.5,col="lightgreen",lwd=2,lty=2)
-axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj)
-box(lwd=1)
-mtext(side=1,"Month",line=2,cex=1.25)
-mtext(side=2,"Stage Elevation\n(Feet, NGVD29)",line=2,cex=1)
+```{r setup2,echo=F}
+sNums <- paste0("S",1:6)
 
-par(mar=c(2,0.5,0.25,0.25))
-plot(0:1,0:1,type="n",ann=F,axes=F)
+fore.scen <- data.frame(scenario = sNums,
+                        CRE = 2100,
+                        SLE = c(rep(1400,3),700,0,150),
+                        EAA = c(-1,0,rep(300,4)))
 
-legend("center",
-       legend = c("Current Stage",leg.txt[j]),
-       pch=c(NA),lty=c(1),lwd=2,
-       col=c("red",s.cols[j]),#,"hotpink","lightgreen"),
-       pt.bg=c(NA),pt.cex=1,
-       ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
-mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
+EAA_add <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"))
+  # mutate(AddQ = ifelse(Date.EST>date.fun("2025-02-01"),300,0))
+
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align='center')
+
 ```
 
-```{r,echo=F}
-LOK_HMF_S1|>
+```{r, echo=FALSE,results='asis'}
+
+for(i in 1:nrow(fore.scen)){
+  # Create header for each tab
+  cat(sprintf("\n### %s\n", paste("Scenario",i)))
+  
+  
+  EAA_add$AddQ <- if(subset(fore.scen,scenario==sNums[i])$EAA <= 0){
+    Q.dat$Outflow.median*subset(fore.scen,scenario==sNums[i])$EAA
+  }else{
+      ifelse(EAA_add$Date.EST>date.fun("2025-02-01"),300,0)
+    }
+                                      
+  
+  LOK_HMF <- forFUN_scenario(
+    CRE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
+    SLE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
+    EAA.Q = cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ), 
+    # EAA.Q = if(subset(fore.scen,scenario==sNums[i])$EAA == 0){rep(0,nrow(EAA_add))}else{cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ)}, 
+    inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
+    ET =  ET.dat$med.ETPI_ft,
+    STG = LOK.stg.da_today$STG29)
+  LOK_HMF$scenario <- sNums[i]
+  
+  assign(paste0("LOK_HMF_S",i),LOK_HMF)
+  LOK_HMF.UCI <- forFUN_scenario(
+    CRE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
+    SLE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
+    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ),
+    inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
+    ET =  ET.dat$Q90.ETPI_ft,
+    STG = LOK.stg.da_today$STG29)
+  LOK_HMF.LCI <- forFUN_scenario(
+    CRE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
+    SLE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
+    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10+EAA_add$AddQ),
+    inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
+    ET =  ET.dat$Q10.ETPI_ft,
+    STG = LOK.stg.da_today$STG29)
+  
+  # plot(LOK_HMF.LCI$Stage~LOK_HMF.UCI$Stage);abline(0,1)
+  # plot(EAA~Date_forecast,LOK_HMF.UCI,ylim=c(0,30000),type="l")
+  # lines(EAA~Date_forecast,LOK_HMF.LCI)
+  
+  par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
+  layout(matrix(1:2,1,2),widths=c(1,0.5))
+
+  xlim.val <- date.fun(c("2024-11-20","2025-04-30"));by.x <- 10;
+  xmaj <- seq(xlim.val[1],xlim.val[2],"2 months");
+  xmin <- seq(xlim.val[1],xlim.val[2],"1 months")
+  ylim.val <- c(10,17.5);by.y <- 2;ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
+  # ymaj <- labeling::heckbert(ylim.val[1],ylim.val[2],6)
+
+  plot(STG29~Date.EST,LOK.stg.da,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
+  abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
+  lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
+  lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
+  lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
+  lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
+  # shaded.range(LOK_HMF.UCI$Date_forecast,LOK_HMF_S1.LCI$Stage,LOK_HMF_S1.UCI$Stage,s.cols[i],lty=0)
+  lines(Stage~Date_forecast,LOK_HMF,lwd=2,col=s.cols[i],lty=1)
+  lines(Stage~Date_forecast,LOK_HMF.UCI,col=s.cols[i],lty=2,lwd=1)
+  lines(Stage~Date_forecast,LOK_HMF.LCI,col=s.cols[i],lty=2,lwd=1)
+  abline(h=12,col="hotpink",lwd=2,lty=2)
+  abline(h=11.5,col="lightgreen",lwd=2,lty=2)
+  axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
+  axis_fun(2,ymaj,ymin,ymaj)
+  box(lwd=1)
+  mtext(side=1,"Month",line=2,cex=1.25)
+  mtext(side=2,"Stage Elevation\n(Feet, NGVD29)",line=2,cex=1)
+
+  par(mar=c(2,0.5,0.25,0.25))
+  plot(0:1,0:1,type="n",ann=F,axes=F)
+
+  legend("center",
+         legend = c("Current Stage",leg.txt[i]),
+         pch=c(NA),lty=c(1),lwd=2,
+         col=c("red",s.cols[i]),#,"hotpink","lightgreen"),
+         pt.bg=c(NA),pt.cex=1,
+         ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
+  mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
+  
+  cat(sprintf("<center>Lake Okeechobee Stage forecast (with 10th to 90th percentile band) under scenario # %s</center>", i))
+  
+  cat("<br>")
+  
+  LOK_HMF|>
   download_this(
-    output_name = "S1_forecast",
+    output_name = "output",
     output_extension = ".xlsx",
     button_label = "Scenario Forecast Output",
     button_type = "primary",
     has_icon = TRUE,
     icon = "fa fa-file-excel"
-  )
+  )|>
+    print()
+
+  
+  cat("\n\n")
+}
 ```
 
-### Scenario 2
-
-```{r S2Calc,echo = F}
-LOK_HMF_S2 <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.median), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
-  ET =  ET.dat$med.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S2.UCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90), 
-  ET =  ET.dat$Q90.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S2.LCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
-  ET =  ET.dat$Q10.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-```
-
-```{r S2,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #2."}
-j <- 2
-par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
-layout(matrix(1:2,1,2),widths=c(1,0.5))
-
-xlim.val=date.fun(c("2024-11-20","2025-04-30"));by.x=10;xmaj=seq(xlim.val[1],xlim.val[2],"2 months");xmin=seq(xlim.val[1],xlim.val[2],"1 months")
-ylim.val=c(10,17.5);by.y=2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
-
-plot(STG29~Date.EST,LOK.stg.da,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
-abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
-lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
-lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
-# shaded.range(LOK_HMF_S2.UCI$Date_forecast,LOK_HMF_S2.LCI$Stage, LOK_HMF_S2.UCI$Stage,s.cols[j],lty=0)
-lines(Stage~Date_forecast,LOK_HMF_S2,lwd=2,col=s.cols[j],lty=1)
-# lines(Stage~Date_forecast,LOK_HMF_S2.UCI,col=s.cols[j],lty=2,lwd=1)
-# lines(Stage~Date_forecast,LOK_HMF_S2.LCI,col=s.cols[j],lty=2,lwd=1)
-abline(h=12,col="hotpink",lwd=2,lty=2)
-abline(h=11.5,col="lightgreen",lwd=2,lty=2)
-axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj)
-box(lwd=1)
-mtext(side=1,"Month",line=2,cex=1.25)
-mtext(side=2,"Stage Elevation\n(Feet, NGVD29)",line=2,cex=1)
-
-par(mar=c(2,0.5,0.25,0.25))
-plot(0:1,0:1,type="n",ann=F,axes=F)
-
-legend("center",
-       legend = c("Current Stage",leg.txt[j]),
-       pch=c(NA),lty=c(1),lwd=2,
-       col=c("red",s.cols[j]),#,"hotpink","lightgreen"),
-       pt.bg=c(NA),pt.cex=1,
-       ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
-mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
-
-```{r,echo=F}
-LOK_HMF_S2|>
-  download_this(
-    output_name = "S2_forecast",
-    output_extension = ".xlsx",
-    button_label = "Scenario Forecast Output",
-    button_type = "primary",
-    has_icon = TRUE,
-    icon = "fa fa-file-excel"
-  )
-```
-
-### Scenario 3
-
-```{r S3Calc,echo = F}
-EAA_add <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"))|>
-  mutate(AddQ = ifelse(Date.EST>date.fun("2025-02-01"),300,0))
-
-LOK_HMF_S3 <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
-  ET =  ET.dat$med.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S3.UCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90), 
-  ET =  ET.dat$Q90.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S3.LCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
-  ET =  ET.dat$Q10.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-```
-
-```{r S3,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #3."}
-j <- 3
-par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
-layout(matrix(1:2,1,2),widths=c(1,0.5))
-
-xlim.val=date.fun(c("2024-11-20","2025-04-30"));by.x=10;xmaj=seq(xlim.val[1],xlim.val[2],"2 months");xmin=seq(xlim.val[1],xlim.val[2],"1 months")
-ylim.val=c(10,17.5);by.y=2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
-
-plot(STG29~Date.EST,LOK.stg.da,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
-abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
-lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
-lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
-# shaded.range(LOK_HMF_S3.UCI$Date_forecast,LOK_HMF_S3.LCI$Stage, LOK_HMF_S3.UCI$Stage,s.cols[j],lty=0)
-lines(Stage~Date_forecast,LOK_HMF_S3,lwd=2,col=s.cols[j],lty=1)
-# lines(Stage~Date_forecast,LOK_HMF_S3.UCI,col=s.cols[j],lty=2,lwd=1)
-# lines(Stage~Date_forecast,LOK_HMF_S3.LCI,col=s.cols[j],lty=2,lwd=1)
-abline(h=12,col="hotpink",lwd=2,lty=2)
-abline(h=11.5,col="lightgreen",lwd=2,lty=2)
-axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj)
-box(lwd=1)
-mtext(side=1,"Month",line=2,cex=1.25)
-mtext(side=2,"Stage Elevation\n(Feet, NGVD29)",line=2,cex=1)
-
-par(mar=c(2,0.5,0.25,0.25))
-plot(0:1,0:1,type="n",ann=F,axes=F)
-
-legend("center",
-       legend = c("Current Stage",leg.txt[j]),
-       pch=c(NA),lty=c(1),lwd=2,
-       col=c("red",s.cols[j]),#,"hotpink","lightgreen"),
-       pt.bg=c(NA),pt.cex=1,
-       ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
-mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
-
-```{r,echo=F}
-LOK_HMF_S3|>
-  download_this(
-    output_name = "S3_forecast",
-    output_extension = ".xlsx",
-    button_label = "Scenario Forecast Output",
-    button_type = "primary",
-    has_icon = TRUE,
-    icon = "fa fa-file-excel"
-  )
-```
-
-### Scenario 4
-
-```{r S4Calc,echo = F}
-LOK_HMF_S4 <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(700)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
-  ET =  ET.dat$med.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S4.UCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(700)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90), 
-  ET =  ET.dat$Q90.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S4.LCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(700)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
-  ET =  ET.dat$Q10.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-```
-
-```{r S4,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #4."}
-j <- 4
-par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
-layout(matrix(1:2,1,2),widths=c(1,0.5))
-
-xlim.val=date.fun(c("2024-11-20","2025-04-30"));by.x=10;xmaj=seq(xlim.val[1],xlim.val[2],"2 months");xmin=seq(xlim.val[1],xlim.val[2],"1 months")
-ylim.val=c(10,17.5);by.y=2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
-
-plot(STG29~Date.EST,LOK.stg.da,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
-abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
-lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
-lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
-# shaded.range(LOK_HMF_S4.UCI$Date_forecast,LOK_HMF_S4.LCI$Stage, LOK_HMF_S4.UCI$Stage,s.cols[j],lty=0)
-lines(Stage~Date_forecast,LOK_HMF_S4,lwd=2,col=s.cols[j],lty=1)
-# lines(Stage~Date_forecast,LOK_HMF_S4.UCI,col=s.cols[j],lty=2,lwd=1)
-# lines(Stage~Date_forecast,LOK_HMF_S4.LCI,col=s.cols[j],lty=2,lwd=1)
-abline(h=12,col="hotpink",lwd=2,lty=2)
-abline(h=11.5,col="lightgreen",lwd=2,lty=2)
-axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj)
-box(lwd=1)
-mtext(side=1,"Month",line=2,cex=1.25)
-mtext(side=2,"Stage Elevation\n(Feet, NGVD29)",line=2,cex=1)
-
-par(mar=c(2,0.5,0.25,0.25))
-plot(0:1,0:1,type="n",ann=F,axes=F)
-
-legend("center",
-       legend = c("Current Stage",leg.txt[j]),
-       pch=c(NA),lty=c(1),lwd=2,
-       col=c("red",s.cols[j]),#,"hotpink","lightgreen"),
-       pt.bg=c(NA),pt.cex=1,
-       ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
-mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
-
-```{r,echo=F}
-LOK_HMF_S4|>
-  download_this(
-    output_name = "S4_forecast",
-    output_extension = ".xlsx",
-    button_label = "Scenario Forecast Output",
-    button_type = "primary",
-    has_icon = TRUE,
-    icon = "fa fa-file-excel"
-  )
-```
-
-### Scenario 5
-
-```{r S5Calc,echo = F}
-LOK_HMF_S5 <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(0)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
-  ET =  ET.dat$med.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S5.UCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(0)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90), 
-  ET =  ET.dat$Q90.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S5.LCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(0)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
-  ET =  ET.dat$Q10.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-```
-
-```{r S5,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #5."}
-j <- 5
-par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
-layout(matrix(1:2,1,2),widths=c(1,0.5))
-
-xlim.val=date.fun(c("2024-11-20","2025-04-30"));by.x=10;xmaj=seq(xlim.val[1],xlim.val[2],"2 months");xmin=seq(xlim.val[1],xlim.val[2],"1 months")
-ylim.val=c(10,17.5);by.y=2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
-
-plot(STG29~Date.EST,LOK.stg.da,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
-abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
-lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
-lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
-# shaded.range(LOK_HMF_S5.UCI$Date_forecast,LOK_HMF_S5.LCI$Stage, LOK_HMF_S5.UCI$Stage,s.cols[j],lty=0)
-lines(Stage~Date_forecast,LOK_HMF_S5,lwd=2,col=s.cols[j],lty=1)
-# lines(Stage~Date_forecast,LOK_HMF_S5.UCI,col=s.cols[j],lty=2,lwd=1)
-# lines(Stage~Date_forecast,LOK_HMF_S5.LCI,col=s.cols[j],lty=2,lwd=1)
-abline(h=12,col="hotpink",lwd=2,lty=2)
-abline(h=11.5,col="lightgreen",lwd=2,lty=2)
-axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj)
-box(lwd=1)
-mtext(side=1,"Month",line=2,cex=1.25)
-mtext(side=2,"Stage Elevation\n(Feet, NGVD29)",line=2,cex=1)
-
-par(mar=c(2,0.5,0.25,0.25))
-plot(0:1,0:1,type="n",ann=F,axes=F)
-
-legend("center",
-       legend = c("Current Stage",leg.txt[j]),
-       pch=c(NA),lty=c(1),lwd=2,
-       col=c("red",s.cols[j]),#,"hotpink","lightgreen"),
-       pt.bg=c(NA),pt.cex=1,
-       ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
-mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
-
-```{r,echo=F}
-LOK_HMF_S5|>
-  download_this(
-    output_name = "S5_forecast",
-    output_extension = ".xlsx",
-    button_label = "Scenario Forecast Output",
-    button_type = "primary",
-    has_icon = TRUE,
-    icon = "fa fa-file-excel"
-  )
-```
-
-
-### Scenario 6
-
-```{r S6Calc,echo = F}
-LOK_HMF_S6 <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(150)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
-  ET =  ET.dat$med.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S6.UCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(150)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90), 
-  ET =  ET.dat$Q90.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-LOK_HMF_S6.LCI <- forFUN_scenario(
-  CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
-  SLE.Q = cfs.to.acftd(150)*rep(Q.fac,num.weeks),
-  EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10+EAA_add$AddQ), 
-  inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
-  ET =  ET.dat$Q10.ETPI_ft,
-  STG = LOK.stg.da_today$STG29)
-```
-
-```{r S6,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #4."}
-j <- 6
-par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
-layout(matrix(1:2,1,2),widths=c(1,0.5))
-
-xlim.val=date.fun(c("2024-11-20","2025-04-30"));by.x=10;xmaj=seq(xlim.val[1],xlim.val[2],"2 months");xmin=seq(xlim.val[1],xlim.val[2],"1 months")
-ylim.val=c(10,17.5);by.y=2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
-
-plot(STG29~Date.EST,LOK.stg.da,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
-abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
-lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
-lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
-lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
-# shaded.range(LOK_HMF_S6.UCI$Date_forecast,LOK_HMF_S6.LCI$Stage, LOK_HMF_S6.UCI$Stage,s.cols[j],lty=0)
-lines(Stage~Date_forecast,LOK_HMF_S6,lwd=2,col=s.cols[j],lty=1)
-# lines(Stage~Date_forecast,LOK_HMF_S6.UCI,col=s.cols[j],lty=2,lwd=1)
-# lines(Stage~Date_forecast,LOK_HMF_S6.LCI,col=s.cols[j],lty=2,lwd=1)
-abline(h=12,col="hotpink",lwd=2,lty=2)
-abline(h=11.5,col="lightgreen",lwd=2,lty=2)
-axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj)
-box(lwd=1)
-mtext(side=1,"Month",line=2,cex=1.25)
-mtext(side=2,"Stage Elevation\n(Feet, NGVD29)",line=2,cex=1)
-
-par(mar=c(2,0.5,0.25,0.25))
-plot(0:1,0:1,type="n",ann=F,axes=F)
-
-legend("center",
-       legend = c("Current Stage",leg.txt[j]),
-       pch=c(NA),lty=c(1),lwd=2,
-       col=c("red",s.cols[j]),#,"hotpink","lightgreen"),
-       pt.bg=c(NA),pt.cex=1,
-       ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
-mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
-
-```{r,echo=F}
-LOK_HMF_S6|>
-  download_this(
-    output_name = "S6_forecast",
-    output_extension = ".xlsx",
-    button_label = "Scenario Forecast Output",
-    button_type = "primary",
-    has_icon = TRUE,
-    icon = "fa fa-file-excel"
-  )
-```
 
 ### All Scenarios
 ```{r all S,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under all scenarios."}
@@ -1053,12 +786,11 @@ lines(ZONE.A~Date,LOSOM.sch.bk,lwd=1.5,col="black")
 lines(ZONE.BC~Date,LOSOM.sch.bk,lwd=1.5,col="black")
 lines(ZONE.D~Date,LOSOM.sch.bk,lwd=1.5,col="grey")
 lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
-lines(Stage~Date_forecast,LOK_HMF_S1,lwd=2,col=s.cols[1],lty=1)
-lines(Stage~Date_forecast,LOK_HMF_S2,lwd=2,col=s.cols[2],lty=1)
-lines(Stage~Date_forecast,LOK_HMF_S3,lwd=2,col=s.cols[3],lty=1)
-lines(Stage~Date_forecast,LOK_HMF_S4,lwd=2,col=s.cols[4],lty=1)
-lines(Stage~Date_forecast,LOK_HMF_S5,lwd=2,col=s.cols[5],lty=1)
-lines(Stage~Date_forecast,LOK_HMF_S6,lwd=2,col=s.cols[6],lty=2)
+for(k in 1:nrow(fore.scen)){
+  tmp.dat <- get(paste("LOK_HMF",sNums[k],sep="_"))
+  lines(Stage~Date_forecast,tmp.dat,lwd=2,col=s.cols[k],lty=1)
+  
+}
 abline(h=12,col="hotpink",lwd=2,lty=2)
 abline(h=11.5,col="lightgreen",lwd=2,lty=2)
 axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
