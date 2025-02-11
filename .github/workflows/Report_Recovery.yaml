@@ -1,5 +1,5 @@
 ## from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
-name: Render & Deploy Site
+name: Render & Deploy Forecast
 on:
   push:
   schedule:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   render:
-    name: Render report
+    name: Render Forecast
     # runs-on: macos-latest
     # runs-on: windows-latest
     runs-on: windows-2019
@@ -30,10 +30,10 @@ jobs:
                   "dataRetrieval","downloadthis",
                   "rvest","labeling"))
           remotes::install_github("SwampThingPaul/AnalystHelper")
-          remotes::install_github("SwampThingPaul/EVERSpatDat")
+          # remotes::install_github("SwampThingPaul/EVERSpatDat")
         shell: Rscript {0}
 
-      - name: Render Site
+      - name: Render Forecast
         run: |
           rmarkdown::render("./report/LOK_RecoveryOps.Rmd", output_format = "html_document")
         shell: Rscript {0}
@@ -44,7 +44,7 @@ jobs:
           git config user.name "SwampThingPaul"
           git config user.email "<>"
       
-      - name: Commit results
+      - name: Commit Forecast
         run: |
           git add -A 
           git commit -m 'update report' || echo "No changes to commit"
