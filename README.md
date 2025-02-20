@@ -7,4 +7,11 @@ Link](https://swampthingecology.org/EvergladesConditions/report/REPORT.html)
 - Has information related to water levels, flows and other conditions
   through out the Everglades Ecosystem
 
+Recovery Operations Forecast: [FORECAST
+Link](https://swampthingecology.org/EvergladesConditions/report/LOK_RecoveryOps.html)
+
+- This is a basic hydrological modeling framework forecast using
+  observed data to evaluate different scenarios during the late 2024/mid
+  2025 time period
+
 Author: Paul Julian [email](mailto:pjulian@evergladesfoundation.org)
