@@ -38,14 +38,14 @@ forFUN <- function(forecast_horizon,
                    S,V){
   # Time step (Delta t)
   dt <- 1  # Assume daily time steps
-  
+  A <- get_LOK_area(V[1])
   # Simulate future volumes and stages
   for (t in 1:forecast_horizon) {
     # Get the area based on current volume
     A_t <- get_LOK_area(V[t])
-    
+    A[t+1] <- A_t
     # Compute the new volume using the water balance equation
-    V[t + 1] <- V[t] + dt * (I_forecast[t] - Q_forecast[t] + A_t * (P_forecast[t] - E_forecast[t]))
+    V[t + 1] <- V[t] + dt * (I_forecast[t] - Q_forecast[t] + A[t] * (P_forecast[t] - E_forecast[t]))
     
     # Update the stage based on the new volume
     S[t + 1] <- get_LOK_stage(V[t + 1])
@@ -55,16 +55,17 @@ forFUN <- function(forecast_horizon,
   rslt <- data.frame(
     Time = 1:(forecast_horizon + 1),
     Stage = S,
-    Volume = V
+    Volume = V,
+    Area = A
   )
   return(rslt)
 }
 
-forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q, inflow.Q, ET,STG){
+forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q, inflow.Q, ET,RF=NULL,STG){
   I_forecast <- inflow.Q #Q.dat$Inflow.median 
   Q_forecast <- CRE.Q+SLE.Q+EAA.Q
-  P_forecast <- rep(0,num.weeks*7)
-  E_forecast <- ET.dat$med.ETPI_ft
+  P_forecast <- if(is.null(RF)){rep(0,num.weeks*7)}else{RF}
+  E_forecast <- ET
   
   forecast_horizon <- num.weeks*7; # Days
   # Start with an initial stage
@@ -94,6 +95,8 @@ forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q, inflow.Q, ET,STG){
   return(LOK_HMF)
   
 }
+
+
 
 ## LOK specific
 num.weeks <- 20
@@ -186,8 +189,7 @@ Where
 - $V_t$ (ac-ft) and $A_t$ (acres) are volume/storage and area based on the stage-volume-area relationships specific to Lake Okeechobee based on recent bathymetry
 
 - $P_t$ ($ft \; d^{-1}$) and $E_t$ ($ft \; d^{-1}$) are precipitation and evapotranspiration  
-  - For purposes of this effor precipiation is assumed to be zero given the expected dry conditions (future iterations of this could include historic mean data)
-  - Evapotranspiration is based on historic data from five different monitoring locations across the Lake Okeechobee and EAA region using data from teh last ten water years. 
+  - Based on historic data (last 10 water years) spatially averaged from monitoring locations (see [Data Sources](#datasource), below). 
 - $I_t$ ($ac\mbox{-}ft \; d^{-1}$) is inflow discharges to the lake based on historic discharges
 - $Q_t$ ($ac\mbox{-}ft \; d^{-1}$) is outflow discharges from the lake based on a combination of historic discharges and pulse releases depending on the scenario. 
 
@@ -382,6 +384,11 @@ data.frame(Scenario =c(1:7),
   bold(part="header")
 
 ```
+
+<br>
+Upper and lower bounds of scenario forecasts were calculated using historically observed data based on management objectives during wetter and drier conditions, respectively. Using daily observed discharge, rainfall and ET values between May 2015 to current, the upper (wetter) bounds used the 10th percentile discharge volume to the EAA (plus amount dictated by each respective scenario), 90th percentile for lake inflows, 10th percentile for ET and 90th percentile for rainfall to estimate the change in storage. Conversely for drier conditions (lower bounds) the 90th percentile discharge volume to the EAA, 10th percentile for lake inflows, 90th percentile for ET and 10th percentile for rainfall to estimate the change in storage.    
+
+
 ## Results {.tabset}
 
 ```{r data, include=FALSE}
@@ -392,7 +399,7 @@ dates = date.fun(c("2015-05-01","2025-04-30"))
 LOK.da.dbkeys <- data.frame(
   DBKEY=c("06832","00268"),Priority=c("P2","P1")
 )
-DBHYDRO.meta.byDBKEY(LOK.da.dbkeys$DBKEY)
+# DBHYDRO.meta.byDBKEY(LOK.da.dbkeys$DBKEY)
 
 LOK_da_stg_list <- lapply(LOK.da.dbkeys$DBKEY, function(dbkey) {
   # Attempt to retrieve data and handle errors
@@ -456,7 +463,7 @@ edate <- dates[2]# date.fun(Sys.Date())
 LOK.etpi.dbkeys <- data.frame(
   DBKEY=c("WZ688","UT743","UT748","TW080","UA627")
 )
-DBHYDRO.meta.byDBKEY(LOK.etpi.dbkeys$DBKEY)
+# DBHYDRO.meta.byDBKEY(LOK.etpi.dbkeys$DBKEY)
 
 LOK_da_etpi_list <- lapply(LOK.etpi.dbkeys$DBKEY, function(dbkey) {
   # Attempt to retrieve data and handle errors
@@ -483,8 +490,8 @@ LOK.etpi.da <- do.call(rbind, LOK_etpi_list)|>
          DOY = as.numeric(format(Date,"%j")))
 LOK.etpi.da$Data.Value <- with(LOK.etpi.da,ifelse(Data.Value>1|Data.Value==0,NA,Data.Value))
 
-site.month.mean <- ddply(LOK.etpi.da,c("Station","CY","day","month","DOY"),summarise,
-      mean.ETPI = mean(Data.Value/12,na.rm=T))
+site.month.mean <- ddply(LOK.etpi.da,c("CY","day","month","DOY"),summarise,
+      mean.ETPI = mean(Data.Value/12,na.rm=T)); #spatially averaged data
 site.month.mean$mean.ETPI <- with(site.month.mean,ifelse(mean.ETPI>0.2,NA,mean.ETPI))
 
 overall_ETPI_mean <- ddply(site.month.mean,c("month","day"),summarise,
@@ -503,22 +510,88 @@ overall_ETPI_mean <- ddply(site.month.mean,c("month","day"),summarise,
 
 overall_ETPI_mean2 <- overall_ETPI_mean[,!(names(overall_ETPI_mean)%in%c("month","day","N.val"))]
 
-LOK.stg.da.ET <- merge(LOK.stg.da,overall_ETPI_mean2,"DOY")
-LOK.stg.da.ET <- LOK.stg.da.ET[order(LOK.stg.da.ET$Date.EST),]
+# LOK.stg.da.ET <- merge(LOK.stg.da,overall_ETPI_mean2,"DOY")
+# LOK.stg.da.ET <- LOK.stg.da.ET[order(LOK.stg.da.ET$Date.EST),]
+# 
+# LOK.stg.da.ET$ETLoss <- with(LOK.stg.da.ET,area.acres*mean.ETPI_ft)
+# LOK.stg.da.ET$ETLoss.UL <- with(LOK.stg.da.ET,area.acres*(UCI))
+# LOK.stg.da.ET$ETLoss.LL <- with(LOK.stg.da.ET,area.acres*(LCI))
+# 
+# LOK.stg.da.ET$ETLoss.med <- with(LOK.stg.da.ET,area.acres*med.ETPI_ft)
+# LOK.stg.da.ET$ETLoss.Q2 <- with(LOK.stg.da.ET,area.acres*(Q2.ETPI_ft))
+# LOK.stg.da.ET$ETLoss.Q3 <- with(LOK.stg.da.ET,area.acres*(Q3.ETPI_ft))
+# LOK.stg.da.ET$ETLoss.Q10 <- with(LOK.stg.da.ET,area.acres*(Q10.ETPI_ft))
+# LOK.stg.da.ET$ETLoss.Q90 <- with(LOK.stg.da.ET,area.acres*(Q90.ETPI_ft))
+# 
+# LOK.stg.da.ET$ETLoss_30d <- zoo::rollapply(LOK.stg.da.ET$ETLoss,30,mean,align="right",fill=NA)
+# LOK.stg.da.ET$ETLoss.UL_30d <- zoo::rollapply(LOK.stg.da.ET$ETLoss.UL,30,mean,align="right",fill=NA)
+# LOK.stg.da.ET$ETLoss.LL_30d <- zoo::rollapply(LOK.stg.da.ET$ETLoss.LL,30,mean,align="right",fill=NA)
 
-LOK.stg.da.ET$ETLoss <- with(LOK.stg.da.ET,area.acres*mean.ETPI_ft)
-LOK.stg.da.ET$ETLoss.UL <- with(LOK.stg.da.ET,area.acres*(UCI))
-LOK.stg.da.ET$ETLoss.LL <- with(LOK.stg.da.ET,area.acres*(LCI))
+# Rainfall -------------------------------------------------------------------
+LOK.rf.dbkeys <- data.frame(
+  DBKEY=c("16021","13081","12524","12515")
+)
+# DBHYDRO.meta.byDBKEY(LOK.rf.dbkeys$DBKEY)
 
-LOK.stg.da.ET$ETLoss.med <- with(LOK.stg.da.ET,area.acres*med.ETPI_ft)
-LOK.stg.da.ET$ETLoss.Q2 <- with(LOK.stg.da.ET,area.acres*(Q2.ETPI_ft))
-LOK.stg.da.ET$ETLoss.Q3 <- with(LOK.stg.da.ET,area.acres*(Q3.ETPI_ft))
-LOK.stg.da.ET$ETLoss.Q10 <- with(LOK.stg.da.ET,area.acres*(Q10.ETPI_ft))
-LOK.stg.da.ET$ETLoss.Q90 <- with(LOK.stg.da.ET,area.acres*(Q90.ETPI_ft))
+LOK_da_rf_list <- lapply(LOK.rf.dbkeys$DBKEY, function(dbkey) {
+  # Attempt to retrieve data and handle errors
+  tryCatch({
+    tmp <- DBHYDRO_daily(sdate, edate, dbkey)
+    tmp$DBKEY <- as.character(dbkey)
+    #setTxtProgressBar(pb, i)
+    tmp
+  }, error = function(e) {
+    message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
+    NULL  # Return NULL if there's an error
+  })
+})
 
-LOK.stg.da.ET$ETLoss_30d <- zoo::rollapply(LOK.stg.da.ET$ETLoss,30,mean,align="right",fill=NA)
-LOK.stg.da.ET$ETLoss.UL_30d <- zoo::rollapply(LOK.stg.da.ET$ETLoss.UL,30,mean,align="right",fill=NA)
-LOK.stg.da.ET$ETLoss.LL_30d <- zoo::rollapply(LOK.stg.da.ET$ETLoss.LL,30,mean,align="right",fill=NA)
+# Remove any NULL elements (i.e., those that caused errors) from the list
+LOK_rf_list <- Filter(Negate(is.null), LOK_da_rf_list)
+
+# Combine all data frames in the list into one data frame
+LOK.rf.da <- do.call(rbind, LOK_rf_list)|>
+  mutate(Date.EST = date.fun(Date),
+         month = as.numeric(format(Date,"%m")),
+         CY = as.numeric(format(Date,"%Y")),
+         day = as.numeric(format(Date,"%d")),
+         DOY = as.numeric(format(Date,"%j")))
+
+site.month.rf.mean <- ddply(LOK.rf.da,c("CY","day","month","DOY"),summarise,
+      mean.RF = mean(Data.Value/12,na.rm=T));# spatially average mean rainfall in feet
+
+overall_rf_mean <- ddply(site.month.rf.mean,c("month","day"),summarise,
+        mean.RF_ft = mean(mean.RF,na.rm=T),
+        SE.RF_ft = SE(mean.RF),
+        sd.RF_ft = sd(mean.RF,na.rm=T),
+        med.RF_ft = median(mean.RF,na.rm=T),
+        Q10.RF_ft=quantile(mean.RF,na.rm=T,prob=c(0.10)),
+        Q2.RF_ft=quantile(mean.RF,na.rm=T,prob=c(0.25)),
+        Q3.RF_ft=quantile(mean.RF,na.rm=T,prob=c(0.75)),
+        Q90.RF_ft=quantile(mean.RF,na.rm=T,prob=c(0.90)),
+        N.val = N.obs(mean.RF))|>
+  mutate(UCI = mean.RF_ft + qnorm((1-0.95)/2)* sd.RF_ft,
+         LCI = mean.RF_ft - qnorm((1-0.95)/2)* sd.RF_ft,
+         DOY = as.numeric(format(date.fun(paste(2024,month,day,sep="-")),"%j")))
+
+overall_rf_mean2 <- overall_rf_mean[,!(names(overall_rf_mean)%in%c("month","day","N.val"))]
+
+# LOK.stg.da.RF <- merge(LOK.stg.da,overall_rf_mean2,"DOY")
+# LOK.stg.da.RF <- LOK.stg.da.RF[order(LOK.stg.da.RF$Date.EST),]
+# 
+# LOK.stg.da.RF$RF.vol.mean <- with(LOK.stg.da.RF,area.acres*mean.RF_ft)
+# LOK.stg.da.RF$RF.vol.UL <- with(LOK.stg.da.RF,area.acres*(UCI))
+# LOK.stg.da.RF$RF.vol.LL <- with(LOK.stg.da.RF,area.acres*(LCI))
+# 
+# LOK.stg.da.RF$RF.vol.med <- with(LOK.stg.da.RF,area.acres*med.RF_ft)
+# LOK.stg.da.RF$RF.vol.Q2 <- with(LOK.stg.da.RF,area.acres*(Q2.RF_ft))
+# LOK.stg.da.RF$RF.vol.Q3 <- with(LOK.stg.da.RF,area.acres*(Q3.RF_ft))
+# LOK.stg.da.RF$RF.vol.Q10 <- with(LOK.stg.da.RF,area.acres*(Q10.RF_ft))
+# LOK.stg.da.RF$RF.vol.Q90 <- with(LOK.stg.da.RF,area.acres*(Q90.RF_ft))
+# 
+# LOK.stg.da.RF$RF.vol_30d <- zoo::rollapply(LOK.stg.da.RF$RF.vol,30,mean,align="right",fill=NA)
+# LOK.stg.da.RF$RF.vol.UL_30d <- zoo::rollapply(LOK.stg.da.RF$RF.vol.UL,30,mean,align="right",fill=NA)
+# LOK.stg.da.RF$RF.vol.LL_30d <- zoo::rollapply(LOK.stg.da.RF$RF.vol.LL,30,mean,align="right",fill=NA)
 
 # Flows -------------------------------------------------------------------
 LOK.Q.dbkeys <- data.frame(
@@ -592,10 +665,17 @@ LOK.Q.DOYstats <- ddply(LOK.Q.da_total,c("DOY"),summarise,
                         SLE.Q10 = quantile(SLE,na.rm=T,probs=c(0.10)),
                         SLE.Q90 = quantile(SLE,na.rm=T,probs=c(0.90)))
 
+
+
+
 ## Set up data for forecasts
 ET.dat <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"))|>
   mutate(DOY = as.numeric(format(Date.EST,"%j")))|>
   merge(overall_ETPI_mean,"DOY",sort=F)
+
+RF.dat <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"))|>
+  mutate(DOY = as.numeric(format(Date.EST,"%j")))|>
+  merge(overall_rf_mean,"DOY",sort=F)
 
 Q.dat <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"))|>
   mutate(DOY = as.numeric(format(Date.EST,"%j")))|>
@@ -643,22 +723,30 @@ maxQ <- aggregate(TFlow~loc,data=subset(Q.sum,Date.EST>lake.rec-(2*86400)),max,n
   mutate(TFlow = TFlow*1.1)
 
 for(i in 1:4){
-ylim.val <- c(0,subset(maxQ,loc==locs[i])$TFlow);# by.y <- NA; ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
-ymaj <- labeling::heckbert(ylim.val[1],ylim.val[2],5)
-ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)# labeling::heckbert(ylim.val[1],ylim.val[2],10)
-xlim.val <- c(lake.rec-(2*86400),YEST+(14*86400)); xmaj <- seq(xlim.val[1],xlim.val[2],"30 days"); xmin <- seq(xlim.val[1],xlim.val[2],"15 days")
-
-plot(TFlow~Date.EST,Q.sum,type="n",ann=F,axes=F,ylim=ylim.val,xlim=xlim.val)
-abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.5)
-with(subset(Q.sum,loc==locs[i]),pt_line(Date.EST,TFlow,2,"lightblue",1,21,"dodgerblue1",pt.lwd = 0.1))
-lines(MA.14d~Date.EST,subset(Q.sum,loc==locs[i]),col="red")
-points(MA.14d~Date.EST,subset(Q.sum,loc==locs[i]&Date.EST==YEST),pch=19,col="red")
-with(subset(Q.sum,loc==locs[i]&Date.EST==YEST),text(Date.EST,MA.14d,round(MA.14d),pos=4,offset=0.5,font=4,cex=0.75,col="red"))
-axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
-axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
-mtext(side=3,locs.labs[i],font=2)
-if(i==2){mtext(side=2,line=3,"Discharge (cfs)")}
-if(i==4){mtext(side=1,line=2,"Date (Month-Day)")}
+  ylim.val <- c(0,subset(maxQ,loc==locs[i])$TFlow);# by.y <- NA; ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
+  ymaj <- labeling::heckbert(ylim.val[1],ylim.val[2],5)
+  ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)# labeling::heckbert(ylim.val[1],ylim.val[2],10)
+  xlim.val <- c(lake.rec-(2*86400),YEST+(14*86400)); xmaj <- seq(xlim.val[1],xlim.val[2],"30 days"); xmin <- seq(xlim.val[1],xlim.val[2],"15 days")
+  
+  tmp.dat <- subset(Q.sum,loc==locs[i])
+  # tmp.dat[tmp.dat$Date.EST==YEST&tmp.dat$TFlow==0,"TFlow"] <- NA
+  
+  plot(TFlow~Date.EST,Q.sum,type="n",ann=F,axes=F,ylim=ylim.val,xlim=xlim.val)
+  abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.5)
+  with(tmp.dat,pt_line(Date.EST,TFlow,2,"lightblue",1,21,"dodgerblue1",pt.lwd = 0.1))
+  lines(MA.14d~Date.EST,tmp.dat,col="red")
+  # if(is.na(subset(tmp.dat,Date.EST==YEST)$TFlow)|subset(tmp.dat,Date.EST==YEST)$TFlow==0){
+  #   points(MA.14d~Date.EST,subset(tmp.dat,Date.EST==YEST-86400),pch=19,col="red")
+  #   with(subset(tmp.dat,Date.EST==YEST-86400),text(Date.EST,MA.14d,round(MA.14d),pos=4,offset=0.5,font=4,cex=0.75,col="red"))
+  # }else{
+    points(MA.14d~Date.EST,subset(tmp.dat,Date.EST==YEST),pch=19,col="red")
+    with(subset(tmp.dat,Date.EST==YEST),text(Date.EST,MA.14d,round(MA.14d),pos=4,offset=0.5,font=4,cex=0.75,col="red")) 
+  # }
+  axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+  axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
+  mtext(side=3,locs.labs[i],font=2)
+  if(i==2){mtext(side=2,line=3,"Discharge (cfs)")}
+  if(i==4){mtext(side=1,line=2,"Date (Month-Day)")}
 }
 ```
 
@@ -688,22 +776,43 @@ LOK_HMF.base <- forFUN_scenario(
     # EAA.Q = if(subset(fore.scen,scenario==sNums[i])$EAA == 0){rep(0,nrow(EAA_add))}else{cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ)}, 
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
     ET =  ET.dat$med.ETPI_ft,
+    RF = RF.dat$med.RF_ft,
     STG = LOK.stg.da_today$STG29)
+# LOK_HMF.base.UCI <- forFUN_scenario(
+#     CRE.Q = cfs.to.acftd(Q.dat$CRE.Q90),
+#     SLE.Q = cfs.to.acftd(Q.dat$SLE.Q90),
+#     EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90),
+#     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
+#     ET =  ET.dat$Q90.ETPI_ft,
+#     RF = RF.dat$Q90.RF_ft,
+#     STG = LOK.stg.da_today$STG29)
+# LOK_HMF.base.LCI <- forFUN_scenario(
+#     CRE.Q = cfs.to.acftd(Q.dat$CRE.Q10),
+#     SLE.Q = cfs.to.acftd(Q.dat$SLE.Q10),
+#     EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10),
+#     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
+#     ET =  ET.dat$Q10.ETPI_ft,
+#     RF = RF.dat$Q10.RF_ft,
+#     STG = LOK.stg.da_today$STG29)
+
 LOK_HMF.base.UCI <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(Q.dat$CRE.Q90),
-    SLE.Q = cfs.to.acftd(Q.dat$SLE.Q90),
-    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90),
-    inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
-    ET =  ET.dat$Q90.ETPI_ft,
-    STG = LOK.stg.da_today$STG29)
-LOK_HMF.base.LCI <- forFUN_scenario(
-    CRE.Q = cfs.to.acftd(Q.dat$CRE.Q10),
     SLE.Q = cfs.to.acftd(Q.dat$SLE.Q10),
     EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10),
-    inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
+    inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
     ET =  ET.dat$Q10.ETPI_ft,
+    RF = RF.dat$Q90.RF_ft,
     STG = LOK.stg.da_today$STG29)
-  
+LOK_HMF.base.LCI <- forFUN_scenario(
+    CRE.Q = cfs.to.acftd(Q.dat$CRE.Q90),
+    SLE.Q = cfs.to.acftd(Q.dat$SLE.Q10),
+    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90),
+    inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
+    ET =  ET.dat$Q90.ETPI_ft,
+    RF = RF.dat$Q10.RF_ft,
+    STG = LOK.stg.da_today$STG29)
+
+
 ```
 
 ```{r, echo=FALSE,results='asis'}
@@ -737,25 +846,36 @@ for(i in 1:nrow(fore.scen)){
     # EAA.Q = if(subset(fore.scen,scenario==sNums[i])$EAA == 0){rep(0,nrow(EAA_add))}else{cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ)}, 
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
     ET =  ET.dat$med.ETPI_ft,
+    RF = RF.dat$med.RF_ft,
     STG = LOK.stg.da_today$STG29)
   LOK_HMF$scenario <- sNums[i]
   
   assign(paste0("LOK_HMF_S",i),LOK_HMF)
+  ## Wetter Scenarios
   LOK_HMF.UCI <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
     SLE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
-    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ.UCI),
+    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10+EAA_add$AddQ.LCI),
+    # EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ.UCI),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
-    ET =  ET.dat$Q90.ETPI_ft,
+    ET =  ET.dat$Q10.ETPI_ft,
+    RF = RF.dat$Q90.RF_ft,
     STG = LOK.stg.da_today$STG29)
+  ## Drier Scenarios
   LOK_HMF.LCI <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
     SLE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
-    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10),#+EAA_add$AddQ.LCI),# cfs.to.acftd(pmax(0,Q.dat$Outflow.Q10+EAA_add$AddQ.LCI)),
+    EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90+EAA_add$AddQ.UCI),# +EAA_add$AddQ.LCI),# cfs.to.acftd(pmax(0,Q.dat$Outflow.Q10+EAA_add$AddQ.LCI)),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
-    ET =  ET.dat$Q10.ETPI_ft,
+    ET =  ET.dat$Q90.ETPI_ft,
+    RF = RF.dat$Q10.RF_ft,
     STG = LOK.stg.da_today$STG29)
-  
+  # 
+  # plot(Stage~Date_forecast,LOK_HMF)
+  # lines(Stage~Date_forecast,LOK_HMF.UCI)
+  # lines(Stage~Date_forecast,LOK_HMF.LCI)
+  # 
+  # 
   tmp.UCI <- LOK_HMF.UCI[,c("Date_forecast","Stage")];colnames(tmp.UCI) <- c("Date.EST",sNums[i])
   tmp.LCI <- LOK_HMF.LCI[,c("Date_forecast","Stage")];colnames(tmp.LCI) <- c("Date.EST",sNums[i])
   HMF.UCIs <- merge(HMF.UCIs,tmp.UCI,"Date.EST")
@@ -782,8 +902,8 @@ for(i in 1:nrow(fore.scen)){
   lines(STG29~Date.EST,LOK.stg.da,lwd=1,col="red",lty=1)
   # shaded.range(LOK_HMF.UCI$Date_forecast,LOK_HMF_S1.LCI$Stage,LOK_HMF_S1.UCI$Stage,s.cols[i],lty=0)
   lines(Stage~Date_forecast,LOK_HMF,lwd=2,col=s.cols[i],lty=1)
-  # lines(Stage~Date_forecast,LOK_HMF.UCI,col=s.cols[i],lty=2,lwd=1)
-  # lines(Stage~Date_forecast,LOK_HMF.LCI,col=s.cols[i],lty=2,lwd=1)
+  lines(Stage~Date_forecast,LOK_HMF.UCI,col=s.cols[i],lty=2,lwd=1)
+  lines(Stage~Date_forecast,LOK_HMF.LCI,col=s.cols[i],lty=2,lwd=1)
   abline(h=12,col="hotpink",lwd=2,lty=2)
   abline(h=11.5,col="lightgreen",lwd=2,lty=2)
   axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)
@@ -801,9 +921,9 @@ for(i in 1:nrow(fore.scen)){
          col=c("red",s.cols[i]),#,"hotpink","lightgreen"),
          pt.bg=c(NA),pt.cex=1,
          ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
-  mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
+  mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Historic median rainfall\n- Historic median ET",cex=0.75)
   
-  cat(sprintf("<center>Lake Okeechobee Stage forecast under scenario # %s</center>", i))
+  cat(sprintf("<center>Lake Okeechobee Stage forecast under scenario # %s (wetter (upper line) and drier (lower line) conditions).</center>", i))
   # cat(sprintf("<center>Lake Okeechobee Stage forecast (with 10th to 90th percentile band) under scenario # %s</center>", i))
   
   cat("<br>")
@@ -825,7 +945,7 @@ for(i in 1:nrow(fore.scen)){
 ```
 
 ### Base
-```{r Base S,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Base lake Okeechobee Stage forecast using historical data (with 10th to 90th percentile band)."}
+```{r Base S,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Base lake Okeechobee Stage forecast using historical data (wetter (upper line) and drier (lower line) conditions)."}
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
 
@@ -902,16 +1022,16 @@ legend("center",
        col=c(c("black",s.cols)),#,"hotpink","lightgreen"),
        pt.bg=c(NA),pt.cex=1,
        ncol=1,cex=0.6,bty="n",y.intersp=2,x.intersp=0.75,xjust=0.5,yjust=0.5)
-mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
+mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Historic median rainfall\n- Historic median ET",cex=0.75)
 ```
 
-## Data Sources
+## Data Sources {#datasource}
 
 All data were retrieved from SFWMD DBhydro between `r format(dates[1],"%d %b %Y")` and `r format(dates[2],"%d %b %Y")` from the following DBKeys. 
 
 ```{r ,echo=F}
-meta.dat <- DBHYDRO.meta.byDBKEY(c(LOK.da.dbkeys$DBKEY,LOK.etpi.dbkeys$DBKEY,LOK.Q.dbkeys$DBKEY))
-meta.dat <- meta.dat[match(c(LOK.da.dbkeys$DBKEY,LOK.etpi.dbkeys$DBKEY,LOK.Q.dbkeys$DBKEY),meta.dat$DBKEY),]
+meta.dat <- DBHYDRO.meta.byDBKEY(c(LOK.da.dbkeys$DBKEY,LOK.etpi.dbkeys$DBKEY,LOK.rf.dbkeys$DBKEY,LOK.Q.dbkeys$DBKEY))
+meta.dat <- meta.dat[match(c(LOK.da.dbkeys$DBKEY,LOK.etpi.dbkeys$DBKEY,LOK.rf.dbkeys$DBKEY,LOK.Q.dbkeys$DBKEY),meta.dat$DBKEY),]
 
 meta.dat[,c(1:9,20)]|>
   flextable()|>
