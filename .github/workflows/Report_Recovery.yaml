@@ -3,7 +3,7 @@ name: Render & Deploy Forecast
 on:
   push:
   schedule:
-    - cron: '0 5 * * 1'
+    - cron: '0 9 * * 1'
 
 jobs:
   render:
@@ -28,7 +28,7 @@ jobs:
           # remotes::install_github("tidyverse/magrittr")
           install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
                   "dataRetrieval","downloadthis",
-                  "rvest","labeling"))
+                  "rvest"))
           remotes::install_github("SwampThingPaul/AnalystHelper")
           # remotes::install_github("SwampThingPaul/EVERSpatDat")
         shell: Rscript {0}

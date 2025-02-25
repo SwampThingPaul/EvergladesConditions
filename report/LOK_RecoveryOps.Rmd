@@ -96,6 +96,37 @@ forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q, inflow.Q, ET,RF=NULL,STG){
   
 }
 
+heck_nice <- function(x,round){
+      e <- floor(log10(x))
+    f <- x/(10^e)
+    if (round) {
+        if (f < 1.5) 
+            nf <- 1
+        else if (f < 3) 
+            nf <- 2
+        else if (f < 7) 
+            nf <- 5
+        else nf <- 10
+    }
+    else {
+        if (f <= 1) 
+            nf <- 1
+        else if (f <= 2) 
+            nf <- 2
+        else if (f <= 5) 
+            nf <- 5
+        else nf <- 10
+    }
+    nf * (10^e)
+}
+heckbert_labs <- function(dmin,dmax,m){
+  
+    range <- heck_nice((dmax - dmin), FALSE)
+    lstep <- heck_nice(range/(m - 1), TRUE)
+    lmin <- floor(dmin/lstep) * lstep
+    lmax <- ceiling(dmax/lstep) * lstep
+    seq(lmin, lmax, by = lstep)
+}
 
 
 ## LOK specific
@@ -723,9 +754,12 @@ maxQ <- aggregate(TFlow~loc,data=subset(Q.sum,Date.EST>lake.rec-(2*86400)),max,n
   mutate(TFlow = TFlow*1.1)
 
 for(i in 1:4){
-  ylim.val <- c(0,subset(maxQ,loc==locs[i])$TFlow);# by.y <- NA; ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
-  ymaj <- labeling::heckbert(ylim.val[1],ylim.val[2],5)
-  ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)# labeling::heckbert(ylim.val[1],ylim.val[2],10)
+  ylim.val <- c(0,subset(maxQ,loc==locs[i])$TFlow);
+  # by.y <- NA; 
+  # ymaj <- seq(ylim.val[1],ylim.val[2],by.y);
+  # ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
+  ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],5)
+  ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)
   xlim.val <- c(lake.rec-(2*86400),YEST+(14*86400)); xmaj <- seq(xlim.val[1],xlim.val[2],"30 days"); xmin <- seq(xlim.val[1],xlim.val[2],"15 days")
   
   tmp.dat <- subset(Q.sum,loc==locs[i])
