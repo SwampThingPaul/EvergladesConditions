@@ -920,9 +920,6 @@ scenario_data <- do.call(rbind, lapply(1:nrow(scenarios), function(i) {
 
 HMF.UCIs <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"));# stores stage forecast for all scenarios
 HMF.LCIs <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"));# stores stage forecast for all scenarios
-knitr::opts_chunk$set(echo = TRUE,
-                      fig.align='center')
-
 
 LOK_HMF.base <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(Q.dat$CRE.median),
@@ -970,7 +967,86 @@ LOK_HMF.base.LCI <- forFUN_scenario(
 
 ```
 
-```{r, echo=FALSE,results='asis'}
+
+```{r,echo=F,fig.align='center',fig.width=7,fig.height=5,fig.cap="Scenario discharge volumes for inflow, CRE, SLE and EAA relative to day-of-year median discharge volume."}
+
+par(family="serif",mar=c(2,1.5,1,0.5),oma=c(2,3,1,0.1));
+# layout_matrix <- matrix(c(1:5),ncol=5, byrow = TRUE)
+layout_matrix <- matrix(c(1:4,5,5),ncol=3, byrow = F)
+
+layout(layout_matrix,widths=c(1,1,0.75))#,heights=c(0.8,0.8,0.8),widths=c(0.8,0.8,0.8))
+
+xlim.val <- c(TODAY,TODAY+(120*86400));by.x <- 10;
+xmaj <- seq(xlim.val[1],xlim.val[2],"2 months");
+xmin <- seq(xlim.val[1],xlim.val[2],"1 months")
+ylim.val <- c(0,4500);by.y <- 2000;ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
+
+plot(CRE~Date.EST,scenario_data,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
+abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
+lines(Inflow.median~Date.EST,Q.dat,lwd=1.5,lty=2)
+# lines(cfs.to.acftd(Inflow.median)~Date.EST,Q.dat,lwd=1.5)
+axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
+mtext(side=3,"Inflow",font=2)
+mtext(side=2,line=1.5,at=0.5,outer=T,"Discharge (cfs)")
+
+plot(CRE~Date.EST,scenario_data,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
+abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
+for(i in 1:length(sNums)){
+  tmp <- subset(scenario_data,scenario==sNums[i])
+  tmp$CRE.pulse <- tmp$CRE*rep(Q.fac,num.weeks)# |>cfs.to.acftd()
+  lines(CRE.pulse~Date.EST,tmp,col=s.cols[i],lwd=1.5)
+}
+lines(CRE.median~Date.EST,Q.dat,col="black",lwd=1.5,lty=2)
+axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
+mtext(side=3,"CRE",font=2)
+
+plot(CRE~Date.EST,scenario_data,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
+abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
+for(i in 1:length(sNums)){
+  tmp <- subset(scenario_data,scenario==sNums[i])
+  tmp$SLE.pulse <- tmp$SLE*rep(Q.fac,num.weeks)# |>cfs.to.acftd()
+  lines(SLE.pulse~Date.EST,tmp,col=s.cols[i],lwd=1.5)
+}
+lines(SLE.median~Date.EST,Q.dat,col="black",lwd=1.5,lty=2)
+axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+axis_fun(2,ymaj,ymin,NA);box(lwd=1)
+mtext(side=3,"SLE",font=2)
+
+plot(CRE~Date.EST,scenario_data,ylim=ylim.val,xlim=xlim.val,type="n",ann=F,axes=F)
+abline(h=ymaj,v=xmaj,lwd=0.5,col="grey",lty=3)
+for(i in 1:length(sNums)){
+  tmp <- subset(scenario_data,scenario==sNums[i])
+  lines(EAA~Date.EST,tmp,col=s.cols[i],lwd=1.5)
+}
+lines(Outflow.median~Date.EST,Q.dat,col="black",lwd=1.5,lty=2)
+axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+axis_fun(2,ymaj,ymin,NA);box(lwd=1)
+mtext(side=3,"EAA",font=2)
+mtext(side=1,line=0,at=0.4,"Date (Month-Day)",outer=T)
+
+par(mar=c(1,1,0.25,0.5))
+plot(0:1,0:1,type="n",ann=F,axes=F)
+# legend("center",
+#        legend = c(leg.txt,paste("Scenario",1:length(sNums)),"Observed Median"),
+#        pch=c(NA),lty=c(rep(1,length(sNums)),2),lwd=2,
+#        col=c(c("black",s.cols)),#,"hotpink","lightgreen"),
+#        pt.bg=c(NA),pt.cex=1,
+#        ncol=1,cex=0.75,bty="n",y.intersp=2,x.intersp=0.75,xjust=0.5,yjust=0.5)
+legend("center",
+       legend = c(leg.txt,"Observed Median"),
+       pch=c(NA),lty=c(rep(1,length(sNums)),2),lwd=1.5,
+       col=c(c("black",s.cols)),#,"hotpink","lightgreen"),
+       pt.bg=c(NA),pt.cex=1,
+       ncol=1,cex=0.75,bty="n",y.intersp=2,x.intersp=0.75,xjust=0.5,yjust=0.5)
+
+```
+
+```{r, echo=FALSE,results='asis',fig.align='center'}
+# knitr::opts_chunk$set(echo = TRUE,
+#                       fig.align='center',
+#                       fig.width=7,fig.height=4)
 
 for(i in 1:length(sNums)){
   # Create header for each tab
@@ -1109,7 +1185,11 @@ for(i in 1:length(sNums)){
 ```
 
 ### Base
-```{r Base S,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Base lake Okeechobee Stage forecast using historical data (wetter (upper line) and drier (lower line) conditions)."}
+```{r Base S,echo=FALSE,results='hide',fig.align='center',fig.cap="Base lake Okeechobee Stage forecast using historical data (wetter (upper line) and drier (lower line) conditions)."}
+# knitr::opts_chunk$set(echo = TRUE,
+#                       fig.align='center',
+#                       fig.width=7,fig.height=4)
+
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
 
@@ -1146,7 +1226,10 @@ legend("center",
 ```
 
 ### All Scenarios
-```{r all S,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under all scenarios."}
+```{r all S,echo=FALSE,results='hide',fig.align='center',fig.cap="Lake Okeechobee Stage forecast under all scenarios."}
+# knitr::opts_chunk$set(echo = TRUE,
+#                       fig.align='center',
+#                       fig.width=7,fig.height=4)
 # HMF.UCIs$Upper.vals <- apply(HMF.UCIs[,2:ncol(HMF.UCIs)],1,max,na.rm=T)
 # HMF.LCIs$Lower.vals <- apply(HMF.LCIs[,2:ncol(HMF.LCIs)],1,min,na.rm=T)
 
