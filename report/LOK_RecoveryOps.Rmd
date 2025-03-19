@@ -881,8 +881,13 @@ for(i in 1:4){
 date.vals <- seq(TODAY+(1*86400), EDate, "1 days")
 
 # Define breakpoints
+bk1.start <- if(TODAY<date.fun(date.fun("2025-03-14"))){
+  TODAY+(1*86400)
+}else{
+    date.fun("2025-03-13")
+  }
 breakpoints <- list(
-  sea.bk1 = seq(TODAY+(1*86400), date.fun("2025-03-14"), "1 days"),
+  sea.bk1 = seq(bk1.start, date.fun("2025-03-14"), "1 days"),
   sea.bk2 = seq(date.fun("2025-03-15"), date.fun("2025-03-31"), "1 days"),
   sea.bk3 = seq(date.fun("2025-04-01"), date.fun("2025-05-14"), "1 days"),
   sea.bk4 = seq(date.fun("2025-05-15"), EDate, "1 days")
@@ -915,7 +920,7 @@ scenario_data <- do.call(rbind, lapply(1:nrow(scenarios), function(i) {
   }))
 }))
 
-
+scenario_data <- subset(scenario_data,Date.EST%in%seq(TODAY+(1*86400),EDate,"1 days"))
 
 
 HMF.UCIs <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"));# stores stage forecast for all scenarios
