@@ -61,9 +61,9 @@ forFUN <- function(forecast_horizon,
   return(rslt)
 }
 
-forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q, inflow.Q, ET,RF=NULL,STG){
+forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q,LWL.Q, inflow.Q, ET,RF=NULL,STG){
   I_forecast <- inflow.Q #Q.dat$Inflow.median 
-  Q_forecast <- CRE.Q+SLE.Q+EAA.Q
+  Q_forecast <- CRE.Q+SLE.Q+EAA.Q+LWL.Q
   P_forecast <- if(is.null(RF)){rep(0,num.weeks*7)}else{RF}
   E_forecast <- ET
   
@@ -88,6 +88,7 @@ forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q, inflow.Q, ET,RF=NULL,STG){
     CRE = c(NA,CRE.Q),
     SLE = c(NA,SLE.Q),
     EAA = c(NA,EAA.Q),
+    LWL = c(NA,LWL.Q),
     QT = c(NA,Q_forecast),
     Inflow = c(NA,inflow.Q))
   )
@@ -439,22 +440,24 @@ cap.val <- "Lake Okeechobee Stage Forecast Scenarios"
 #            SLE = c(1400,1400,1400,700,0,150),
 #            EAA = c(0, "Historic Median",rep("Historic Median + 300 cfs (after 1 Feb)",4)))|>
 scen.des <- data.frame(Scenario = c(1:5),
-           CRE = c(rep("2100\n(1200 after 15 May)",3),2100,2100),
-           SLE = c(rep("1400\n(0 after 15 Mar)",3),1400,0),
-           EAA = c(paste0(c(1500,2500,3500),"\n(0 after 15 May)"),0,0),
-           Source = c(rep("USACE\nLong Range\nProjections",3),rep("Internal",2))
+           CRE = c(rep(1200,3),1400,2100),
+           SLE = c(rep(0,3),500,1400),
+           EAA = c(paste0(c(1500,2500,3500),"\n(0 after 15 May)"),"Max Practicable\n(historic median)",0),
+           LWL = paste("Up to",c(rep(300,3),120,300)),
+           Source = c(rep("USACE\nLong Range\nProjections",3),"Current Plan","Internal")
            )
 scen.des|>
   flextable()|>
   # width(width=c(0.5,0.75,0.75,2.75))|>
-  merge_v(5)|>
+  merge_v(6)|>
   autofit()|>
   align(align="center",part="all")|>
   padding(padding=1,part="all")|>
-  footnote(j=2:3,part="header",
+  footnote(j=2:4,part="header",
            value=as_paragraph("Based on weekly average pulse releases"),ref_symbols =c(" A "))|>
-  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")|>
-  hline(i=3)|>
+  add_header_lines(values=cap.val)|>
+  align(align="center",part="header")|>fontsize(size=13,part="header")|>
+  hline(i=3:4)|>
   font(fontname="Times New Roman",part="all")|>
   fontsize(size=12,part="body")|>
   fontsize(size=13,part="header")|>
@@ -701,12 +704,12 @@ overall_rf_mean2 <- overall_rf_mean[,!(names(overall_rf_mean)%in%c("month","day"
 LOK.Q.dbkeys <- data.frame(
   DBKEY = c("AL760","91656","91687","91686","91675","91668",
             "91513","91508","91510","02855",
-            "DJ235","DJ239"),
+            "DJ235","DJ239","65409","91510"),
   SITE = c("S65EX1","S65E","S84","S84X","S72","S71",
               "S354","S351","S352","L8.441",
-           "S77","S308"),
+           "S77","S308","S271","S352"),
   loc = c(rep("inflow_North",6),rep("outflow_South",4),
-          "CRE","SLE")
+          "CRE","SLE",rep("LWL",2))
 )
 
 LOK_Q_list <- lapply(LOK.Q.dbkeys$DBKEY, function(dbkey) {
@@ -725,8 +728,8 @@ LOK_Q_list <- lapply(LOK.Q.dbkeys$DBKEY, function(dbkey) {
 # Remove any NULL elements (i.e., those that caused errors) from the list
 LOK_Q_list <- Filter(Negate(is.null), LOK_Q_list)
 
-loc.dir <- data.frame(loc = c("inflow_North", "outflow_South", "CRE", "SLE"),
-                      flow.dir = c("Inflow","Outflow","CRE", "SLE"))
+loc.dir <- data.frame(loc = c("inflow_North", "outflow_South", "CRE", "SLE","LWL"),
+                      flow.dir = c("Inflow","Outflow","CRE", "SLE","LWL"))
 # loc.dir <- data.frame(loc = c("inflow_North", "outflow_South", "CRE", "SLE"),
 #                       flow.dir = c("Inflow","Outflow",NA,NA))
 
@@ -741,6 +744,53 @@ LOK.Q.da <- do.call(rbind, LOK_Q_list)|>
 # LOK.Q.da$flow.dir <- with(LOK.Q.da,ifelse(loc=="inflow_North","Inflow",as.character(flow.dir)))
 # LOK.Q.da$Data.Value <- with(LOK.Q.da,ifelse(flow.dir%in%c("CRE","SLE")&Data.Value<0,0,Data.Value))
 subset(LOK.Q.da,Date.EST==YEST)
+
+LWL.max.date <- max(LOK.Q.da$Date.EST[LOK.Q.da$loc == "LWL"])+(1*86400)
+lwl.date.seq <- seq(LWL.max.date, YEST, by = "1 days")
+
+# Preallocate data frame
+lwl.q <- data.frame(Date.EST = lwl.date.seq,
+                    S271 = as.numeric(NA),
+                    S352 = as.numeric(NA))
+
+if (LWL.max.date < YEST) {
+  # Function to extract flow data
+  extract_LWL_flow <- function(date) {
+    url <- paste0("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/", format(date, "%m%d"), "/StatusDaily.htm")
+    mapdata <- try(readLines(url, warn = FALSE), silent = TRUE)
+    
+    if (inherits(mapdata, "try-error")) return(c(NA_real_, NA_real_)) # Return NA if readLines fails
+    
+    S271q <- grep("S-271", mapdata)
+    S352q <- grep("S-352", mapdata)
+    
+    S271q.val <- if (length(S271q) > 0) as.numeric(strsplit(mapdata[S271q[1]], "\\s+|</div>")[[1]][6]) else NA_real_
+    S352q.val <- if (length(S352q) > 0) as.numeric(strsplit(mapdata[S352q[1]], "\\s+|</div>")[[1]][8]) else NA_real_
+    
+    return(c(S271q.val, S352q.val))
+  }
+
+  # Apply function across all dates
+  results <- t(sapply(lwl.date.seq, extract_LWL_flow))
+  
+  # Assign values back to data frame
+  lwl.q$S271 <- results[, 1]
+  lwl.q$S352 <- results[, 2]
+}
+lwl.q.melt <- melt(lwl.q,id.vars="Date.EST",variable.name = "SITE",value.name = "Data.Value")|>
+  mutate(loc = "LWL",
+         DBKEY = "USACE",
+         Qualifier = NA,Revision.Date = NA,
+         Daily.Date = date.fun(Date.EST,tz="America/New_York"),
+         Date = date.fun(Date.EST,tz="America/New_York"),
+         flow.dir = "LWL")|>
+  merge(data.frame(SITE = c("S352","S271"),Station = c("S352_S","S271_C")),
+        "SITE")
+
+LOK.Q.da <- rbind(LOK.Q.da,
+                  lwl.q.melt[,names(LOK.Q.da)]
+                  )
+
 
 LOK.Q.da_total <- dcast(LOK.Q.da,Date.EST~flow.dir,
                         value.var = "Data.Value",
@@ -768,7 +818,10 @@ LOK.Q.DOYstats <- ddply(LOK.Q.da_total,c("DOY"),summarise,
                         CRE.Q90 = quantile(CRE,na.rm=T,probs=c(0.90)),
                         SLE.median = median(SLE,na.rm=T),
                         SLE.Q10 = quantile(SLE,na.rm=T,probs=c(0.10)),
-                        SLE.Q90 = quantile(SLE,na.rm=T,probs=c(0.90)))
+                        SLE.Q90 = quantile(SLE,na.rm=T,probs=c(0.90)),
+                        LWL.median = median(LWL,na.rm=T),
+                        LWL.Q10 = quantile(LWL,na.rm=T,probs=c(0.10)),
+                        LWL.Q90 = quantile(LWL,na.rm=T,probs=c(0.90)))
 
 
 
@@ -802,11 +855,11 @@ s.cols <- MetBrewer::met.brewer("Veronese",length(sNums),direction=1,type="conti
 #             "CRE 2100 cfs; SLE 150 cfs;\nEAA Hist Median + 300 cfs (1 FEB)"
 #             )
 
-leg.txt <- c("CRE 2100 cfs (1200 cfs 15 May); \nSLE 1400 cfs (0 cfs 15 Mar); \nEAA 1500 cfs (0 cfs 15 May)",
-             "CRE 2100 cfs (1200 cfs 15 May); \nSLE 1400 cfs (0 cfs 15 Mar); \nEAA 2500 cfs (0 cfs 15 May)",
-             "CRE 2100 cfs (1200 cfs 15 May); \nSLE 1400 cfs (0 cfs 15 Mar); \nEAA 3500 cfs (0 cfs 15 May)",
-             "CRE 2100 cfs (1200 cfs 15 May); \nSLE 1400 cfs (0 cfs 15 Mar); \nEAA 0 cfs",
-             "CRE 2100 cfs (1200 cfs 15 May); \nSLE 0 cfs; \nEAA 0 cfs")
+leg.txt <- c("CRE 1200 cfs; \nSLE 0 cfs; \nLWL 300 cfs; \nEAA 1500 cfs (0 cfs 15 May)",
+             "CRE 1200 cfs; \nSLE 0 cfs; \nLWL 300 cfs; \nEAA 2500 cfs (0 cfs 15 May)",
+             "CRE 1200 cfs; \nSLE 0 cfs; \nLWL 300 cfs; \nEAA 3500 cfs (0 cfs 15 May)",
+             "CRE 1400 cfs; \nSLE 500 cfs; \nLWL 120 cfs; \nEAA max",
+             "CRE 2100 cfs; \nSLE 1400 cfs; \nLWL 500 cfs; \nEAA 0 cfs")
 
 # subset(LOK.stg.da,Date.EST==lake.rec)
 
@@ -824,19 +877,19 @@ Q.sum$MA.14d <- with(Q.sum,ave(TFlow,loc,FUN = function(x) rollapply(x,width=14,
 At the start of the lake recovery period (`r format(lake.rec,"%b %d")`), lake Okeechobee stage was at `r subset(LOK.stg.da,Date.EST==lake.rec)$STG29` Ft NGVD29. Yesterday (`r format(YEST,"%b, %d %Y")`), lake Okeechobee stage was at `r subset(LOK.stg.da,Date.EST==YEST)$STG29` Ft NGVD29. As of yesterday, the 14-day moving average for inflows north and outflows east, west and south were `r round(subset(Q.sum,loc=="inflow_North"&Date.EST==YEST)$MA.14d)`, `r round(subset(Q.sum,loc=="SLE"&Date.EST==YEST)$MA.14d)`, `r round(subset(Q.sum,loc=="CRE"&Date.EST==YEST)$MA.14d)` and `r round(subset(Q.sum,loc=="outflow_South"&Date.EST==YEST)$MA.14d)`cfs. 
 
 ```{r Q,echo=FALSE,results='hide',fig.width=7,fig.height=6,fig.align='center',fig.cap="Daily and 14-day moving average discharge volumes for inflows north and outflows east, west and south"}
-par(family="serif",mar=c(1,3,0.25,0.5),oma=c(3,2.5,1,0.1));
+par(family="serif",mar=c(2.5,3,0.25,0.5),oma=c(1.5,2.5,1,0.1));
 layout_matrix <- matrix(c(0,  1,  0, 
                           2,  0,  3, 
-                          0,  4,  0), 
+                          0,  4,  5), 
                         nrow = 3, byrow = TRUE)
 layout(layout_matrix)#,heights=c(0.8,0.8,0.8),widths=c(0.8,0.8,0.8))
 
-locs <- c("inflow_North", "CRE", "SLE", "outflow_South")
-locs.labs <- c("Inflow North","Outflow West (CRE)","Outflow East (SLE)","Outflow South (EAA)")
+locs <- c("inflow_North", "CRE", "SLE", "outflow_South","LWL")
+locs.labs <- c("Inflow North","Outflow West (CRE)","Outflow East (SLE)","Outflow South (EAA)","Outflow (LWL)")
 maxQ <- aggregate(TFlow~loc,data=subset(Q.sum,Date.EST>lake.rec-(2*86400)),max,na.rm=T)|>
   mutate(TFlow = TFlow*1.1)
 
-for(i in 1:4){
+for(i in 1:5){
   ylim.val <- c(0,subset(maxQ,loc==locs[i])$TFlow);
   # by.y <- NA; 
   # ymaj <- seq(ylim.val[1],ylim.val[2],by.y);
@@ -878,49 +931,60 @@ for(i in 1:4){
 # EAA_add <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"))
   # mutate(AddQ = ifelse(Date.EST>date.fun("2025-02-01"),300,0))
 
-date.vals <- seq(TODAY+(1*86400), EDate, "1 days")
-
 # Define breakpoints
-bk1.start <- if(TODAY<date.fun(date.fun("2025-03-14"))){
+# bk1.start was to fix a automation issue.
+bk1.start <- if(TODAY<date.fun(date.fun("2025-05-15"))){
   TODAY+(1*86400)
 }else{
-    date.fun("2025-03-13")
+    date.fun("2025-05-15")
   }
 breakpoints <- list(
-  sea.bk1 = seq(bk1.start, date.fun("2025-03-14"), "1 days"),
-  sea.bk2 = seq(date.fun("2025-03-15"), date.fun("2025-03-31"), "1 days"),
-  sea.bk3 = seq(date.fun("2025-04-01"), date.fun("2025-05-14"), "1 days"),
-  sea.bk4 = seq(date.fun("2025-05-15"), EDate, "1 days")
+  sea.bk1 = seq(bk1.start, date.fun("2025-05-15"),"1 days"),
+  sea.bk2 = seq(date.fun("2025-05-16"),EDate, "1 days")
 )
 
 # Define scenarios
 scenarios <- data.frame(
   scenario = paste0("S", 1:5),
-  EAA = c(1500, 2500, 3500, 0, 0)
+  EAA = c(1500, 2500, 3500, 0, 0),
+  CRE = c(1200,1200,1200,1400,2100),
+  SLE = c(0,0,0,500,1400),
+  LWL = c(300,300,300,120,300)
 )
 
-# Define flow values for each period
-flow_values <- list(
-  sea.bk1 = c(2100, 1400), # CRE, SLE
-  sea.bk2 = c(2100, 0),
-  sea.bk3 = c(1200, 0),
-  sea.bk4 = c(0, 0)
-)
+# # Define flow values for each period
+# flow_values <- list(
+#   sea.bk1 = c(1200, 0, 300), # CRE, SLE, LWL
+#   sea.bk2 = c(1200, 0, 300),
+#   sea.bk3 = c(1200, 1400, 300),
+#   sea.bk4 = c(2100, 500, 120)
+# )
 
 # Construct dataset
 scenario_data <- do.call(rbind, lapply(1:nrow(scenarios), function(i) {
   do.call(rbind, lapply(names(breakpoints), function(bk) {
     data.frame(
       Date.EST = breakpoints[[bk]],
-      CRE = flow_values[[bk]][1],
-      SLE = ifelse(scenarios$scenario[i] == "S5" & bk == "sea.bk1", 0, flow_values[[bk]][2]), # Special case for S5
-      EAA = ifelse(scenarios$scenario[i] == "S4" | scenarios$scenario[i] == "S5", 0, scenarios$EAA[i]),
+      CRE = scenarios$CRE[i],
+      SLE = scenarios$SLE[i],# ifelse(scenarios$scenario[i] == "S5" & bk == "sea.bk1", 0, flow_values[[bk]][2]), # Special case for S5
+      LWL = scenarios$LWL[i],
+      EAA = ifelse(bk == "sea.bk2",0,scenarios$EAA[i]),
       scenario = scenarios$scenario[i]
     )
   }))
 }))
 
-scenario_data <- subset(scenario_data,Date.EST%in%seq(TODAY+(1*86400),EDate,"1 days"))
+# scenario_data <- subset(scenario_data,Date.EST%in%seq(TODAY+(1*86400),EDate,"1 days"))
+
+DOY.for.dates <- as.numeric(format(seq(bk1.start,EDate,"1 days"),"%j"))
+scenario_data[scenario_data$scenario=="S4","EAA"] <- subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)$Outflow.median
+
+for(i in 1:nrow(scenarios)){
+  scenario_data[scenario_data$scenario==paste0("S",i),"LWL"] <- pmin(scenario_data[scenario_data$scenario==paste0("S",i),"LWL"],subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)$LWL.median)
+}
+
+# subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)
+# head(LOK.Q.DOYstats)
 
 
 HMF.UCIs <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"));# stores stage forecast for all scenarios
@@ -930,6 +994,7 @@ LOK_HMF.base <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(Q.dat$CRE.median),
     SLE.Q = cfs.to.acftd(Q.dat$SLE.median),
     EAA.Q = cfs.to.acftd(Q.dat$Outflow.median), 
+    LWL.Q = cfs.to.acftd(Q.dat$LWL.median),
     # EAA.Q = if(subset(fore.scen,scenario==sNums[i])$EAA == 0){rep(0,nrow(EAA_add))}else{cfs.to.acftd(Q.dat$Outflow.median+EAA_add$AddQ)}, 
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
     ET =  ET.dat$med.ETPI_ft,
@@ -957,6 +1022,7 @@ LOK_HMF.base.UCI <- forFUN_scenario(
     SLE.Q = cfs.to.acftd(Q.dat$SLE.Q10),
     EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q10),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
+    LWL.Q = cfs.to.acftd(Q.dat$LWL.Q10),
     ET =  ET.dat$Q10.ETPI_ft,
     RF = RF.dat$Q90.RF_ft,
     STG = LOK.stg.da_today$STG29)
@@ -964,6 +1030,7 @@ LOK_HMF.base.LCI <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(Q.dat$CRE.Q90),
     SLE.Q = cfs.to.acftd(Q.dat$SLE.Q10),
     EAA.Q = cfs.to.acftd(Q.dat$Outflow.Q90),
+    LWL.Q = cfs.to.acftd(Q.dat$LWL.Q10),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
     ET =  ET.dat$Q90.ETPI_ft,
     RF = RF.dat$Q10.RF_ft,
@@ -1083,6 +1150,7 @@ for(i in 1:length(sNums)){
     CRE.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
     SLE.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
     EAA.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$EAA),
+    LWL.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$LWL),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
     ET =  ET.dat$med.ETPI_ft,
     RF = RF.dat$med.RF_ft,
@@ -1099,6 +1167,7 @@ for(i in 1:length(sNums)){
     CRE.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
     SLE.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
     EAA.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$EAA),
+    LWL.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$LWL),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
     ET =  ET.dat$Q10.ETPI_ft,
     RF = RF.dat$Q90.RF_ft,
@@ -1111,6 +1180,7 @@ for(i in 1:length(sNums)){
     CRE.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
     SLE.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$SLE)*rep(Q.fac,num.weeks),
     EAA.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$EAA),
+    LWL.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$LWL),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
     ET =  ET.dat$Q90.ETPI_ft,
     RF = RF.dat$Q10.RF_ft,
