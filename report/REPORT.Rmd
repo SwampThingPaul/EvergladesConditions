@@ -87,7 +87,8 @@ library(dataRetrieval)
 library(downloadthis)
 
 library(sf)
-library(raster)
+# library(raster)
+library(terra)
 library(EVERSpatDat)
 
 library(rvest)
@@ -108,7 +109,37 @@ decdate.fun=function(date){
   total <- as.numeric(difftime(end, start, units = "secs"))
   Y + sofar / total
 }
-
+heck_nice <- function(x,round){
+      e <- floor(log10(x))
+    f <- x/(10^e)
+    if (round) {
+        if (f < 1.5) 
+            nf <- 1
+        else if (f < 3) 
+            nf <- 2
+        else if (f < 7) 
+            nf <- 5
+        else nf <- 10
+    }
+    else {
+        if (f <= 1) 
+            nf <- 1
+        else if (f <= 2) 
+            nf <- 2
+        else if (f <= 5) 
+            nf <- 5
+        else nf <- 10
+    }
+    nf * (10^e)
+}
+heckbert_labs <- function(dmin,dmax,m){
+  
+    range <- heck_nice((dmax - dmin), FALSE)
+    lstep <- heck_nice(range/(m - 1), TRUE)
+    lmin <- floor(dmin/lstep) * lstep
+    lmax <- ceiling(dmax/lstep) * lstep
+    seq(lmin, lmax, by = lstep)
+}
 source("windrose_fun.R")
 # source("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/windrose_fun.R")
 ## webscrape tools
@@ -157,144 +188,121 @@ dates=seq(date.fun(paste(format(Sys.Date(),"%Y"),"01","01",sep="-")),date.fun(Sy
 ## Maps and Archived data
 # mapdata=readLines("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/1217/StatusDaily.htm")
 
-map.q=data.frame()
-for(i in 1:(length(dates))){
-  map.url=paste0("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/",format(dates[i],"%m%d"),"/StatusDaily.htm")
-  # download.file(map.url, destfile = "map_dat.html", quiet=TRUE)
-  mapdata=readLines(map.url)
+## Centeral and South Ssytem
+results_list <- vector("list", length(dates))
+
+extract_val <- function(mapdata, pattern, split1, idx1, split2 = NULL, idx2 = NULL, as_num = TRUE) {
+  line <- grep(pattern, mapdata, value = TRUE)
+  if (length(line) == 0) return(NA)
+  part <- strsplit(line, split1)[[1]]
+  if (length(part) < idx1) return(NA)
+  value <- part[idx1]
+  if (!is.null(split2)) {
+    part2 <- strsplit(value, split2)[[1]]
+    if (length(part2) < idx2) return(NA)
+    value <- part2[idx2]
+  }
+  if (as_num) return(as.numeric(value))
+  value
+}
+
+for (i in seq_along(dates)) {
+  date_i <- dates[i]
+  url <- paste0("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/", format(date_i, "%m%d"), "/StatusDaily.htm")
   
-  val=grep("S354",mapdata)
-  S354=strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</div>")[[1]][1]
+  mapdata <- tryCatch(readLines(url, warn = FALSE), error = function(e) return(NULL))
+  if (is.null(mapdata)) {
+    results_list[[i]] <- NA
+    next
+  }
+
+  rslt <- data.frame(
+    Date = date_i - ddays(1),
+    OtherLOKInflow = {
+      line <- grep("Other inflows", mapdata, value = TRUE)
+      tmp <- strsplit(line, "<br>|>")[[1]]
+      sum(as.numeric(sapply(strsplit(tmp[grepl(" inflows", tmp)], ":"), function(x) x[2])), na.rm = TRUE)
+    },
+    FEC = extract_val(mapdata, "Fisheating Creek", "\\s+", 7, "</div>", 1),
+    Istok = extract_val(mapdata, "Istokpoga</a>", "\\s+", 6, "</div>", 1),
+    S65E = extract_val(mapdata, "S-65E</a>", "\\s+", 6, "<br>", 1),
+    S65EX1 = extract_val(mapdata, "S-65EX1</a>", "\\s+", 6, "<br>", 1),
+    S354 = extract_val(mapdata, "S354", "\\s+", 8, "</div>", 1),
+    S351 = extract_val(mapdata, "S351", "\\s+", 8, "</div>", 1),
+    S352 = extract_val(mapdata, "S352", "\\s+", 8, "</div>", 1),
+    S271 = extract_val(mapdata, "S-271", "\\s+", 6, "</div>", 1),
+    S77 = extract_val(mapdata, "/plots/s77", "\\s+", 6, "</a>", 1),
+    S79 = extract_val(mapdata, "/plots/s79h.pdf", "\\s+", 6, "</a>", 1),
+    S80 = extract_val(mapdata, "/plots/s80", "\\s+", 6, "</a>", 1),
+    S308 = extract_val(mapdata, "/plots/s308", "\\s+", 6, "</a>", 1),
+    WCA1 = extract_val(mapdata, "CA1IN", "\\s+", 13, "</div>", 1),
+    WCA2 = extract_val(mapdata, "CA2IN", "\\s+", 13, "</div>", 1),
+    WCA3 = extract_val(mapdata, "CA3IN", "\\s+", 13, "</div>", 1),
+    S10s = extract_val(mapdata, "S10", "\\s+", 8, "</div>", 1),
+    S11s = extract_val(mapdata, "S11", "\\s+", 8, "</div>", 1),
+    S12s = extract_val(mapdata, "S12", "\\s+", 8, "</div>", 1),
+    S333 = extract_val(mapdata, "S333", "<br>|\\s+", 12),
+    S333N = extract_val(mapdata, "S333", "<br>|\\s+", 14, "</div>", 1),
+    S356 = extract_val(mapdata, "S356", "\\s+", 8, "</div>", 1),
+    S155A = extract_val(mapdata, "S155A", "\\s+", 8, "</", 1),
+    LOK.stage = extract_val(mapdata, "../plots/ok8hhp.pdf", "\\s+", 6),
+    ENP = NA_real_  # Placeholder for now
+  )
   
-  val=grep("S351",mapdata)
-  S351=strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</div>")[[1]][1]
-  
-  val=grep("S352",mapdata)
-  S352=strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</div>")[[1]][1]
-  
-  val=grep("S-271",mapdata)
-  S271=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"</div>")[[1]][1]
-  
-  val=grep("CA1IN",mapdata)
-  WCA1=strsplit(strsplit(mapdata[val],"\\s+")[[1]][13],"</div>")[[1]][1]
-  
-  val=grep("CA2IN",mapdata)
-  WCA2=strsplit(strsplit(mapdata[val],"\\s+")[[1]][13],"</div>")[[1]][1]
-  
-  val=grep("CA3IN",mapdata)
-  WCA3=strsplit(strsplit(mapdata[val],"\\s+")[[1]][13],"</div>")[[1]][1]
-  
-  val=grep("S10",mapdata)
-  S10s=as.numeric(strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</div>")[[1]][1])
-  
-  val=grep("S11",mapdata)
-  S11s=as.numeric(strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</div>")[[1]][1])
-  
-  val=grep("S12",mapdata)
-  S12s=as.numeric(strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</div>")[[1]][1])
-  
-  val=grep("S333",mapdata)
-  S333=as.numeric(strsplit(mapdata[val],"<br>|\\s+")[[1]][12])
-  S333N=as.numeric(strsplit(strsplit(mapdata[val],"<br>|\\s+")[[1]][14],"</div>")[[1]][1])
-  
-  val=grep("S356",mapdata)
-  S356=as.numeric(strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</div>")[[1]][1])
-  
-  ENP=S12s+(S333+S333N)-S356
-  
-  val=grep("Istokpoga</a>",mapdata)
-  Istok=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"</div>")[[1]][1]
-  
-  val=grep("S-65E</a>",mapdata)
-  S65E=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"<br>")[[1]][1]
-  
-  val=grep("S-65EX1</a>",mapdata)
-  S65EX1=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"<br>")[[1]][1]
-  
-  val=grep("Fisheating Creek",mapdata)
-  FEC=strsplit(strsplit(mapdata[val],"\\s+")[[1]][7],"</div>")[[1]][1]
-  
-  val=grep("/plots/s79h.pdf",mapdata)
-  S79=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"</a>")[[1]][1]
-  # 
-  # val=grep("/plots/s78h.pdf",mapdata)
-  # S78=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"</a>")[[1]][1]
-  
-  val=grep("/plots/s77",mapdata)
-  S77=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"</a>")[[1]][1]
-  
-  val=grep("/plots/s308",mapdata)
-  S308=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"</a>")[[1]][1]
-  
-  val=grep("/plots/s80",mapdata)
-  S80=strsplit(strsplit(mapdata[val],"\\s+")[[1]][6],"</a>")[[1]][1]
-  
-  val=grep("S155A",mapdata);# Lake Worth Lagoon
-  S155A=strsplit(strsplit(mapdata[val],"\\s+")[[1]][8],"</")[[1]][1]
-  
-  # other LOK inflows
-  val = grep("Other inflows",mapdata)
-  # mapdata[213]
-  tmp=strsplit(mapdata[val],"<br>|>")[[1]]
-  OtherLOKInflow=sum(as.numeric(sapply(strsplit(tmp[grepl(" inflows",tmp)],":"),"[")[2,]))
-  
-  val=grep("../plots/ok8hhp.pdf",mapdata)
-  LakeStage=as.numeric(strsplit(mapdata[val[1]],"\\s+")[[1]][6])
-  
-  # date.val=dates[i]-ddays(1)
-  date.val=dates[i]
-  rslt=data.frame(Date=date.val-ddays(1),
-                  OtherLOKInflow=OtherLOKInflow,
-                  FEC=as.numeric(FEC),
-                  Istok=as.numeric(Istok),
-                  S65E=as.numeric(S65E),
-                  S65EX1=as.numeric(S65EX1),
-                  S354=as.numeric(S354),
-                  S351=as.numeric(S351),
-                  S352=as.numeric(S352),
-                  S271=as.numeric(S271),
-                  S77=as.numeric(S77),
-                  S79=as.numeric(S79),
-                  S80=as.numeric(S80),
-                  S308=as.numeric(S308),
-                  WCA1=as.numeric(WCA1),
-                  WCA2=as.numeric(WCA2),
-                  WCA3=as.numeric(WCA3),
-                  S10s=as.numeric(S10s),
-                  S11s=as.numeric(S11s),
-                  ENP=as.numeric(ENP),
-                  S12s=as.numeric(S12s),
-                  S333=as.numeric(S333),
-                  S333N=as.numeric(S333N),
-                  S356=as.numeric(S356),
-                  S155A=as.numeric(S155A),
-                  LOK.stage=as.numeric(LakeStage)
-                  )
-  map.q=rbind(map.q,rslt)
+  # ENP needs special handling because it's computed
+  rslt$ENP <- with(rslt, S12s + (S333 + S333N) - S356)
+
+  results_list[[i]] <- rslt
   print(i)
 }
 
+# Drop NULL/NA rows and bind into a single data frame
+map.q <- do.call(rbind, results_list[!sapply(results_list, is.na)])
 
-map.SDCS=data.frame()
-for(i in 1:(length(dates))){
-  map.url=paste0("https://w3.saj.usace.army.mil/h2o/reports/SDCSDaily/archive/",format(dates[i],"%m%d"),"/SDCSDaily.htm")
-  # download.file(map.url, destfile = "map_dat.html", quiet=TRUE)
-  mapdata=readLines(map.url)
+
+## South Dade conveyance page
+# Preallocate list to store results
+results_list <- vector("list", length(dates))
+
+for (i in seq_along(dates)) {
+  date_i <- dates[i]
+  map.url <- paste0("https://w3.saj.usace.army.mil/h2o/reports/SDCSDaily/archive/",
+                    format(date_i, "%m%d"), "/SDCSDaily.htm")
   
-  val=grep("S355A",mapdata)
-  S355A=as.numeric(strsplit(mapdata[val],">S-355A:|</div>")[[1]][2])
+  mapdata <- tryCatch(readLines(map.url, warn = FALSE), error = function(e) return(NULL))
   
-  val=grep("S355B",mapdata)
-  S355B=as.numeric(strsplit(mapdata[val],">S-355B:|</div>")[[1]][2])
-  
-  val=grep("L-29",mapdata)
-  L29Canal=as.numeric(strsplit(mapdata[val],"Canal:|ft")[[1]][3])
-  
-  date.val=dates[i]-ddays(1)
-  rslt=data.frame(Date=date.val,L29Canal.map=L29Canal)
-  map.SDCS=rbind(map.SDCS,rslt)
+  if (!is.null(mapdata)) {
+    get_val <- function(pattern, split_regex, idx) {
+      line <- grep(pattern, mapdata, value = TRUE)
+      if (length(line) == 0) return(NA_real_)
+      parts <- strsplit(line, split_regex)[[1]]
+      if (length(parts) < idx) return(NA_real_)
+      as.numeric(parts[idx])
+    }
+
+    S355A <- get_val("S355A", ">S-355A:|</div>", 2)
+    S355B <- get_val("S355B", ">S-355B:|</div>", 2)
+    L29Canal <- get_val("L-29", "Canal:|ft", 3)
+
+    results_list[[i]] <- data.frame(
+      Date = date_i - ddays(1),
+      S355A = S355A,
+      S355B = S355B,
+      L29Canal.map = L29Canal
+    )
+  } else {
+    results_list[[i]] <- data.frame(
+      Date = date_i - ddays(1),
+      S355A = NA_real_,
+      S355B = NA_real_,
+      L29Canal.map = NA_real_
+    )
+  }
+
   print(i)
 }
+# Combine all results efficiently
+map.SDCS <- do.call(rbind, results_list)
 
 # LO.url="https://w3.saj.usace.army.mil/h2o/reports/r-oke.html"
 # LO.report=readLines(LO.url)
@@ -380,14 +388,16 @@ flab.dates=c(date.fun(paste(CurWY-14,05,01,sep="-")),End.Date)
 comp.dbkey=data.frame(DBKEY=c("N3466","06832"),Priority=c("P2","P1"))
 # AnalystHelper::DBHYDRO.meta.byDBKEY(comp.dbkey$DBKEY)
 
-stg.da=data.frame()
+stg.da <- list()
 for(i in 1:nrow(comp.dbkey)){
   tmp=DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i])
   tmp$DBKEY=as.character(comp.dbkey$DBKEY[i])
-  stg.da=rbind(stg.da,tmp)
+  stg.da[[i]] <- tmp
 }
-stg.da=merge(stg.da,comp.dbkey,"DBKEY")
-stg.da$DATE=date.fun(stg.da$Date)
+
+stg.da <- do.call(rbind,stg.da)|>
+  merge(comp.dbkey,"DBKEY")|>
+  mutate(DATE=date.fun(Date))
 
 LakeO.xtab=dcast(stg.da,DATE~Priority,value.var="Data.Value",mean)
 LakeO.xtab$Mean=with(LakeO.xtab,ifelse(is.na(P1)==T,P2,P1))
@@ -461,9 +471,6 @@ EAA_canals$DoY=as.numeric(format(EAA_canals$DATE,"%j"))
 EAA_canals$CY=as.numeric(format(EAA_canals$DATE,"%Y"))
 
 
-
-
-
 ## WCA1 --------------------------------------------------------------------
 WCA1.dbkeys=data.frame(STATION=c("CA1-8T","CA1-9","CA1-7"),
                        DBKEY=c("15809","15811","15808"))
@@ -511,6 +518,7 @@ WCA2.xtab$DoY=as.numeric(format(WCA2.xtab$DATE,"%j"))
 WCA2.xtab$CY=as.numeric(format(WCA2.xtab$DATE,"%Y"))
 WCA2.xtab$DOWY=hydro.day(WCA2.xtab$DATE)
 WCA2.xtab$WY=WY(WCA2.xtab$DATE)
+
 ## WCA3 --------------------------------------------------------------------
 WCA3.dbkeys=data.frame(STATION=c("CA3-62","CA3-63","CA3-64","CA3-65"),
                        DBKEY=c("16536","16532","16537","16538"))
@@ -540,6 +548,82 @@ WCA3.xtab$WY=WY(WCA3.xtab$DATE)
 # FWCC Action Line:                         11.6
 # FWCC Muck Fire Closure                    9.30
 # Taylor Slough Water Deliveries Floor      9.80
+
+## Redline --------------------------------------------------------------------
+WCA1.in.dbkeys=data.frame(
+  STATION = c("G300","G301","G251","G310","S362","G338","G782"),
+  DBKEY =   c("90939","90940","90934","90973","91517","91012","AS397"),
+  REGION =  "WCA1",
+  from =    c("EAADiv","EAADiv",'STA1W',"STA1W","STA1E","EAADiv",'STA1WExp'))
+# Historically S6 (stopped 4/30/2001)
+# Historically S5/S5A (stopped 6/30/1999)
+# ACME1 and ACME2
+
+WCA2.in.dbkeys=data.frame(
+  STATION = c("G339","G335","G436","S7"),
+  DBKEY =   c("91013","91008","91209","91681"),
+  REGION =  "WCA2",
+  from =    c("EAADiv","STA2","STA2","STA34"))
+# S10s (A,C,D, and E) from WCA1
+# NSID1 
+
+WCA3.in.dbkeys=data.frame(
+  STATION = c("S150","S8","L28U","G407","G393A","G393B","G393C",
+              "G354A","G354B","G354C","G352A","G352B","G352C",
+              paste0("G344",LETTERS[1:10])),
+  DBKEY =   c("91395","91689","FF808","91192","91179","91180","91181",
+              "91081","91082","91083","91075","91076","91077",
+              "91051", "91052", "91053", "91054", "91055", "91056", "91057", 
+              "91058", "91059", "91060"),
+  REGION =  "WCA3",
+  from =    c("STA34","STA34","L28",rep("STA56",20))
+)
+WCA3.in.dbkeys <- subset(WCA3.in.dbkeys,STATION!="L28U")
+WCA.in.dbkeys <- rbind(WCA1.in.dbkeys,
+                       WCA2.in.dbkeys,
+                       WCA3.in.dbkeys)
+
+
+wca_Q_list <- lapply(WCA.in.dbkeys$DBKEY, function(dbkey) {
+  # Attempt to retrieve data and handle errors
+  tryCatch({
+    tmp <- DBHYDRO_daily(flab.dates[1], flab.dates[2], dbkey)
+    tmp$DBKEY <- as.character(dbkey)
+    #setTxtProgressBar(pb, i)
+    tmp
+  }, error = function(e) {
+    message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
+    NULL  # Return NULL if there's an error
+  })
+})
+
+# Remove any NULL elements (i.e., those that caused errors) from the list
+wca_Q_list <- Filter(Negate(is.null), wca_Q_list)
+
+wca.Q.da <- do.call(rbind, wca_Q_list)
+wca.Q.da <- merge(wca.Q.da,WCA.in.dbkeys,'DBKEY')
+wca.Q.da$DATE <- date.fun(wca.Q.da$Date)
+wca.Q.da$month <- as.numeric(format(wca.Q.da$DATE,"%m"))
+wca.Q.da$CY <- as.numeric(format(wca.Q.da$DATE,"%Y"))
+
+wca.Q.da$inflow.Q <- with(wca.Q.da,ifelse(Data.Value<0,0,Data.Value))
+
+wca.Q.da.mon <- ddply(wca.Q.da,c("CY","month"),summarise,TFlow.acft =sum(cfs.to.acftd(inflow.Q)/1000,na.rm=T))
+wca.Q.da.mon2 <- ddply(wca.Q.da,c("REGION","CY","month"),summarise,TFlow.acft =sum(cfs.to.acftd(inflow.Q)/1000,na.rm=T))
+
+
+
+redline <- dcast(wca.Q.da,REGION+CY~month,value.var ="inflow.Q",fun.aggregate = function(x) sum(cfs.to.acftd(x)/1000,na.rm=T))
+redline$Total=rowSums(redline[,3:ncol(redline)])
+colnames(redline)=c("Region","Year",month.abb,"Total")
+
+redline.CYFlows <- ddply(subset(wca.Q.da,CY%in%seq(2012,2024,1)),
+             "CY",summarise,TFlow = sum(cfs.to.acftd(inflow.Q),na.rm=T)/1000)
+mean(redline.CYFlows$TFlow)
+
+redline <- dcast(subset(wca.Q.da,CY>2011),CY~month,value.var ="inflow.Q",fun.aggregate = function(x) sum(cfs.to.acftd(x)/1000,na.rm=T))
+redline$Total=rowSums(redline[,2:ncol(redline)])
+colnames(redline)=c("Year",month.abb,"Total")
 
 
 ## ENP --------------------------------------------------------------------
@@ -1143,13 +1227,13 @@ q.tab[,vars]%>%
   flextable()%>%
   colformat_datetime(j=1,fmt_date="%m-%d")%>%
   colformat_double(j=2:14,big.mark = "",digits=0)%>%
-  align(j=2:14,part="all",align="center")%>%
+  flextable::align(j=2:14,part="all",align="center")%>%
   padding(padding=1,part="all")%>%
   font(fontname="Times New Roman",part="all")%>%
   fontsize(size=10,part="body")%>%
   fontsize(size=12,part="header")%>%
   add_header_lines(values=cap.val)%>%
-  align(align="center",part="header")%>%fontsize(size=12,part="header")%>%font(fontname = "Times New Roman",part="all")%>%
+  flextable::align(align="center",part="header")%>%fontsize(size=12,part="header")%>%font(fontname = "Times New Roman",part="all")%>%
   footnote(j=~NthLake,value=as_paragraph(" Includes discharges from Fisheating Creek, S71, S72, S84, S84X, S65E, and S65EX1"),ref_symbols =c(" 1"),part="header")%>%
 footnote(j=~ENP,value=as_paragraph(" Estimated as S12s+(S333+S333N)-S356. If no data is present (i.e. -NR-) either S12s, S333s or S356 data is not available."),ref_symbols =c(" 2"),part="header")
   # footnote(i=1,j=1,value=as_paragraph("Negative flow values omitted from this table and statistical summaries below."),ref_symbols =c(" "),part="header")
@@ -1386,7 +1470,7 @@ if(is.na(subset(LakeO.xtab,DATE==YEST)$LOK.stage)==T|nrow(subset(LakeO.xtab,DATE
 with(subset(LakeO.xtab,DATE==YEST),points(DOWY,LOK.stage,pch=21,bg=adjustcolor("grey",0.5),col="gray",lwd=0.1,cex=1.25))
 if(subset(LakeO.xtab,DATE==YEST)$DOWY>300){
   with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY-30,lab.loc,lty=2))
-  with(subset(LakeO.xtab,DATE==YEST),text(DOWY-30,lab.loc+0.1,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
+  with(subset(LakeO.xtab,DATE==YEST),text(DOWY-30,lab.loc,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=-0.1))
   }else if(subset(LakeO.xtab,DATE==YEST)$DOWY<30){
     with(subset(LakeO.xtab,DATE==YEST),segments(DOWY,LOK.stage,DOWY+30,lab.loc,lty=2))
   with(subset(LakeO.xtab,DATE==YEST),text(DOWY+30,lab.loc+0.1,paste(format(round(LOK.stage,2),nsmall=2),"Ft\nNGVD29"),cex=0.8,xpd=NA,pos=1,offset=0.1))
@@ -1427,8 +1511,8 @@ cap.val="Stage and recession rates this time for the current and last three wate
 
 subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
   flextable(col_keys=c("DATE","WY","LOK.stage","recess_7day","recess_30day"))%>%
-  width(width=c(1,1,1.25,1.5,1.5))%>%
-  align(align="center",part="all")%>%
+  flextable::width(width=c(1,1,1.25,1.5,1.5))%>%
+  flextable::align(align="center",part="all")%>%
   colformat_datetime(j=1,fmt_date="%m-%d")%>%
   colformat_double(j=2,big.mark="",digits=0)%>%
   colformat_num(j=3:5,na_str="- NR -")%>%
@@ -1444,8 +1528,8 @@ subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
                     "recess_30day"="30-Day Recession Rate\n(ft 30-d\u207B\u00B9)")%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
   # footnote(i=4,j=3,value=ifelse(is.na(subset(LakeO.xtab,DATE==YEST)$P1)==T|is.na(subset(LakeO.xtab,DATE==YEST)$P2)==T,as_paragraph("Value estimated from average stage height across L001, L005, L006, LZ40, S133TW, S352HW & S4TW"),as_paragraph("Value provided by SFWMD DBKEY:N3466")),ref_symbols =c(" A "))%>%
-  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")%>%
-  footnote(j=5,part="header",value=as_paragraph("-0.5 ft 30-d\u207B\u00B9 maximum 30-day Recession Rate for HAB Deviation"),ref_symbols =c(" B "))
+  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
+# %>% footnote(j=5,part="header",value=as_paragraph("-0.5 ft 30-d\u207B\u00B9 maximum 30-day Recession Rate for HAB Deviation"),ref_symbols =c(" B "))
     
 
 ```
@@ -1586,7 +1670,8 @@ local.image.inventory1=subset(local.image.inventory,date>max(cyano_area$date))
 if(nrow(local.image.inventory1)!=0){
   cyano_area=cyano_area[,c("date", "cloud.area", "bloom.area.m2", "vis.bloom")]
 for(i in 1:nrow(local.image.inventory1)){
-  tmp.raster=raster::raster(paste(data.path, local.image.inventory1$fname[i],sep="/"))
+  # tmp.raster=raster::raster(paste(data.path, local.image.inventory1$fname[i],sep="/"))
+  tmp.raster=terra::rast(paste(data.path, local.image.inventory1$fname[i],sep="/"))
   
   tmp.raster=mask(tmp.raster,st_buffer(LOK,500))
   tmp.raster[tmp.raster==255]=NA; # No Data
@@ -1601,7 +1686,8 @@ for(i in 1:nrow(local.image.inventory1)){
   # cloud.area=tmp.raster%in%c(253)
   cloud.area.raster=cloud.area
   # cloud.area=cloud.area==1
-  cloud.area=cellStats(cloud.area,sum)*raster::res(cloud.area)[1]*raster::res(cloud.area)[2]
+  # cloud.area=cellStats(cloud.area,sum)*raster::res(cloud.area)[1]*raster::res(cloud.area)[2]
+  cloud.area=global(cloud.area,fun=sum,na.rm=T)*terra::res(cloud.area)[1]*terra::res(cloud.area)[2]
   
   # remove cloud/no data values (see tif header)
   # 0= nodetect
@@ -1612,29 +1698,30 @@ for(i in 1:nrow(local.image.inventory1)){
   vals=c(0,250,251,252,253,254,255)
   tmp.raster[tmp.raster%in%vals]=NA
   
-  tmp.raster=calc(tmp.raster,fun=function(x) x*1)
+  tmp.raster=tmp.raster*1# calc(tmp.raster,fun=function(x) x*1)
   # ci.scale=calc(tmp.raster,fun=function(x) ci.scaling.fun(x))
-  rev.scale=calc(tmp.raster,fun=ci.reverse.scaling.fun)*100000000
+  # rev.scale=calc(tmp.raster,fun=ci.reverse.scaling.fun)*100000000
+  rev.scale <- terra::app(tmp.raster,fun=ci.reverse.scaling.fun)*100000000
   
   ## Bloom area
   area=rev.scale>0
-  val=cellStats(area,sum)*raster::res(area)[1]*raster::res(area)[2]
+  val=global(area,sum,na.rm=T)*res(area)[1]*res(area)[2]
   # val*3.86102e-7 # converts from m2 to mi2
   
   ## Visible bloom area
   area2=rev.scale>(1000*1000)
-  val2=cellStats(area2,sum)*raster::res(area2)[1]*raster::res(area2)[2]
+  val2=global(area2,sum,na.rm=T)*res(area2)[1]*res(area2)[2]
   
   tmp.rslt=data.frame(date=local.image.inventory1$date[i],
-                      cloud.area=cloud.area,
-                      bloom.area.m2=val,
-                      vis.bloom=val2) # greater 1e+6
+                      cloud.area=cloud.area$sum,
+                      bloom.area.m2=val$sum,
+                      vis.bloom=val2$sum) # greater 1e+6
   cyano_area=rbind(cyano_area,tmp.rslt)
   
 }
 }else{
   curr.dat=subset(local.image.inventory,date==max(local.image.inventory$date,na.rm=T))
-  tmp.raster=raster::raster(paste(data.path, curr.dat$fname,sep="/"))
+  tmp.raster=terra::rast(paste(data.path, curr.dat$fname,sep="/"))
   tmp.raster=mask(tmp.raster,st_buffer(LOK,500))
   tmp.raster[tmp.raster==255]=NA; # No Data
   
@@ -1643,8 +1730,8 @@ for(i in 1:nrow(local.image.inventory1)){
   
   vals=c(0,250,251,252,253,254,255)
   tmp.raster[tmp.raster%in%vals]=NA
-  tmp.raster=calc(tmp.raster,fun=function(x) x*1)
-  rev.scale=calc(tmp.raster,fun=ci.reverse.scaling.fun)*100000000
+  tmp.raster=app(tmp.raster,fun=function(x) x*1)
+  rev.scale=app(tmp.raster,fun=ci.reverse.scaling.fun)*100000000
 }
 
 cyano_area=cyano_area|>
@@ -1707,8 +1794,9 @@ plot(st_geometry(LOKLitt),lwd=0.05,col=adjustcolor("honeydew2",0.5),border=NA,ad
 # plot(st_geometry(LOK),lwd=0.05,add=T)
 image(rev.scale,add=T,col = cols)
 image(cloud.area.raster,add=T,col=c(NA,"grey"))
-if(sum(is.na(getValues(rev.scale)))/length(getValues(rev.scale))<0.75){
-  plot(rasterToContour(rev.scale,levels=b,nlevels=length(b)),col="black",lwd=2,add=T)}
+if(sum(is.na(values(rev.scale)))/length(values(rev.scale))<0.75){
+  # plot(rasterToContour(rev.scale,levels=b,nlevels=length(b)),col="black",lwd=2,add=T)}
+  plot(as.contour(rev.scale,levels=b,nlevels=length(b)),col="black",lwd=2,add=T)}
 mapmisc::scaleBar(LOK,"bottomright",bty="n",cex=1,seg.len=4,outer=F)
 mtext(side=3,line=-3,adj=0,paste("Date: ",format(date.val,"%m-%d-%Y"),
                                    "\nData Source: NOAA NCCOS\nAlgae Coverage: ",
@@ -1959,8 +2047,8 @@ cap.val="Stage elevations this time for the current and last three water years"
 
 subset(EAA_canals,DOWY==hydro.day(YEST))[,c("DATE","WY",site.vals)]%>%
   flextable()%>%
-  width(width=c(1,0.75,rep(0.8,5)))%>%
-  align(align="center",part="all")%>%
+  flextable::width(width=c(1,0.75,rep(0.8,5)))%>%
+  flextable::align(align="center",part="all")%>%
   colformat_datetime(j=1,fmt_date="%m-%d")%>%
   colformat_double(j=2,big.mark="",digits=0)%>%
   colformat_num(j=3:5,na_str="- NR -")%>%
@@ -1978,7 +2066,7 @@ subset(EAA_canals,DOWY==hydro.day(YEST))[,c("DATE","WY",site.vals)]%>%
                     "L8.441"="L8")%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
   footnote(j=3:7,value=as_paragraph(EAA.STG.locs$labs),ref_symbols =paste0(" ",1:5," "),part="header")%>%
-  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")
+  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
 
 ```
 
@@ -2097,8 +2185,8 @@ cap.val="Stage and recession rates this time for the current and last three wate
 
 subset(WCA1.xtab,DOWY==hydro.day(YEST))%>%
   flextable(col_keys=c("DATE","WY","Avg.8T97","recess_7day","recess_30day"))%>%
-  width(width=c(1,1,1.25,1.5,1.5))%>%
-  align(align="center",part="all")%>%
+  flextable::width(width=c(1,1,1.25,1.5,1.5))%>%
+  flextable::align(align="center",part="all")%>%
   colformat_datetime(j=1,fmt_date="%m-%d")%>%
   colformat_double(j=2,big.mark="",digits=0)%>%
   colformat_double(j=3:5,digits=2,na_str="- NR -")%>%
@@ -2113,7 +2201,7 @@ subset(WCA1.xtab,DOWY==hydro.day(YEST))%>%
                     "recess_7day"="7-Day Recession Rate\n(ft 7-d\u207B\u00B9)",
                     "recess_30day"="30-Day Recession Rate\n(ft 30-d\u207B\u00B9)")%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
-  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")
+  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
     
 
 ```
@@ -2254,8 +2342,8 @@ cap.val="Stage and recession rates this time for the current and last three wate
 
 subset(WCA2.xtab,DOWY==hydro.day(YEST))%>%
   flextable(col_keys=c("DATE","WY","CA217","recess_7day","recess_30day"))%>%
-  width(width=c(1,1,1.25,1.5,1.5))%>%
-  align(align="center",part="all")%>%
+  flextable::width(width=c(1,1,1.25,1.5,1.5))%>%
+  flextable::align(align="center",part="all")%>%
   colformat_datetime(j=1,fmt_date="%m-%d")%>%
   colformat_double(j=2,big.mark="",digits=0)%>%
   colformat_double(j=3:5,digits=2,na_str="- NR -")%>%
@@ -2271,7 +2359,7 @@ subset(WCA2.xtab,DOWY==hydro.day(YEST))%>%
                     "recess_30day"="30-Day Recession Rate\n(ft 30-d\u207B\u00B9)")%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
   footnote(j=3:5,value=as_paragraph("Value represented by CA2-17"),ref_symbols =c(" A "),part="header")%>%
-  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")
+  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
     
 
 ```
@@ -2434,8 +2522,8 @@ cap.val="Stage and recession rates this time for the current and last three wate
 
 subset(WCA3.xtab,DOWY==hydro.day(YEST))%>%
   flextable(col_keys=c("DATE","WY","Avg.636465","recess_7day","recess_30day"))%>%
-  width(width=c(1,1,1.25,1.5,1.5))%>%
-  align(align="center",part="all")%>%
+  flextable::width(width=c(1,1,1.25,1.5,1.5))%>%
+  flextable::align(align="center",part="all")%>%
   colformat_datetime(j=1,fmt_date="%m-%d")%>%
   colformat_double(j=2,big.mark="",digits=0)%>%
   colformat_double(j=3:5,digits=2,na_str="- NR -")%>%
@@ -2451,7 +2539,7 @@ subset(WCA3.xtab,DOWY==hydro.day(YEST))%>%
                     "recess_30day"="30-Day Recession Rate\n(ft 30-d\u207B\u00B9)")%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
   footnote(j=3:5,value=as_paragraph("Value represented by 3-gauge average (3-63, 3-64 and 3-65)"),ref_symbols =c(" A "),part="header")%>%
-  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")
+  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
     
 ```
 
@@ -2488,6 +2576,72 @@ plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
 legend(0.5,0.5,
        legend=c("Inflow","Outflow"),
        col=cols,lty=c(1,2,3),lwd=c(2.5,2.5),pt.cex=2.5,ncol=2,cex=1.25,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+## Redline (WCAs) Inflows
+
+```{r}
+
+cap.val="Red line (i.e. inflows to WCAs) discharges (x1000 Ac-Ft)"
+cur.month <- month.abb[as.numeric(format(Sys.Date(),"%m"))]
+redline|>
+  flextable()|>
+  colformat_double(j=1,big.mark = "",digits=0)|>
+  colformat_double(j=2:14,big.mark = "",digits=1)|>
+  flextable::align(part="all",align="center")|>
+  padding(padding=2,part="all")|>
+  footnote(j=1,value=as_paragraph(" Note: All data is from DBHYDRO and provisional."),ref_symbols=" ",part="header")|>
+  footnote(j=cur.month,
+           value=as_paragraph(" The latest month value may include an incomplete monthly period of record."),ref_symbols=" *",part="header")|>
+  font(fontname="Times New Roman",part="all")|>
+  fontsize(size=10,part="body")|>
+  fontsize(size=12,part="header")|>
+  bold(part="header")|>
+  hline(part="header")|>
+  add_header_lines(values=cap.val)|>
+  flextable::align(align="center",part="header")|>
+  fontsize(size=12,part="header")|>
+  font(fontname = "Times New Roman",part="all")|>
+  padding(padding=1.5, part='footer')|>
+  autofit()# |>print("docx")
+
+
+```
+
+<br>
+```{r Redline_plot, echo=FALSE,fig.width=8,fig.height=3.5,fig.align='center',fig.cap="Discharges across the Red line (northern inflows to WCAs) from January 2012 to current."}
+wca.Q.da.mon2 <- ddply(wca.Q.da,c("REGION","CY","month"),summarise,TFlow.acft =sum(cfs.to.acftd(inflow.Q)/1000,na.rm=T))
+wca.Q.da.mon2 <- dcast(subset(wca.Q.da,CY>2011),CY+month~REGION,value.var="inflow.Q",fun.aggregate = function(x) sum(cfs.to.acftd(x)/1000,na.rm=T))
+
+ylim.val=c(0,300);# by.y=100;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+ymaj <- labeling::heckbert(ylim.val[1],ylim.val[2],5)
+ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)
+
+xmaj.lab = subset(wca.Q.da.mon2,month == 1)$CY
+xmaj.x = seq(1,nrow(wca.Q.da.mon2),12)
+
+# cols <- viridis::cividis(3)
+cols <- paletteer::paletteer_d("colorBlindness::Blue2Orange12Steps",n=3,type="continuous",direction=-1)|>as.character()
+
+par(family="serif",mar=c(1,2,0.5,1),oma=c(2.5,2,1.25,1));
+x = barplot(t(wca.Q.da.mon2[,5:3]),col=NA,border=NA,ylim = ylim.val,space=0,axes=F)
+abline(h=ymaj,v=xmaj.x,lty=3,col="grey",lwd=0.5)
+x = barplot(t(wca.Q.da.mon2[,5:3]),col=cols,ylim = ylim.val,space=0,axes=F,add=T)
+axis_fun(1,x[xmaj.x],x,xmaj.lab,line=-0.5)
+axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
+mtext(side=1,line=1.5,"Calendar Year")
+mtext(side=2,line=2.5,expression("Discharge (kAc-Ft Mon"^"-1"*")"))
+legend("topleft",inset=0.01,
+       legend = c(paste("WCA",1:3,sep=" - ")),
+       pch=c(22),lty=c(0),lwd=0.1,
+       col=c("black"),
+       pt.bg=c(cols),pt.cex=2,
+       ncol=1,cex=0.7,bty="n",y.intersp=1.25,x.intersp=0.75,xjust=0.5,yjust=0.5)
 
 ```
 
@@ -2593,8 +2747,8 @@ cap.val="Stage (Ft, NGVD29) this time for the current and last three water years
 
 subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
   flextable(col_keys=c("DATE","WY","L29Canal.f","NESRS2","NP201"))%>%
-  width(width=c(1.25,1,1,1,1))%>%
-  align(align="center",part="all")%>%
+  flextable::width(width=c(1.25,1,1,1,1))%>%
+  flextable::align(align="center",part="all")%>%
   colformat_datetime(j=1,fmt_date="%m-%d")%>%
   colformat_double(j=2,big.mark="",digits=0)%>%
   colformat_double(j=3:5,digits=2,na_str="- NR -")%>%
@@ -2609,7 +2763,7 @@ subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
                     "NESRS2"="NESRS2",
                     "NP201"="NP201")%>%
   bg(i=~WY==CurWY,part="body",bg="wheat")%>%
-  add_header_lines(values=cap.val)%>%align(align="center",part="header")%>%fontsize(size=13,part="header")
+  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
     
 ```
 
@@ -2632,13 +2786,13 @@ ENP.q.tab[,vars]%>%
   colformat_double(j=2:12,big.mark = "",digits=0)%>%
   set_header_labels("Date.EST"="Date",
                     "TFlow.cfs"="Total Inflow")%>%
-  align(j=2:12,part="all",align="center")%>%
+  flextable::align(j=2:12,part="all",align="center")%>%
   padding(padding=1,part="all")%>%
   font(fontname="Times New Roman",part="all")%>%
   fontsize(size=10,part="body")%>%
   fontsize(size=12,part="header")%>%
   add_header_lines(values=cap.val)%>%
-  align(align="center",part="header")%>%fontsize(size=12,part="header")%>%font(fontname = "Times New Roman",part="all")%>%
+  flextable::align(align="center",part="header")%>%fontsize(size=12,part="header")%>%font(fontname = "Times New Roman",part="all")%>%
   footnote(j=~TFlow.cfs,value=as_paragraph(" Estimated as S12s+(S333+S333N+S355s+min(S356,S335)-S334)."),ref_symbols =c(" 1"),part="header")
 ```
 
@@ -2725,7 +2879,8 @@ max.q=max(subset(srs.flow.da.xtab.melt,Date.EST%in%seq(End.Date-ddays(60),End.Da
 ylim.max=round(max.q+max.q*0.3,-1)
 
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
-ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+# ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+
 # png(filename=paste0(plot.path,"SRSInflow.png"),width=6.5,height=4,units="in",res=200,type="cairo",bg="white")
 par(family="serif",mar=c(2,2,0.5,1),oma=c(1.25,3,1,1));
 # par(family="serif",mar=c(1,1.75,0.5,0.5),oma=c(1,2,1,0.5));
@@ -2735,6 +2890,11 @@ site.val=c("SRS.west","SRS.east")
 site.val.lab=c("SRS West\n(S12s)","SRS East\n(S333s, S335s & min(S356, S335))")
 #i=1
 for(i in 1:length(site.val)){
+  # ylim.val=c(0,max(subset(srs.flow.da.sum,variable==site.val[i])$q90))
+  ymaj <- heckbert_labs(0,max(subset(srs.flow.da.sum,variable==site.val[i])$q90),4)
+  ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)
+  ylim.val <- range(ymaj)
+  
   plot(value~Date.EST,srs.flow.da.xtab.melt,type="n",ylim=ylim.val,xlim=xlim.val,xaxt="n",yaxt="n",xlab=NA,ylab=NA)
   with(subset(srs.flow.da.sum,variable==site.val[i]),shaded.range(DATE.plt,q10,q90,"lightblue",lty=1,col.adj=1))
   with(subset(srs.flow.da.xtab.melt,variable==site.val[i]),pt_line(Date.EST,value,2,"black",1,21,"indianred1",cex=1.25))
@@ -2807,7 +2967,7 @@ SRS.delive|>
   bg(j=2:13,bg=colmatrix)|>
   color(j=2:13,color=txt.colmatrix)|>
   bold(j=2:13)|>
-  align(part="all",align="center")|>
+  flextable::align(part="all",align="center")|>
   padding(padding=2,part="all")|>
   footnote(j=1,value=as_paragraph(" Note: All data is from DBHYDRO and provisional."),ref_symbols=" ",part="header")|>
   footnote(j=cur.month,
@@ -2818,7 +2978,7 @@ SRS.delive|>
   bold(part="header")|>
   hline(part="header")|>
   add_header_lines(values=cap.val)|>
-  align(align="center",part="header")|>
+  flextable::align(align="center",part="header")|>
   fontsize(size=12,part="header")|>
   font(fontname = "Times New Roman",part="all")|>
   padding(padding=1.5, part='footer')|>
@@ -2859,7 +3019,7 @@ eSRS.delive|>
   bg(j=2:13,bg=colmatrix)|>
   color(j=2:13,color=txt.colmatrix)|>
   bold(j=2:13)|>
-  align(part="all",align="center")|>
+  flextable::align(part="all",align="center")|>
   padding(padding=2,part="all")|>
   footnote(j=1,value=as_paragraph(" Note: All data is from DBHYDRO and provisional."),ref_symbols=" ",part="header")|>
   footnote(j=2,value=as_paragraph(dbkeys.txt),ref_symbols=" ",part="header")|>
@@ -2871,7 +3031,7 @@ eSRS.delive|>
   bold(part="header")|>
   hline(part="header")|>
   add_header_lines(values=cap.val)|>
-  align(align="center",part="header")|>
+  flextable::align(align="center",part="header")|>
   fontsize(size=12,part="header")|>
   font(fontname = "Times New Roman",part="all")|>
   padding(padding=1.5, part='footer')|>
@@ -2886,7 +3046,7 @@ data.frame(LEGEND=c("IOP","ERTP","Increment 1","2016 Emergency Deviation","Incre
   flextable()|>
   bold()|>
   bold(part="header")|>
-  align(part="all",align="center")|>
+  flextable::align(part="all",align="center")|>
   padding(padding=2,part="all")|>
   bg(bg=c("cornsilk","lightgreen","lightblue","lightblue","dodgerblue1","dodgerblue1","steelblue","pink","pink","pink"))|>
   color(color=c(rep("black",3),"maroon","black","hotpink","yellow","black","hotpink","maroon"))|>
@@ -2902,7 +3062,7 @@ knitr::include_graphics("FLAB_salsites.png")
 <br>
 
 ```{r FLAB_SAL, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Daily salinity values for select Florida Bay salinity mointoring locations relative to site specific daily historic statistics."}
-ylim.val=c(0,50);by.y=10;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+ylim.val=c(10,50);by.y=10;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
 
 sum.stat.dates.form=format(c(flab.dates[1],date.fun(paste(CurWY-1,05,01,sep="-"))),"%b %Y")
@@ -2920,6 +3080,7 @@ abline(h=ymaj,v=xmaj,lty=3,col="grey")
 # lines(q10~DATE.plt,subset(flab.sal.da.sum,STATION=="ENPGB"),col="lightblue")
 # lines(q90~DATE.plt,subset(flab.sal.da.sum,STATION=="ENPGB"),col="lightblue")
 with(subset(flab.sal.da,STATION==site.val[i]),pt_line(DATE,Data.Value,2,"black",1,21,"indianred1",cex=1.25))
+abline(h=40,col="red",lwd=1.5)
 axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj,cex.axis=1);box(lwd=1)
 mtext(substr(site.val[i],4,5),side=3,line=-1.25)

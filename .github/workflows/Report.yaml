@@ -33,7 +33,7 @@ jobs:
                   "lubridate","magrittr","RcppRoll",
                   "dataRetrieval","downloadthis",
                   "rvest","httr",
-                  "sf","raster","mapmisc"))
+                  "sf","terra","mapmisc"))
           remotes::install_github("SwampThingPaul/AnalystHelper")
           remotes::install_github("SwampThingPaul/EVERSpatDat")
         shell: Rscript {0}
