@@ -2627,8 +2627,8 @@ xmaj.lab = subset(wca.Q.da.mon2,month == 1)$CY
 xmaj.x = seq(1,nrow(wca.Q.da.mon2),12)
 
 # cols <- viridis::cividis(3)
-cols <- paletteer::paletteer_d("colorBlindness::Blue2Orange12Steps",n=3,type="continuous",direction=-1)|>as.character()
-
+# cols <- paletteer::paletteer_d("colorBlindness::Blue2Orange12Steps",n=3,type="continuous",direction=-1)|>as.character()
+cols <- c("#FF2A00FF", "#E5FFE5FF", "#002AFFFF")
 par(family="serif",mar=c(1,2,0.5,1),oma=c(2.5,2,1.25,1));
 x = barplot(t(wca.Q.da.mon2[,5:3]),col=NA,border=NA,ylim = ylim.val,space=0,axes=F)
 abline(h=ymaj,v=xmaj.x,lty=3,col="grey",lwd=0.5)
