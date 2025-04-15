@@ -33,7 +33,8 @@ jobs:
                   "lubridate","magrittr","RcppRoll",
                   "dataRetrieval","downloadthis",
                   "rvest","httr",
-                  "sf","mapmisc"))
+                  "sf","mapmisc",
+                  "Rcpp"))
           # install.packages('terra', repos='https://rspatial.r-universe.dev')
           remotes::install_github("rspatial/terra")
           remotes::install_github("SwampThingPaul/AnalystHelper")
