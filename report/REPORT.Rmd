@@ -72,6 +72,9 @@ knitr::opts_chunk$set(echo=FALSE,
 #                        upgrade=FALSE,quiet=TRUE)
 # }
 
+## Turn on/off LOK recovery envelope shading
+RecEnv.plot = 1
+
 ## Libraries
 library(AnalystHelper)
 # source("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/select_AnalystHelper_source.R")
@@ -1373,6 +1376,41 @@ LOSOM.sch.bk = cbind(LOSOM.sch.bk,date_mat)|>
 
 LOSOM.sch.bk[-1] = lapply(LOSOM.sch.bk[-1],dat.interp);
 
+
+lok.rec.env <- rbind(
+  data.frame(
+    month = c(1,1, 3, 4, 5, 7, 8, 8, 9, 10, 11,12),
+    day = c(1,15, 15, 15, 15, 1, 1, 15, 15, 15, 15,31),
+    variable = "lower",
+    value = c(13.5,13.5,12.5, 11.5, 11, 11, 11.5,11.5, 12, 13, 14,14)
+  ),
+  data.frame(
+    month = c(1,1, 3, 4, 5, 6, 8, 9, 9, 10,12),
+    day = c(1,15, 15, 1, 1, 15, 15, 1, 15, 15,31),
+    variable = "upper",
+    value = c(14.5,14.5, 13.5, 13.5, 13, 12, 13, 13.5, 14.5, 15,15)
+  )
+)
+
+n_row_vals = nrow(lok.rec.env)
+tot_row = n_row_vals*length(vals)
+date_mat =matrix(NA,nrow=tot_row,ncol=1) # data.frame(Date = rep(NA,tot_row))
+CurWY <- WY(Sys.Date())
+for (i in seq_along(vals)) {
+  start_idx <- (i - 1) * n_row_vals + 1
+  end_idx <- i * n_row_vals
+  date_mat[start_idx:end_idx, 1] <- date.fun(
+    paste(CurWY + vals[i], lok.rec.env$month, lok.rec.env$day, sep = "-")
+  )
+}
+date_mat = data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01")))
+
+lok.rec.env.bk = cbind(lok.rec.env,date_mat)|>
+  dcast(Date~variable,value.var = "value",mean)|>
+  merge(fill,"Date",all.y=T)
+lok.rec.env.bk[-1] = lapply(lok.rec.env.bk[-1],dat.interp);
+lok.rec.env.bk$DOWY <- hydro.day(lok.rec.env.bk$Date)
+lok.rec.env.bk$WY <- WY(lok.rec.env.bk$Date)
 # LORS.gaph2Yrs$Date2=date.fun(LORS.gaph2Yrs$Date2)
 # LORS.gaph2Yrs$DOWY=hydro.day(LORS.gaph2Yrs$Date2)
 # LORS.gaph2Yrs$WY=WY(LORS.gaph2Yrs$Date2)
@@ -1424,6 +1462,7 @@ layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 
 plot(ZONE.B~DOWY,LORS08.sch.bk,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=seq(9,18,1),v=hydro.day(xmin),lwd=1,col="grey",lty=3)
+if(RecEnv.plot==1){with(subset(lok.rec.env.bk,WY==CurWY),shaded.range(DOWY,lower,upper,"grey90",col.adj=1,lty=1))}
 with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.B~DOWY,lwd=2,col="black"))
 with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C~DOWY,lwd=2,col="black"))
 with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C1~DOWY,lwd=2,col="black"))
