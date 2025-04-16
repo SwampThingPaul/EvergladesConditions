@@ -13,7 +13,7 @@ jobs:
     name: Render report
     # runs-on: macos-latest
     # runs-on: windows-latest
-    runs-on: windows-2019
+    runs-on: windows-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -35,8 +35,9 @@ jobs:
                   "rvest","httr",
                   "sf","mapmisc",
                   "Rcpp"))
+          install.packages('terra', repos='https://cloud.r-project.org')
           # install.packages('terra', repos='https://rspatial.r-universe.dev')
-          remotes::install_github("rspatial/terra")
+          # remotes::install_github("rspatial/terra")
           remotes::install_github("SwampThingPaul/AnalystHelper")
           remotes::install_github("SwampThingPaul/EVERSpatDat")
         shell: Rscript {0}

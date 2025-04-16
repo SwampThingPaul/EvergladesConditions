@@ -711,6 +711,7 @@ LOK.Q.dbkeys <- data.frame(
   loc = c(rep("inflow_North",6),rep("outflow_South",4),
           "CRE","SLE",rep("LWL",2))
 )
+# DBHYDRO.meta.byDBKEY(LOK.Q.dbkeys$DBKEY)
 
 LOK_Q_list <- lapply(LOK.Q.dbkeys$DBKEY, function(dbkey) {
   # Attempt to retrieve data and handle errors
@@ -746,6 +747,8 @@ LOK.Q.da <- do.call(rbind, LOK_Q_list)|>
 subset(LOK.Q.da,Date.EST==YEST)
 
 LWL.max.date <- max(LOK.Q.da$Date.EST[LOK.Q.da$loc == "LWL"])+(1*86400)
+
+if(LWL.max.date<YEST){
 lwl.date.seq <- seq(LWL.max.date, YEST, by = "1 days")
 
 # Preallocate data frame
@@ -790,7 +793,7 @@ lwl.q.melt <- melt(lwl.q,id.vars="Date.EST",variable.name = "SITE",value.name = 
 LOK.Q.da <- rbind(LOK.Q.da,
                   lwl.q.melt[,names(LOK.Q.da)]
                   )
-
+}
 
 LOK.Q.da_total <- dcast(LOK.Q.da,Date.EST~flow.dir,
                         value.var = "Data.Value",
