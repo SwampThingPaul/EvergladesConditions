@@ -4,7 +4,7 @@
 
 ### Scenario 1
 
-```{r S1Calc,echo = F}
+# ```{r S1Calc,echo = F}
 LOK_HMF_S1 <- forFUN_scenario(
   CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
   SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
@@ -26,9 +26,9 @@ LOK_HMF_S1.LCI <- forFUN_scenario(
   inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
   ET =  ET.dat$Q10.ETPI_ft,
   STG = LOK.stg.da_today$STG29)
-```
+# ```
 
-```{r S1,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #1."}
+# ```{r S1,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #1."}
 j <- 1
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
@@ -64,9 +64,9 @@ legend("center",
        pt.bg=c(NA),pt.cex=1,
        ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
 mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
+# ```
 
-```{r,echo=F}
+# ```{r,echo=F}
 LOK_HMF_S1|>
   download_this(
     output_name = "S1_forecast",
@@ -76,11 +76,11 @@ LOK_HMF_S1|>
     has_icon = TRUE,
     icon = "fa fa-file-excel"
   )
-```
+# ```
 
 ### Scenario 2
 
-```{r S2Calc,echo = F}
+# ```{r S2Calc,echo = F}
 LOK_HMF_S2 <- forFUN_scenario(
   CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
   SLE.Q = cfs.to.acftd(1400)*rep(Q.fac,num.weeks),
@@ -102,9 +102,9 @@ LOK_HMF_S2.LCI <- forFUN_scenario(
   inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
   ET =  ET.dat$Q10.ETPI_ft,
   STG = LOK.stg.da_today$STG29)
-```
+# ```
 
-```{r S2,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #2."}
+# ```{r S2,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #2."}
 j <- 2
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
@@ -140,9 +140,9 @@ legend("center",
        pt.bg=c(NA),pt.cex=1,
        ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
 mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
+# ```
 
-```{r,echo=F}
+# ```{r,echo=F}
 LOK_HMF_S2|>
   download_this(
     output_name = "S2_forecast",
@@ -152,11 +152,11 @@ LOK_HMF_S2|>
     has_icon = TRUE,
     icon = "fa fa-file-excel"
   )
-```
+# ```
 
 ### Scenario 3
 
-```{r S3Calc,echo = F}
+# ```{r S3Calc,echo = F}
 EAA_add <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"))|>
   mutate(AddQ = ifelse(Date.EST>date.fun("2025-02-01"),300,0))
 
@@ -181,9 +181,9 @@ LOK_HMF_S3.LCI <- forFUN_scenario(
   inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
   ET =  ET.dat$Q10.ETPI_ft,
   STG = LOK.stg.da_today$STG29)
-```
+# ```
 
-```{r S3,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #3."}
+# ```{r S3,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #3."}
 j <- 3
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
@@ -219,9 +219,9 @@ legend("center",
        pt.bg=c(NA),pt.cex=1,
        ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
 mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
+# ```
 
-```{r,echo=F}
+# ```{r,echo=F}
 LOK_HMF_S3|>
   download_this(
     output_name = "S3_forecast",
@@ -231,11 +231,11 @@ LOK_HMF_S3|>
     has_icon = TRUE,
     icon = "fa fa-file-excel"
   )
-```
+# ```
 
 ### Scenario 4
 
-```{r S4Calc,echo = F}
+# ```{r S4Calc,echo = F}
 LOK_HMF_S4 <- forFUN_scenario(
   CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
   SLE.Q = cfs.to.acftd(700)*rep(Q.fac,num.weeks),
@@ -257,9 +257,9 @@ LOK_HMF_S4.LCI <- forFUN_scenario(
   inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
   ET =  ET.dat$Q10.ETPI_ft,
   STG = LOK.stg.da_today$STG29)
-```
+# ```
 
-```{r S4,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #4."}
+# ```{r S4,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #4."}
 j <- 4
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
@@ -295,9 +295,9 @@ legend("center",
        pt.bg=c(NA),pt.cex=1,
        ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
 mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
+# ```
 
-```{r,echo=F}
+# ```{r,echo=F}
 LOK_HMF_S4|>
   download_this(
     output_name = "S4_forecast",
@@ -307,11 +307,11 @@ LOK_HMF_S4|>
     has_icon = TRUE,
     icon = "fa fa-file-excel"
   )
-```
+# ```
 
 ### Scenario 5
 
-```{r S5Calc,echo = F}
+# ```{r S5Calc,echo = F}
 LOK_HMF_S5 <- forFUN_scenario(
   CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
   SLE.Q = cfs.to.acftd(0)*rep(Q.fac,num.weeks),
@@ -333,9 +333,9 @@ LOK_HMF_S5.LCI <- forFUN_scenario(
   inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
   ET =  ET.dat$Q10.ETPI_ft,
   STG = LOK.stg.da_today$STG29)
-```
+# ```
 
-```{r S5,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #5."}
+# ```{r S5,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #5."}
 j <- 5
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
@@ -371,9 +371,9 @@ legend("center",
        pt.bg=c(NA),pt.cex=1,
        ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
 mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
+# ```
 
-```{r,echo=F}
+# ```{r,echo=F}
 LOK_HMF_S5|>
   download_this(
     output_name = "S5_forecast",
@@ -383,12 +383,12 @@ LOK_HMF_S5|>
     has_icon = TRUE,
     icon = "fa fa-file-excel"
   )
-```
+# ```
 
 
 ### Scenario 6
 
-```{r S6Calc,echo = F}
+# ```{r S6Calc,echo = F}
 LOK_HMF_S6 <- forFUN_scenario(
   CRE.Q = cfs.to.acftd(2100)*rep(Q.fac,num.weeks),
   SLE.Q = cfs.to.acftd(150)*rep(Q.fac,num.weeks),
@@ -410,9 +410,9 @@ LOK_HMF_S6.LCI <- forFUN_scenario(
   inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10), 
   ET =  ET.dat$Q10.ETPI_ft,
   STG = LOK.stg.da_today$STG29)
-```
+# # ```
 
-```{r S6,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #4."}
+# # ```{r S6,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee Stage forecast under scenario #4."}
 j <- 6
 par(family="serif",mar=c(2,3,0.25,0.5),oma=c(2,1,1,0.5));
 layout(matrix(1:2,1,2),widths=c(1,0.5))
@@ -448,9 +448,9 @@ legend("center",
        pt.bg=c(NA),pt.cex=1,
        ncol=1,cex=0.7,bty="n",y.intersp=1.5,x.intersp=0.75,xjust=0.5,yjust=0.5)
 mtext(side=1,line=-2,adj=0,"- Estuary discharges based on\n 2-week avg pulse discharges\n- Assumes no rainfall\n- Historic median ET",cex=0.75)
-```
+# ```
 
-```{r,echo=F}
+# ```{r,echo=F}
 LOK_HMF_S6|>
   download_this(
     output_name = "S6_forecast",
@@ -460,4 +460,4 @@ LOK_HMF_S6|>
     has_icon = TRUE,
     icon = "fa fa-file-excel"
   )
-```
+# ```
