@@ -35,6 +35,7 @@ jobs:
                   "rvest","httr",
                   "sf","raster","mapmisc"))
                   # "terra","Rcpp"))
+          install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
           remotes::install_github("SwampThingPaul/AnalystHelper")
           remotes::install_github("SwampThingPaul/EVERSpatDat")
         shell: Rscript {0}
