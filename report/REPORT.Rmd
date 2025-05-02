@@ -391,18 +391,18 @@ flab.dates=c(date.fun(paste(CurWY-14,05,01,sep="-")),End.Date)
 comp.dbkey=data.frame(DBKEY=c("N3466","06832"),Priority=c("P2","P1"))
 # AnalystHelper::DBHYDRO.meta.byDBKEY(comp.dbkey$DBKEY)
 
-stg.da <- list()
-for(i in 1:nrow(comp.dbkey)){
-  tmp=DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i])
-  tmp$DBKEY=as.character(comp.dbkey$DBKEY[i])
+stg.da <- vector("list", nrow(comp.dbkey))
+for(i in seq_len(nrow(comp.dbkey))){
+  tmp <- DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i])
+  tmp$DBKEY <- as.character(comp.dbkey$DBKEY[i])
   stg.da[[i]] <- tmp
 }
 
-stg.da <- do.call(rbind,stg.da)|>
+lok.stg.da <- do.call(rbind,stg.da)|>
   merge(comp.dbkey,"DBKEY")|>
   mutate(DATE=date.fun(Date))
 
-LakeO.xtab=dcast(stg.da,DATE~Priority,value.var="Data.Value",mean)
+LakeO.xtab=dcast(lok.stg.da,DATE~Priority,value.var="Data.Value",mean)
 LakeO.xtab$Mean=with(LakeO.xtab,ifelse(is.na(P1)==T,P2,P1))
 
 fill=data.frame(DATE=seq(min(LakeO.xtab$DATE),max(map.q$Date),"1 days"))
@@ -590,7 +590,8 @@ WCA.in.dbkeys <- rbind(WCA1.in.dbkeys,
 wca_Q_list <- lapply(WCA.in.dbkeys$DBKEY, function(dbkey) {
   # Attempt to retrieve data and handle errors
   tryCatch({
-    tmp <- DBHYDRO_daily(flab.dates[1], flab.dates[2], dbkey)
+    # tmp <- DBHYDRO_daily(flab.dates[1], flab.dates[2], dbkey)
+    tmp <- DBHYDRO_daily(date.fun("2012-01-01"), flab.dates[2], dbkey)
     tmp$DBKEY <- as.character(dbkey)
     #setTxtProgressBar(pb, i)
     tmp
@@ -670,7 +671,8 @@ SRS.dbkeys=subset(SRS.dbkeys,!(SITE%in%c("S355A","S355B")))
 
 srs.flow=data.frame()
 for(i in 1:nrow(SRS.dbkeys)){
-  tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],SRS.dbkeys$DBKEY[i])
+  # tmp=DBHYDRO_daily(flab.dates[1],flab.dates[2],SRS.dbkeys$DBKEY[i])
+  tmp=DBHYDRO_daily(date.fun("2012-01-01"),flab.dates[2],SRS.dbkeys$DBKEY[i])
   tmp$DBKEY=SRS.dbkeys$DBKEY[i]
   srs.flow=rbind(tmp,srs.flow)
   print(i)
@@ -1481,13 +1483,13 @@ with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.SSM~DOWY,lwd=2,lty=1,col="grey")
 # with(subset(LORS.gaph2Yrs,WY==CurWY),lines(Inter1ft~DOWY,lwd=2,lty=5,col="black"))
 # with(subset(LORS.gaph2Yrs,WY==CurWY),lines(LowLow~DOWY,lwd=2,lty=5,col="grey"))
 # with(subset(LORS.gaph2Yrs,WY==CurWY),lines(LowMid~DOWY,lwd=2,lty=5,col="grey"))
-text(10,17.5,"High Lake Management Band",font=2,pos = 4)
-text(10,9.5,"Water Shortage Management Band",font=2,pos = 4)
-text(10,12,"Beneficial Use",font=2,pos = 4)
-text(10,12.8,"Base Flow",font=2,pos = 4)
-text(45,15.8,"High",font=2)
-text(15,15.4,"Intermediate ",font=2,cex=0.75,pos = 4)
-text(30,13.5,"Low",font=2,cex=0.75,pos = 4)
+# text(10,17.5,"High Lake Management Band",font=2,pos = 4)
+# text(10,9.5,"Water Shortage Management Band",font=2,pos = 4)
+# text(10,12,"Beneficial Use",font=2,pos = 4)
+# text(10,12.8,"Base Flow",font=2,pos = 4)
+# text(45,15.8,"High",font=2)
+# text(15,15.4,"Intermediate ",font=2,cex=0.75,pos = 4)
+# text(30,13.5,"Low",font=2,cex=0.75,pos = 4)
 
 with(subset(LOSOM.sch.bk,WY==CurWY),lines(ZONE.A~DOWY,lwd=2,col="black"))
 with(subset(LOSOM.sch.bk,WY==CurWY),lines(ZONE.BC~DOWY,lwd=2,col="black"))
@@ -1495,9 +1497,9 @@ with(subset(LOSOM.sch.bk,WY==CurWY),lines(ZONE.D~DOWY,lwd=2,col="grey"))
 text(246,17.5,"Zone A",font=2)
 text(290,16.8,"Zone BC",font=2,pos = 4)
 text(277,14.3,"Zone D",font=2,pos = 4)
-abline(v=hydro.day(date.fun("2024-08-12")),lty=2,lwd=2)
-text(hydro.day(date.fun("2024-08-12")),10.5,"LORS08",pos=2,col="red")
-text(hydro.day(date.fun("2024-08-12")),10.5,"LOSOM",pos=4,col="blue")
+# abline(v=hydro.day(date.fun("2024-08-12")),lty=2,lwd=2)
+# text(hydro.day(date.fun("2024-08-12")),10.5,"LORS08",pos=2,col="red")
+# text(hydro.day(date.fun("2024-08-12")),10.5,"LOSOM",pos=4,col="blue")
 
 with(subset(LakeO.xtab,WY==CurWY-2),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("forestgreen",0.5),lty=1))
 with(subset(LakeO.xtab,WY==CurWY-1),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("blue",0.5),lty=1))
@@ -1944,7 +1946,11 @@ text(x=mid.val,y=top.val,expression(paste("CI"["Cyano"]," (cells mL"^"-1","x1000
 par(family="serif",mar=c(1,3,0.5,2),oma=c(2,2,0.5,2))
 layout(matrix(1:2,2,1),heights=c(0.5,1))
 
-xlim.val=c(date.fun("2024-01-01"),date.fun(Sys.Date()+lubridate::duration(1,"months")));xmaj=seq(xlim.val[1],xlim.val[2],"1 months");xmin=seq(xlim.val[1],xlim.val[2],"1 days")
+xlim.val <- c(date.fun(format(YEST - 9*(60 * 60 * 24 * 365.25 / 12),"%Y-%m-01")),
+             date.fun(format(YEST + 3*(60 * 60 * 24 * 365.25 / 12),"%Y-%m-01")))
+
+# xlim.val=c(date.fun("2024-01-01"),date.fun(Sys.Date()+lubridate::duration(1,"months")));
+xmaj=seq(xlim.val[1],xlim.val[2],"1 months");xmin=seq(xlim.val[1],xlim.val[2],"1 days")
 
 ylim.val=c(0,1);by.y=0.2;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 plot(cloud.area.per~date,cyano_area,axes=F,ann=F,type="n",ylim=ylim.val,xlim=xlim.val,yaxs="i")
@@ -2420,14 +2426,17 @@ map.q$EAA_WCA2.out.kacft=cfs.to.acftd(map.q$EAA_WCA2.out)/1000
 max.q=with(subset(map.q,Date%in%seq(End.Date-ddays(60),End.Date+ddays(3),"1 days")),max(c(WCA2.kacft,S11s.kacft),na.rm=T))
 ylim.max=round(max.q+max.q*0.25,0)
 
+ymaj=heckbert_labs(min(map.q$WCA2.kacft,na.rm=T),max(map.q$WCA2.kacft,na.rm=T),5)#seq(ylim.val[1],ylim.val[2],by.y);
+ymin=seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)# seq(ylim.val[1],ylim.val[2],by.y/2)
+ylim.val=range(ymaj)# c(0,ylim.max);by.y=ylim.max/4;
 
-ylim.val=c(0,ylim.max);by.y=ylim.max/4;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 xlim.val=date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));xmaj=seq(xlim.val[1],xlim.val[2],by="14 days");xmin=seq(xlim.val[1],xlim.val[2],by="1 days")
 cols=c("dodgerblue1","indianred1","black")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(family="serif",cex.axis=1.2,mar=c(2,2,1,1),oma=c(1,3,1,2));
 plot(WCA2.kacft~Date,map.q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+abline(h=0)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
 with(map.q,lines(Date,WCA2.kacft,col=cols[1],lwd=2))
 with(map.q,lines(Date,S11s.kacft,col=cols[2],lwd=2,lty=2))
