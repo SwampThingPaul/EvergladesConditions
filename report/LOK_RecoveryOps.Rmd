@@ -35,7 +35,7 @@ forFUN <- function(forecast_horizon,
                    Q_forecast,
                    P_forecast,
                    E_forecast,
-                   S,V){
+                   S,V,WSM,WSM.Band){
   # Time step (Delta t)
   dt <- 1  # Assume daily time steps
   A <- get_LOK_area(V[1])
@@ -44,11 +44,15 @@ forFUN <- function(forecast_horizon,
     # Get the area based on current volume
     A_t <- get_LOK_area(V[t])
     A[t+1] <- A_t
+    
+    # turns off outflow if below zone D
+    Q_forecast[t] <- if(WSM[t]==TRUE){0}else{Q_forecast[t]}
     # Compute the new volume using the water balance equation
     V[t + 1] <- V[t] + dt * (I_forecast[t] - Q_forecast[t] + A[t] * (P_forecast[t] - E_forecast[t]))
     
     # Update the stage based on the new volume
     S[t + 1] <- get_LOK_stage(V[t + 1])
+    WSM[t+1] <- if(S[t+1]<WSM.Band[t]){TRUE}else{FALSE}
   }
   
   # Results
@@ -56,24 +60,29 @@ forFUN <- function(forecast_horizon,
     Time = 1:(forecast_horizon + 1),
     Stage = S,
     Volume = V,
-    Area = A
+    Area = A,
+    WSM = WSM,
+    QT = c(Q_forecast,NA)
   )
   return(rslt)
 }
 
-forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q,LWL.Q, inflow.Q, ET,RF=NULL,STG){
-  I_forecast <- inflow.Q #Q.dat$Inflow.median 
-  Q_forecast <- CRE.Q+SLE.Q+EAA.Q+LWL.Q
-  P_forecast <- if(is.null(RF)){rep(0,num.weeks*7)}else{RF}
-  E_forecast <- ET
-  
+forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q,LWL.Q, inflow.Q, ET,RF=NULL,STG,WSM.Band){
+
   forecast_horizon <- num.weeks*7; # Days
   # Start with an initial stage
   S <- numeric(forecast_horizon + 1)  # Stage
   V <- numeric(forecast_horizon + 1)  # Volume
+  WSM <- numeric(forecast_horizon + 1) # WSM condition
   # A <- numeric(forecast_horizon + 1)  # Area
   S[1] <- STG  # Initial stage 
   V[1] <- get_LOK_volume(S[1])  # Compute initial volume (m3)
+  WSM[1] <- if(S[1]<WSM.Band[1]){TRUE}else{FALSE}
+  
+  I_forecast <- inflow.Q #Q.dat$Inflow.median 
+  Q_forecast <- CRE.Q+SLE.Q+EAA.Q+LWL.Q
+  P_forecast <- if(is.null(RF)){rep(0,num.weeks*7)}else{RF}
+  E_forecast <- ET
   
   LOK_HMF <- forFUN(forecast_horizon,
                     I_forecast,
@@ -81,16 +90,19 @@ forFUN_scenario <- function(CRE.Q,SLE.Q,EAA.Q,LWL.Q, inflow.Q, ET,RF=NULL,STG){
                     P_forecast,
                     E_forecast,
                     S,
-                    V)
+                    V,
+                    WSM, # WSM indicator
+                    WSM.Band # WSM stage
+                    )
   
   LOK_HMF$Date_forecast <- (TODAY-(1*86400))+as.numeric((LOK_HMF$Time*86400))
   LOK_HMF <- cbind(LOK_HMF,data.frame(
-    CRE = c(NA,CRE.Q),
-    SLE = c(NA,SLE.Q),
-    EAA = c(NA,EAA.Q),
-    LWL = c(NA,LWL.Q),
-    QT = c(NA,Q_forecast),
-    Inflow = c(NA,inflow.Q))
+    CRE = c(CRE.Q,NA),
+    SLE = c(SLE.Q,NA),
+    EAA = c(EAA.Q,NA),
+    LWL = c(LWL.Q,NA),
+    Inflow = c(inflow.Q,NA),
+    WSM.Band = c(WSM.Band,NA))
   )
   
   return(LOK_HMF)
@@ -172,7 +184,7 @@ LOSOM.sch.bk = data.frame(
 # LOSOM.sch.bk$value = LOSOM.sch.bk$value - 1.25 # NAVD to NGVD conversion
 
 CurWY <- WY(Sys.Date())
-vals <- c(-1,0,1)
+vals <- c(-2,-1,0,1)
 fill=data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
 
 n_row_vals = nrow(LOSOM.sch.bk)
@@ -440,16 +452,23 @@ cap.val <- "Lake Okeechobee Stage Forecast Scenarios"
 #            SLE = c(1400,1400,1400,700,0,150),
 #            EAA = c(0, "Historic Median",rep("Historic Median + 300 cfs (after 1 Feb)",4)))|>
 scen.des <- data.frame(Scenario = c(1:5),
-           CRE = c(rep(1200,3),1400,2100),
-           SLE = c(rep(0,3),500,1400),
-           EAA = c(paste0(c(1500,2500,3500),"\n(0 after 15 May)"),"Max Practicable\n(historic median)",0),
-           LWL = paste("Up to",c(rep(300,3),120,300)),
+           CRE = c(rep(2000,3),0,0),
+           SLE = c(rep("P50",3),0,0),
+           EAA = c(rep("Max Practicable\n(historic median)",3),300,150),
+           LWL = paste("Up to",c(rep(300,3),120,120)),
+           Rainfall = c(paste0(c("100","110","120"),"% normal rainfall"),rep("normal rainfall",2)),
            Source = c(rep("USACE\nLong Range\nProjections",3),"Current Plan","Internal")
            )
 scen.des|>
   flextable()|>
   # width(width=c(0.5,0.75,0.75,2.75))|>
-  merge_v(6)|>
+  # merge_v(6)|>
+  merge_at(i=1:3,j=2)|>
+  merge_at(i=1:3,j=3)|>
+  merge_at(i=1:3,j=4)|>
+  merge_at(i=1:3,j=5)|>
+  # merge_at(i=1:3,j=6)|>
+  merge_at(i=1:3,j=7)|>
   autofit()|>
   align(align="center",part="all")|>
   padding(padding=1,part="all")|>
@@ -858,11 +877,11 @@ s.cols <- MetBrewer::met.brewer("Veronese",length(sNums),direction=1,type="conti
 #             "CRE 2100 cfs; SLE 150 cfs;\nEAA Hist Median + 300 cfs (1 FEB)"
 #             )
 
-leg.txt <- c("CRE 1200 cfs; \nSLE 0 cfs; \nLWL 300 cfs; \nEAA 1500 cfs (0 cfs 15 May)",
-             "CRE 1200 cfs; \nSLE 0 cfs; \nLWL 300 cfs; \nEAA 2500 cfs (0 cfs 15 May)",
-             "CRE 1200 cfs; \nSLE 0 cfs; \nLWL 300 cfs; \nEAA 3500 cfs (0 cfs 15 May)",
-             "CRE 1400 cfs; \nSLE 500 cfs; \nLWL 120 cfs; \nEAA max",
-             "CRE 2100 cfs; \nSLE 1400 cfs; \nLWL 500 cfs; \nEAA 0 cfs")
+leg.txt <- c("CRE 2000 cfs; \nSLE P50; \nLWL 300 cfs; \nEAA max; \nRF: 100% norm",
+             "CRE 2000 cfs; \nSLE P50; \nLWL 300 cfs; \nEAA max; \nRF: 110% norm",
+             "CRE 2000 cfs; \nSLE P50; \nLWL 300 cfs; \nEAA max; \nRF: 120% norm",
+             "CRE 0 cfs; \nSLE 0 cfs; \nLWL 120 cfs; \nEAA 300 cfs; \nRF: norm",
+             "CRE 0 cfs; \nSLE 0 cfs; \nLWL 120 cfs; \nEAA 150 cfs; \nRF: norm")
 
 # subset(LOK.stg.da,Date.EST==lake.rec)
 
@@ -936,23 +955,27 @@ for(i in 1:5){
 
 # Define breakpoints
 # bk1.start was to fix a automation issue.
-bk1.start <- if(TODAY<date.fun(date.fun("2025-05-15"))){
-  TODAY+(1*86400)
-}else{
-    date.fun("2025-05-15")
-  }
-breakpoints <- list(
-  sea.bk1 = seq(bk1.start, date.fun("2025-05-15"),"1 days"),
-  sea.bk2 = seq(date.fun("2025-05-16"),EDate, "1 days")
-)
+# bk1.start <- if(TODAY<date.fun(date.fun("2025-05-15"))){
+#   TODAY+(1*86400)
+# }else{
+#     date.fun("2025-05-15")
+#   }
+# breakpoints <- list(
+#   sea.bk1 = seq(bk1.start, date.fun("2025-05-15"),"1 days"),
+#   sea.bk2 = seq(date.fun("2025-05-16"),EDate, "1 days")
+# )
 
+breakpoints <- list(
+  sea.bk1 = seq(TODAY+(1*86400),EDate, "1 days")
+)
 # Define scenarios
 scenarios <- data.frame(
   scenario = paste0("S", 1:5),
-  EAA = c(1500, 2500, 3500, 0, 0),
-  CRE = c(1200,1200,1200,1400,2100),
-  SLE = c(0,0,0,500,1400),
-  LWL = c(300,300,300,120,300)
+  EAA = c(0, 0, 0, 300, 150),
+  CRE = c(2000,2000,2000,0,0),
+  SLE = c(0,0,0,0,0),
+  LWL = c(300,300,300,120,120),
+  RF.fac = c(1,1.1,1.2,1,1)
 )
 
 # # Define flow values for each period
@@ -972,6 +995,7 @@ scenario_data <- do.call(rbind, lapply(1:nrow(scenarios), function(i) {
       SLE = scenarios$SLE[i],# ifelse(scenarios$scenario[i] == "S5" & bk == "sea.bk1", 0, flow_values[[bk]][2]), # Special case for S5
       LWL = scenarios$LWL[i],
       EAA = ifelse(bk == "sea.bk2",0,scenarios$EAA[i]),
+      RF.fac = scenarios$RF.fac[i],
       scenario = scenarios$scenario[i]
     )
   }))
@@ -979,12 +1003,23 @@ scenario_data <- do.call(rbind, lapply(1:nrow(scenarios), function(i) {
 
 # scenario_data <- subset(scenario_data,Date.EST%in%seq(TODAY+(1*86400),EDate,"1 days"))
 
-DOY.for.dates <- as.numeric(format(seq(bk1.start,EDate,"1 days"),"%j"))
-scenario_data[scenario_data$scenario=="S4","EAA"] <- subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)$Outflow.median
+# DOY.for.dates <- as.numeric(format(seq(bk1.start,EDate,"1 days"),"%j"))
+DOY.for.dates <- as.numeric(format(seq(TODAY+(1*86400),EDate,"1 days"),"%j"))
+# scenario_data[scenario_data$scenario=="S4","EAA"] <- subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)$Outflow.median
 
 for(i in 1:nrow(scenarios)){
   scenario_data[scenario_data$scenario==paste0("S",i),"LWL"] <- pmin(scenario_data[scenario_data$scenario==paste0("S",i),"LWL"],subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)$LWL.median)
+  
+  scenario_data[scenario_data$scenario==paste0("S",i),"SLE"] <- pmin(scenario_data[scenario_data$scenario==paste0("S",i),"SLE"],subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)$SLE.median)
+  
+    scenario_data[scenario_data$scenario==paste0("S",i),"EAA"] <- pmin(scenario_data[scenario_data$scenario==paste0("S",i),"EAA"],subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)$Outflow.median)
 }
+
+scenario_data <- merge(scenario_data,
+                       LOSOM.sch.bk[,c("Date","ZONE.A","ZONE.BC","ZONE.D")],
+                       by.x = "Date.EST",
+                       by.y = "Date")
+
 
 # subset(LOK.Q.DOYstats,DOY %in% DOY.for.dates)
 # head(LOK.Q.DOYstats)
@@ -992,6 +1027,11 @@ for(i in 1:nrow(scenarios)){
 
 HMF.UCIs <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"));# stores stage forecast for all scenarios
 HMF.LCIs <- data.frame(Date.EST = seq(TODAY+(1*86400),EDate,"1 days"));# stores stage forecast for all scenarios
+
+Q.dat <- merge(Q.dat,
+               LOSOM.sch.bk[,c("Date","ZONE.A","ZONE.BC","ZONE.D")],
+               by.x = "Date.EST",
+               by.y = "Date")
 
 LOK_HMF.base <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(Q.dat$CRE.median),
@@ -1002,7 +1042,8 @@ LOK_HMF.base <- forFUN_scenario(
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
     ET =  ET.dat$med.ETPI_ft,
     RF = RF.dat$med.RF_ft,
-    STG = LOK.stg.da_today$STG29)
+    STG = LOK.stg.da_today$STG29,
+    WSM.Band = Q.dat$ZONE.D)
 # LOK_HMF.base.UCI <- forFUN_scenario(
 #     CRE.Q = cfs.to.acftd(Q.dat$CRE.Q90),
 #     SLE.Q = cfs.to.acftd(Q.dat$SLE.Q90),
@@ -1028,7 +1069,8 @@ LOK_HMF.base.UCI <- forFUN_scenario(
     LWL.Q = cfs.to.acftd(Q.dat$LWL.Q10),
     ET =  ET.dat$Q10.ETPI_ft,
     RF = RF.dat$Q90.RF_ft,
-    STG = LOK.stg.da_today$STG29)
+    STG = LOK.stg.da_today$STG29,
+    WSM.Band = Q.dat$ZONE.D)
 LOK_HMF.base.LCI <- forFUN_scenario(
     CRE.Q = cfs.to.acftd(Q.dat$CRE.Q90),
     SLE.Q = cfs.to.acftd(Q.dat$SLE.Q10),
@@ -1037,7 +1079,8 @@ LOK_HMF.base.LCI <- forFUN_scenario(
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
     ET =  ET.dat$Q90.ETPI_ft,
     RF = RF.dat$Q10.RF_ft,
-    STG = LOK.stg.da_today$STG29)
+    STG = LOK.stg.da_today$STG29,
+    WSM.Band = Q.dat$ZONE.D)
 
 
 ```
@@ -1156,8 +1199,9 @@ for(i in 1:length(sNums)){
     LWL.Q = cfs.to.acftd(subset(scenario_data,scenario==sNums[i])$LWL),
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.median), 
     ET =  ET.dat$med.ETPI_ft,
-    RF = RF.dat$med.RF_ft,
-    STG = LOK.stg.da_today$STG29)
+    RF = RF.dat$med.RF_ft*subset(scenario_data,scenario==sNums[i])$RF.fac,
+    STG = LOK.stg.da_today$STG29,
+    WSM.Band = subset(scenario_data,scenario==sNums[i])$ZONE.D)
   LOK_HMF$scenario <- sNums[i]
   
   assign(paste0("LOK_HMF_S",i),LOK_HMF)
@@ -1174,7 +1218,8 @@ for(i in 1:length(sNums)){
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q90),
     ET =  ET.dat$Q10.ETPI_ft,
     RF = RF.dat$Q90.RF_ft,
-    STG = LOK.stg.da_today$STG29)
+    STG = LOK.stg.da_today$STG29,
+    WSM.Band = subset(scenario_data,scenario==sNums[i])$ZONE.D)
   ## Drier Scenarios
   LOK_HMF.LCI <- forFUN_scenario(
     # CRE.Q = cfs.to.acftd(subset(fore.scen,scenario==sNums[i])$CRE)*rep(Q.fac,num.weeks),
@@ -1187,7 +1232,8 @@ for(i in 1:length(sNums)){
     inflow.Q = cfs.to.acftd(Q.dat$Inflow.Q10),
     ET =  ET.dat$Q90.ETPI_ft,
     RF = RF.dat$Q10.RF_ft,
-    STG = LOK.stg.da_today$STG29)
+    STG = LOK.stg.da_today$STG29,
+    WSM.Band = subset(scenario_data,scenario==sNums[i])$ZONE.D)
   # 
   # plot(Stage~Date_forecast,LOK_HMF)
   # lines(Stage~Date_forecast,LOK_HMF.UCI)
