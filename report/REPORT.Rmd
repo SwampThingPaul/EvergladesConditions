@@ -73,7 +73,10 @@ knitr::opts_chunk$set(echo=FALSE,
 # }
 
 ## Turn on/off LOK recovery envelope shading
-RecEnv.plot = 1
+RecEnv.plot  <-  1
+rec.ops <-  1
+
+lake.rec.start <- AnalystHelper::date.fun("2024-12-07")
 
 ## Libraries
 library(AnalystHelper)
@@ -95,6 +98,12 @@ library(terra)
 library(EVERSpatDat)
 
 library(rvest)
+
+library(ggplot2)
+theme_set(theme_minimal(base_size = 16,base_family = "serif")+
+            theme_bw()+
+            theme(panel.border = element_rect("black",fill=NA,linewidth=1)))
+
 ## custom fun
 roundUp <- function(x) 10^ceiling(log10(x))
 
@@ -387,13 +396,13 @@ flab.dates=c(date.fun(paste(CurWY-14,05,01,sep="-")),End.Date)
 
 
 ## Lake Okeechobee ---------------------------------------------------------
-
+LOK.sdate <- date.fun("2007-05-01")
 comp.dbkey=data.frame(DBKEY=c("N3466","06832"),Priority=c("P2","P1"))
 # AnalystHelper::DBHYDRO.meta.byDBKEY(comp.dbkey$DBKEY)
 
 stg.da <- vector("list", nrow(comp.dbkey))
 for(i in seq_len(nrow(comp.dbkey))){
-  tmp <- DBHYDRO_daily(dates[1],dates[2],comp.dbkey$DBKEY[i])
+  tmp <- DBHYDRO_daily(LOK.sdate,dates[2],comp.dbkey$DBKEY[i])
   tmp$DBKEY <- as.character(comp.dbkey$DBKEY[i])
   stg.da[[i]] <- tmp
 }
@@ -420,6 +429,18 @@ LakeO.xtab$DoY=as.numeric(format(LakeO.xtab$DATE,"%j"))
 LakeO.xtab$CY=as.numeric(format(LakeO.xtab$DATE,"%Y"))
 tail(LakeO.xtab)
 LakeO.xtab$LOK.stage[LakeO.xtab$LOK.stage==0]=NA
+
+LakeO.xtab$inter.stage <- na.approx(LakeO.xtab$LOK.stage)
+stg.cat <- c(0,9,10,12,13,15,16,17,20)
+LakeO.xtab$stg.cat=as.factor(findInterval(LakeO.xtab$inter.stage,stg.cat))
+
+if(rec.ops ==  1){
+LOK.rec.stg <- subset(LakeO.xtab,DATE>=lake.rec.start)
+LOK.rec.stg$LT12.cnt <- as.numeric(LOK.rec.stg$LOK.stage<12) 
+LOK.rec.stg$cum.LT12.cnt <- cumsum(LOK.rec.stg$LT12.cnt)
+LOK.rec.stg$LT115.cnt <- as.numeric(LOK.rec.stg$LOK.stage<11.5) 
+LOK.rec.stg$cum.LT115.cnt <- cumsum(LOK.rec.stg$LT115.cnt)
+}
 
 # writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("DATE")]))
 # writeClipboard(as.character(tail(LakeO.xtab,20L)[,c("LOK.stage")]))
@@ -1260,7 +1281,7 @@ rbind(q.dat.7day,meanQ,sumQ)%>%
 
 ## Lake Okeechobee
 
-```{r LORSplot,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap=paste0("Lake Okeechobee daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years relative to the Lake Okeechobee Regulation Schedule (LORS).")}
+```{r LORSplot,echo=FALSE,results='hide',fig.width=7,fig.height=5,fig.align='center',fig.cap=paste0("Lake Okeechobee daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last three water years relative to the Lake Okeechobee Regulation Schedule (LORS).")}
 # LORS.highlakemange=data.frame(DATE=date.fun(c("2022-01-01","2022-04-01","2022-06-01","2022-09-15","2022-11-01","2022-12-31")),
 #                      STG=c(17.25,17.25,16.00,16.50,17.25,17.25))
 # LORS.high=data.frame(DATE=date.fun(c("2022-01-01","2022-04-01","2022-06-01",,"2022-09-15","2022-11-01","2022-12-31")),
@@ -1501,6 +1522,7 @@ text(277,14.3,"Zone D",font=2,pos = 4)
 # text(hydro.day(date.fun("2024-08-12")),10.5,"LORS08",pos=2,col="red")
 # text(hydro.day(date.fun("2024-08-12")),10.5,"LOSOM",pos=4,col="blue")
 
+with(subset(LakeO.xtab,WY==CurWY-3),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("purple",0.5),lty=1))
 with(subset(LakeO.xtab,WY==CurWY-2),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("forestgreen",0.5),lty=1))
 with(subset(LakeO.xtab,WY==CurWY-1),lines(DOWY,LOK.stage,lwd=4,col=adjustcolor("blue",0.5),lty=1))
 with(subset(LakeO.xtab,WY==CurWY),lines(DOWY,LOK.stage,lwd=4,col="red",lty=1))
@@ -1537,8 +1559,8 @@ mtext(side=4,"Stage Elevation (Feet, NAVD88)",line=2.5,cex=1.25)
 
 plot(0:1,0:1,type = 'n', axes = F,xlab=NA, ylab=NA)
 legend(0.5,0.5,
-       legend=c(paste0("WY",CurWY),paste0("WY",CurWY-1),paste0("WY",CurWY-2)),
-       col=c("red",adjustcolor(c("blue","forestgreen"),0.5)),lty=c(1,1),lwd=c(4,4,4),ncol=3,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+       legend=c(paste0("WY",CurWY),paste0("WY",CurWY-1),paste0("WY",CurWY-2),paste0("WY",CurWY-3)),
+       col=c("red",adjustcolor(c("blue","forestgreen","purple"),0.5)),lty=c(1,1),lwd=c(4,4,4),ncol=2,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 ```
 
 </font> <font size=3 color="red">
@@ -1548,9 +1570,9 @@ legend(0.5,0.5,
 </font>
 
 ```{r}
-cap.val="Stage and recession rates this time for the current and last three water years"
+cap.val="Stage and recession rates this day for the current and last three water years"
 
-subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
+subset(LakeO.xtab,DOWY==hydro.day(YEST)&WY%in%(CurWY+c(0,-1:-3)))%>%
   flextable(col_keys=c("DATE","WY","LOK.stage","recess_7day","recess_30day"))%>%
   flextable::width(width=c(1,1,1.25,1.5,1.5))%>%
   flextable::align(align="center",part="all")%>%
@@ -1572,6 +1594,75 @@ subset(LakeO.xtab,DOWY==hydro.day(YEST))%>%
   add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
 # %>% footnote(j=5,part="header",value=as_paragraph("-0.5 ft 30-d\u207B\u00B9 maximum 30-day Recession Rate for HAB Deviation"),ref_symbols =c(" B "))
     
+
+```
+
+<br>
+
+```{r LOK RecoveryOPS, echo=FALSE,fig.width = 6,fig.height=5,fig.align='center',fig.cap="Tracking Lake Okeechobee Recovery Operations targets."}
+if(rec.ops ==  1){
+par(family="serif",mar=c(3,1,1,0.5),oma=c(2,3,1,0.5));
+
+xlim.vals <- c(date.fun("2024-12-01"),YEST+(30*86400))
+xmaj <- seq(xlim.vals[1],xlim.vals[2],by="1 months");xmin <- seq(xlim.vals[1],xlim.vals[2],by="1 days")
+
+ylim.val=c(0,180);by.y=30
+ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+
+plot(cum.LT12.cnt~DATE,LOK.rec.stg,ylim=ylim.val,xlim=xlim.vals,type="n",ann=F,axes=F);
+abline(h=ymaj,v=xmaj,lty=3,col="grey",lwd=0.5)
+lines(cum.LT12.cnt~DATE,LOK.rec.stg,col="dodgerblue1",lwd=2)
+points(cum.LT12.cnt~DATE,subset(LOK.rec.stg,DATE==YEST),pch=21,bg="red",col="pink",cex=1.2)
+with(subset(LOK.rec.stg,DATE==YEST),text(DATE,cum.LT12.cnt,cum.LT12.cnt,pos=4,offset=0.25))
+abline(h=90,col="dodgerblue1",lty=2,lwd=2)
+text(lake.rec.start+(11*86400),90,"Days < 12.0 Ft Target",cex=0.75,pos=1,offset=0.25)
+
+lines(cum.LT115.cnt~DATE,LOK.rec.stg,col="orange",lwd=2)
+points(cum.LT115.cnt~DATE,subset(LOK.rec.stg,DATE==YEST),pch=21,bg="red",col="pink",cex=1.2)
+with(subset(LOK.rec.stg,DATE==YEST),text(DATE,cum.LT115.cnt,cum.LT115.cnt,pos=4,offset=0.25))
+abline(h=60,col="orange",lty=2,lwd=2)
+text(lake.rec.start+(11*86400),60,"Days < 11.5 Ft Target",cex=0.75,pos=1,offset=0.25)
+axis_fun(1,xmaj,xmin,format(xmaj,"%b\n%Y"),line=0.5)
+axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
+mtext(side=2,line=2.5,"Cumulative Days")
+mtext(side=1,line=3,"Date (Month-Year)")
+mtext(side=3,adj=0,paste0("Since Recovery Operations (",format(lake.rec.start,"%d %b %Y"),")"))
+
+legend("topleft",
+       legend=c("Days < 12.0 Ft","Days <11.5 Ft"),
+       col=c("dodgerblue1","orange"),lty=c(1),lwd=c(2),pt.cex=1,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+
+  # cat(sprintf("<center>Tracking Lake Okeechobee Recovery Operations targets.</center>", i))
+}
+```
+
+<br>
+
+
+
+```{r LOK stage calendar,echo=FALSE,fig.width=6,fig.height=5,fig.align='center',fig.cap="Lake Okeechobee stage calendar plot from 2008 to current." }
+xlabs <- seq(date.fun("2025-05-01"),date.fun("2026-04-30"),"1 months")
+xlabs.nums <- hydro.day(xlabs)
+xlabs.labs <- format(xlabs,"%b")
+
+cols <- hcl.colors(8,palette="Spectral")
+ggplot(LakeO.xtab, aes(x = DOWY, y = WY, fill = stg.cat)) +
+  geom_tile(aes(group = stg.cat), colour = NA)+
+  scale_y_reverse(expand = c(0, 0), breaks = unique(LakeO.xtab$WY)) +
+  scale_x_continuous(expand = c(0, 0),
+                     limits = c(1,365),
+                     breaks = xlabs.nums,
+                     labels = xlabs.labs)+
+  scale_fill_manual(values = cols,
+                    name="Lake Stage Category\n(Ft, NGVD29)",
+                    breaks=seq(1,length(stg.cat)-1,1),
+                    labels=c("< 9","9 - 10", "10 - 12", "12 - 13","13 - 15", "15 - 16","16 - 17", "> 17")) +
+  theme_bw(base_family = "serif") +
+  labs(title = "Lake Okeechobee",
+       subtitle = "Stage Elevation",
+       caption = paste0("Produced: ",format(Sys.Date(),"%d %b %Y")),
+       x="Day of Water Year",
+       y="Water Year")
 
 ```
 

@@ -47,6 +47,6 @@ jobs:
       - name: Commit Forecast
         run: |
           git add -A 
-          git commit -m 'update report' || echo "No changes to commit"
+          git commit -m 'update forecast' || echo "No changes to commit"
           git pull --ff-only
           git push origin || echo "No changes to commit"

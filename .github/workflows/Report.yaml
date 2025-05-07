@@ -33,7 +33,7 @@ jobs:
                   "lubridate","magrittr","RcppRoll",
                   "dataRetrieval","downloadthis",
                   "rvest","httr",
-                  "sf","mapmisc"))
+                  "sf","mapmisc","ggplot2"))
                   # "terra","Rcpp"))
           install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
           install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
