@@ -10,7 +10,7 @@ jobs:
     name: Render Forecast
     # runs-on: macos-latest
     # runs-on: windows-latest
-    runs-on: windows-2019
+    runs-on: windows-2022
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:

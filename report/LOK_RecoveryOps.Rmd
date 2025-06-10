@@ -452,7 +452,7 @@ cap.val <- "Lake Okeechobee Stage Forecast Scenarios"
 #            SLE = c(1400,1400,1400,700,0,150),
 #            EAA = c(0, "Historic Median",rep("Historic Median + 300 cfs (after 1 Feb)",4)))|>
 scen.des <- data.frame(Scenario = c(1:5),
-           CRE = c(rep(2000,3),0,0),
+           CRE = c(rep(250,3),0,0),
            SLE = c(rep("P50",3),0,0),
            EAA = c(rep("Max Practicable\n(historic median)",3),300,150),
            LWL = paste("Up to",c(rep(300,3),120,120)),
@@ -972,7 +972,7 @@ breakpoints <- list(
 scenarios <- data.frame(
   scenario = paste0("S", 1:5),
   EAA = c(0, 0, 0, 300, 150),
-  CRE = c(2000,2000,2000,0,0),
+  CRE = c(250,250,250,0,0),
   SLE = c(0,0,0,0,0),
   LWL = c(300,300,300,120,120),
   RF.fac = c(1,1.1,1.2,1,1)
