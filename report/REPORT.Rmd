@@ -326,7 +326,7 @@ map.SDCS <- do.call(rbind, results_list)
 
 
 
-map.q[,2:ncol(map.q)]=sapply(map.q[,2:ncol(map.q)], FUN=function(x) ifelse(is.na(x)==T,0,x))
+map.q[,!(names(map.q) %in% "Date")]=sapply(map.q[,!(names(map.q) %in% "Date")], FUN=function(x) ifelse(is.na(x)==T,0,x))
 
 map.q$NthLake=rowSums(map.q[,c("FEC","Istok","S65E","S65EX1")],na.rm=T)
 map.q$LOIN=rowSums(map.q[,c("OtherLOKInflow","FEC","Istok","S65E","S65EX1")],na.rm=T)
