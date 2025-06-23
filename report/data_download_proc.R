@@ -21,8 +21,10 @@ library(RSQLite)
 
 
 # data download -----------------------------------------------------------
+con <- dbConnect(RSQLite::SQLite(), "report/data/system_report_data.sqlite")
+tables <- dbListTables(con)
 
-dates <- seq(date.fun(date.fun(Sys.Date())-ddays(13)),date.fun(Sys.Date()),"1 days")
+# dates <- seq(date.fun(date.fun(Sys.Date())-ddays(13)),date.fun(Sys.Date()),"1 days")
 
 CurWY <- WY(date.fun(Sys.time()))
 
@@ -156,3 +158,6 @@ for (i in seq_along(dates)) {
 # Combine all results efficiently
 map.SDCS <- do.call(rbind, results_list)
 
+map.usace.q <- merge(map.q,map.SDCS,"Date")
+
+dbWriteTable(con, "usace_q", map.usace.q, overwrite = TRUE,append = FALSE)  # Use append = TRUE to add rows
