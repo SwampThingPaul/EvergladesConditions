@@ -13,7 +13,7 @@ jobs:
     name: Render report
     # runs-on: macos-latest
     # runs-on: windows-latest
-    runs-on: windows-2020
+    runs-on: windows-2021
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
