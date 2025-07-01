@@ -1561,6 +1561,9 @@ plot(0:1,0:1,type = 'n', axes = F,xlab=NA, ylab=NA)
 legend(0.5,0.5,
        legend=c(paste0("WY",CurWY),paste0("WY",CurWY-1),paste0("WY",CurWY-2),paste0("WY",CurWY-3)),
        col=c("red",adjustcolor(c("blue","forestgreen","purple"),0.5)),lty=c(1,1),lwd=c(4,4,4),ncol=2,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+
+# subset(LOSOM.sch.bk,Date==YEST)
+# subset(LakeO.xtab,DATE==YEST)
 ```
 
 </font> <font size=3 color="red">
