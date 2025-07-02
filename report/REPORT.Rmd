@@ -74,10 +74,10 @@ knitr::opts_chunk$set(echo=FALSE,
 
 ## Turn on/off LOK recovery envelope shading
 RecEnv.plot  <-  1
-rec.ops <-  1
+rec.ops <-  0
 
 lake.rec.start <- AnalystHelper::date.fun("2024-12-07")
-
+lake.rec.end <- AnalystHelper::date.fun("2025-07-01")
 ## Libraries
 library(AnalystHelper)
 # source("C:/Julian_LaCie/_GitHub/EvergladesConditions/report/select_AnalystHelper_source.R")
