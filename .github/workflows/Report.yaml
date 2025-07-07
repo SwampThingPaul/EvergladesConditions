@@ -24,7 +24,7 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
       - name: Install rmarkdown
         run: |
-          install.packages("remotes")
+          install.packages("remotes", type = "binary")
           remotes::install_github("gagolews/stringi")
           remotes::install_github("davidgohel/officer")
           remotes::install_github("davidgohel/flextable")
