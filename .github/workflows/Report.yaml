@@ -17,29 +17,54 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: r-lib/actions/setup-r@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
         with:
-          r-version: '4.3.0' 
-      - uses: r-lib/actions/setup-pandoc@v2
-      - name: Install rmarkdown
-        run: |
-          install.packages("remotes", type = "binary")
-          remotes::install_github("gagolews/stringi")
-          remotes::install_github("davidgohel/officer")
-          remotes::install_github("davidgohel/flextable")
-          # remotes::install_github("tidyverse/magrittr")
-          install.packages(c("rmarkdown","knitr","reshape2","plyr","zoo",
-                  "lubridate","magrittr","RcppRoll",
-                  "dataRetrieval","downloadthis",
-                  "rvest","httr",
-                  "sf","mapmisc","ggplot2"))
-                  # "terra","Rcpp"))
-          install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
-          install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
-          remotes::install_github("SwampThingPaul/AnalystHelper")
-          remotes::install_github("SwampThingPaul/EVERSpatDat")
-        shell: Rscript {0}
+          r-version: '4.1.0' 
+
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+    
+      - name: Cache R packages
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}
+          restore-keys: |
+            ${{ runner.os }}-r-
+            
+       - name: Install packages
+         uses: r-lib/actions/setup-r-dependencies@v2
+         with:
+           pak-version: "devel"
+           packages: |
+             gagolews/stringi
+             davidgohel/officer
+             davidgohel/flextable
+             SwampThingPaul/AnalystHelper
+             SwampThingPaul/EVERSpatDat
+             remotes
+             rmarkdown
+             knitr
+             reshape2
+             plyr
+             zoo
+             lubridate
+             magrittr
+             RcppRoll
+             dataRetrieval
+             downloadthis
+             rvest
+             httr
+             sf
+             terra
+             raster
+             mapmisc
+             ggplot2
+      
       - name: Download data
         run: |
           source("./report/NOAA_RS_Download.R")
