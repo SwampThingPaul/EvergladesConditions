@@ -63,17 +63,18 @@ jobs:
           httr
           mapmisc
           ggplot2
-          gdtools
-          gagolews/stringi
-          davidgohel/officer
-          davidgohel/flextable
-          
+
     - name: Install terra and raster from rspatial
       shell: Rscript {0}
       run: |
         install.packages('sf', type = "binary")
         install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
         install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        install.packages('flextable', type = "binary")
+        # remotes::install_github("davidgohel/flextable")
+        # remotes::install_github("davidgohel/officer")
+        # remotes::install_github("davidgohel/gdtools")
+        # remotes::install_github("gagolews/stringi")
       
     - name: Download data
       shell: Rscript {0}
