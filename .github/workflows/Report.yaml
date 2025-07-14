@@ -46,9 +46,6 @@ jobs:
       with:
         pak-version: "devel"
         packages: |
-          gagolews/stringi
-          davidgohel/officer
-          davidgohel/flextable
           SwampThingPaul/AnalystHelper
           SwampThingPaul/EVERSpatDat
           remotes
@@ -66,6 +63,10 @@ jobs:
           httr
           mapmisc
           ggplot2
+          gdtools
+          gagolews/stringi
+          davidgohel/officer
+          davidgohel/flextable
           
     - name: Install terra and raster from rspatial
       shell: Rscript {0}
