@@ -8,62 +8,71 @@ on:
 #    - cron: '55 10,15 * * *'
 #    - cron: '40 11,12,15 * * 1,2,3,4,5'
 # https://crontab.guru/#5_*_*_*_*
+
+
+permissions:
+  contents: write
+  
 jobs:
   render:
     name: Render report
     runs-on: windows-latest
-    
     env:
+      R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-    
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: '4.1.0' 
+    - name: Set up R
+      uses: r-lib/actions/setup-r@v2
+      with:
+          r-version: '4.2.0' 
 
-      - name: Set up Pandoc
-        uses: r-lib/actions/setup-pandoc@v2
-    
-      - name: Cache R packages
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}
-          restore-keys: |
-            ${{ runner.os }}-r-
+    - name: Set up Pandoc
+      uses: r-lib/actions/setup-pandoc@v2
+
+    - name: Cache R packages
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.R_LIBS_USER }}
+        key: ${{ runner.os }}-r-${{ hashFiles('**/*.R', '**/*.Rmd') }}
+        restore-keys: |
+           ${{ runner.os }}-R-
             
-       - name: Install packages
-         uses: r-lib/actions/setup-r-dependencies@v2
-         with:
-           pak-version: "devel"
-           packages: |
-             gagolews/stringi
-             davidgohel/officer
-             davidgohel/flextable
-             SwampThingPaul/AnalystHelper
-             SwampThingPaul/EVERSpatDat
-             remotes
-             rmarkdown
-             knitr
-             reshape2
-             plyr
-             zoo
-             lubridate
-             magrittr
-             RcppRoll
-             dataRetrieval
-             downloadthis
-             rvest
-             httr
-             sf
-             terra
-             raster
-             mapmisc
-             ggplot2
+    - name: Install packages
+      uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        pak-version: "devel"
+        packages: |
+          gagolews/stringi
+          davidgohel/officer
+          davidgohel/flextable
+          SwampThingPaul/AnalystHelper
+          SwampThingPaul/EVERSpatDat
+          remotes
+          rmarkdown
+          knitr
+          reshape2
+          plyr
+          zoo
+          lubridate
+          magrittr
+          RcppRoll
+          dataRetrieval
+          downloadthis
+          rvest
+          httr
+          mapmisc
+          ggplot2
+
+    - name: Install terra and raster from rspatial
+      shell: Rscript {0}
+      run: |
+        install.packages('sf', type = "binary")
+        install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
       
       - name: Download data
         run: |
