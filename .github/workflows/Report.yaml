@@ -66,7 +66,7 @@ jobs:
           httr
           mapmisc
           ggplot2
-
+          
     - name: Install terra and raster from rspatial
       shell: Rscript {0}
       run: |
@@ -74,25 +74,25 @@ jobs:
         install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
         install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
       
-      - name: Download data
-        run: |
-          source("./report/NOAA_RS_Download.R")
-        shell: Rscript {0}
-        
-      - name: Render Site
-        run: |
+    - name: Download data
+      shell: Rscript {0}
+      run: |
+        source("./report/NOAA_RS_Download.R")
+    
+    - name: Render Site
+      shell: Rscript {0}
+      run: |
           rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document")
-        shell: Rscript {0}
+    
+    - name: setup git config
+      run: |
+        # setup the username and email.
+        git config user.name "SwampThingPaul"
+        git config user.email "<>"
       
-      - name: setup git config
-        run: |
-          # setup the username and email.
-          git config user.name "SwampThingPaul"
-          git config user.email "<>"
-      
-      - name: Commit results
-        run: |
-          git add -A 
-          git commit -m 'update report' || echo "No changes to commit"
-          git pull --ff-only
-          git push origin || echo "No changes to commit"
+    - name: Commit results
+      run: |
+        git add -A 
+        git commit -m 'update report' || echo "No changes to commit"
+        git pull --ff-only
+        git push origin || echo "No changes to commit"
