@@ -16,6 +16,12 @@ library(httr)
 # wd = "C:/Julian_LaCie/_GitHub/EvergladesConditions/report"
 # data.path="C:/Julian_LaCie/_GitHub/EvergladesConditions/report/RSdata"
 data.path="./report/RSdata"
+yr.val <- as.numeric(format(Sys.Date(),'%Y'))
+
+
+if(!any(list.files(data.path)%in%as.character(yr.val))){
+  Folder.Maker(paste(data.path,yr.val,sep="/"))
+}
 ## NOAA FTP image inventory ------------------------------------------------
 link.val="https://app.coastalscience.noaa.gov/habs_explorer/index.php?path=ajZiOVoxaHZNdE5nNytEb3RZdU5iYjNnK3AvTWRrYmNWbXU0K0YvMlA1UlBtTWZlRFV3R1RicVRYb2pxeVJBUA==&uri=VWtuM1UzbVNVN0RsZzJMeTJvNlNpM29OalF0WTFQQjVZVnpuS3o5bnh1Ym0vYWhtWEh4ck1hREVUamE4SDZ0M2tsd1M1OWg3UDJ0djIrNEkvbXliRUJ3WjkrKzdIcUYrN1JsZ1I5NFlsaHBZbUJWV0pHZ3NFZUVnQW56aTFIbEw=&type=bllEUXA3TmhSK21RVDlqbFYxMmEwdz09"
 
@@ -52,7 +58,7 @@ noaa.image.inventory$fname=with(noaa.image.inventory,paste0(product,"_",AOI,"_",
 #   mutate(fname=paste0(product,"_",AOI,"_",format(date,"%Y%m%d"),".tif"))
 
 ## local file inventory
-local.image.inventory = data.frame(fname=list.files(data.path))
+local.image.inventory = data.frame(fname=list.files(paste(data.path,yr.val,sep="/")))
 local.image.inventory = subset(local.image.inventory,fname!="truecolor")
 
 str.val=strsplit(local.image.inventory$fname,"_|\\.")
@@ -61,8 +67,8 @@ local.image.inventory$date=date.fun(paste(substr(sapply(str.val,"[",3),1,4),
                                           substr(sapply(str.val,"[",3),7,8),sep="-"))
 
 
-max(noaa.image.inventory$date)
-max(local.image.inventory$date)
+max(noaa.image.inventory$date,na.rm=T)
+max(local.image.inventory$date,na.rm=T)
 
 # local.image.inventory2 = data.frame(fname=list.files(paste0(data.path,"/truecolor")))
 # str.val=strsplit(local.image.inventory2$fname,"_|\\.")
@@ -75,7 +81,7 @@ max(local.image.inventory$date)
 # max(local.image.inventory2$date)
 
 ## update for missing data
-noaa.image.inventory=subset(noaa.image.inventory,date>max(local.image.inventory$date)); # CICyano
+noaa.image.inventory=subset(noaa.image.inventory,date>max(local.image.inventory$date,na.rm=T)); # CICyano
 # noaa.image.inventory2=subset(noaa.image.inventory2,date>max(local.image.inventory2$date)); # TrueColor
 ## data download  ------------------------------------------------
 
@@ -86,7 +92,7 @@ if(nrow(noaa.image.inventory)!=0){
     
     hd=httr::HEAD(url.link)
     if(hd$all_headers[[1]]$status!=200){next}else{
-      try(download.file(url.link,paste(data.path, noaa.image.inventory$fname[i],sep="/"),mode="wb",method="wininet"))
+      try(download.file(url.link,paste(data.path,yr.val, noaa.image.inventory$fname[i],sep="/"),mode="wb",method="wininet"))
     }
     cat(paste0("\nData Downloaded/Update ",Sys.Date(),". ",nrow(noaa.image.inventory)," files downloaded."),file="./report/NOAADownloadLog.txt",append=T)
   }

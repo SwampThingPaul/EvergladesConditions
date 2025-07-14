@@ -1724,6 +1724,8 @@ S-71, S-72, S-84s, S-65EX, and S-65EX1)
 Data from NOAA NCCOS, HAB Monitoring Products ([link](https://coastalscience.noaa.gov/science-areas/habs/hab-monitoring-system/))
 
 ```{r HABdata}
+curYr <- as.numeric(format(Sys.Date(),"%Y"))
+
 data("LOK")
 data("LOKLitt")
 
@@ -1751,7 +1753,8 @@ link_txt=rslt.table|>
   as.data.frame()# |>(\(x) x[2:nrow(x),])(); # assumes first value is "Name"
 colnames(link_txt) = "name"
 
-link_txt=subset(link_txt,name!="Name")# link_txt[2:nrow(link_txt),]# assumes first value is "Name"
+link_txt <- subset(link_txt,name!="Name")# link_txt[2:nrow(link_txt),]# assumes first value is "Name"
+# link_txt <- link_txt[!grepl(".zip",link_txt$name), , drop = FALSE]
 
 str.val=strsplit(link_txt$name,"\\.")
 link_txt$date=date.fun(paste(as.numeric(substr(sapply(str.val,"[",2),1,4)),
@@ -1764,9 +1767,9 @@ noaa.image.inventory=cbind(link_txt,link_val)|>
   subset(product=="CIcyano")
 noaa.image.inventory$fname=with(noaa.image.inventory,paste0(product,"_",AOI,"_",format(date,"%Y%m%d"),".tif"))
 
-noaa.image.inventory2=cbind(link_txt,link_val)|>
-  subset(product=="truecolor")|>
-  mutate(fname=paste0(product,"_",AOI,"_",format(date,"%Y%m%d"),".tif"))
+# noaa.image.inventory2=cbind(link_txt,link_val)|>
+#   subset(product=="truecolor")|>
+#   mutate(fname=paste0(product,"_",AOI,"_",format(date,"%Y%m%d"),".tif"))
 
 ## Cyano coverage time-series
 cyano_area = read.csv("cyano_area.csv")
@@ -1776,7 +1779,7 @@ cyano_area$date = date.fun(cyano_area$date)
 ## update for missing data
 noaa.image.inventory=subset(noaa.image.inventory,date>max(cyano_area$date))
 
-noaa.image.inventory2=subset(noaa.image.inventory2,date>max(cyano_area$date))
+# noaa.image.inventory2=subset(noaa.image.inventory2,date>max(cyano_area$date))
 ## data download  ------------------------------------------------
 ## moved data download to seperate script
 # if(nrow(noaa.image.inventory)!=0){
@@ -1793,7 +1796,7 @@ noaa.image.inventory2=subset(noaa.image.inventory2,date>max(cyano_area$date))
 
 ## Cyano Index
 ## local file inventory
-local.image.inventory = data.frame(fname=list.files(data.path))
+local.image.inventory = data.frame(fname=list.files(paste0(data.path,"/",curYr)))
 local.image.inventory = subset(local.image.inventory,fname!="truecolor")
 
 str.val=strsplit(local.image.inventory$fname,"_|\\.")
@@ -1807,7 +1810,7 @@ if(nrow(local.image.inventory1)!=0){
   cyano_area=cyano_area[,c("date", "cloud.area", "bloom.area.m2", "vis.bloom")]
 for(i in 1:nrow(local.image.inventory1)){
   # tmp.raster=raster::raster(paste(data.path, local.image.inventory1$fname[i],sep="/"))
-  tmp.raster=terra::rast(paste(data.path, local.image.inventory1$fname[i],sep="/"))
+  tmp.raster=terra::rast(paste(data.path,curYr, local.image.inventory1$fname[i],sep="/"))
   
   tmp.raster=mask(tmp.raster,st_buffer(LOK,500))
   tmp.raster[tmp.raster==255]=NA; # No Data
