@@ -195,6 +195,10 @@ Start.Date=date.fun(paste(CurWY-4,05,01,sep="-"))
 End.Date=date.fun(Sys.time())
 
 YEST=date.fun(End.Date-ddays(1))
+```
+
+
+```{r usace data, include=FALSE }
 # Data from USACE Daily Map -----------------------------------------------
 dates=seq(date.fun(paste(format(Sys.Date(),"%Y"),"01","01",sep="-")),date.fun(Sys.Date()),"1 days")
 
@@ -387,6 +391,9 @@ q.dat.7day$Date=as.character(q.dat.7day$Date)
 
 rbind(q.dat.7day,meanQ,sumQ)
 
+```
+
+```{r DBhydro_USGS, include=FALSE}
 # DBHydro -----------------------------------------------------------------
 
 dates=c(Start.Date,End.Date)
