@@ -200,7 +200,8 @@ YEST=date.fun(End.Date-ddays(1))
 
 ```{r usace data, include=FALSE }
 # Data from USACE Daily Map -----------------------------------------------
-dates=seq(date.fun(paste(format(Sys.Date(),"%Y"),"01","01",sep="-")),date.fun(Sys.Date()),"1 days")
+dates <- seq(date.fun(Sys.Date()-ddays(15)),date.fun(Sys.Date()),"1 days")
+# dates=seq(date.fun(paste(format(Sys.Date(),"%Y"),"01","01",sep="-")),date.fun(Sys.Date()),"1 days")
 
 ## Maps and Archived data
 # mapdata=readLines("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/1217/StatusDaily.htm")
