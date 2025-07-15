@@ -1862,7 +1862,7 @@ for(i in 1:nrow(local.image.inventory1)){
 }
 }else{
   curr.dat=subset(local.image.inventory,date==max(local.image.inventory$date,na.rm=T))
-  tmp.raster=terra::rast(paste(data.path, curr.dat$fname,sep="/"))
+  tmp.raster=terra::rast(paste(data.path,curYr, curr.dat$fname,sep="/"))
   # tmp.raster <- raster(paste(data.path, curr.dat$fname,sep="/"))
   tmp.raster=mask(tmp.raster,st_buffer(LOK,500))
   tmp.raster[tmp.raster==255]=NA; # No Data

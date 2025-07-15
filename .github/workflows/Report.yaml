@@ -84,7 +84,7 @@ jobs:
     - name: Render Site
       shell: Rscript {0}
       run: |
-          rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document")
+          rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document",clean = TRUE, envir = new.env())
     
     - name: setup git config
       run: |
