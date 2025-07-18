@@ -138,4 +138,37 @@ map.q[, !(names(map.q) %in% "Date")] <- lapply(
 map.q <- cbind(map.q,map.SDCS[,!(names(map.SDCS) %in% "Date")])
 map.q$Date <- date.fun(map.q$Date)
 
+## due to Github actions error, check the columns are available for calculation
+check.sum.fun <- function(map.q,cols){
+  available_cols <- intersect(cols, names(map.q))
+  
+  if (length(available_cols) > 1) {
+    row_total <- rowSums(map.q[, available_cols], na.rm = TRUE)
+  } else {
+    row_total <- rep(NA, nrow(map.q))  # or handle as needed
+  }
+  
+  return(row_total)
+}
+
+
+map.q$NthLake <- check.sum.fun(map.q,c("FEC","Istok","S65E","S65EX1"))# rowSums(map.q[,c("FEC","Istok","S65E","S65EX1")],na.rm=T)
+map.q$LOIN <- check.sum.fun(map.q,c("OtherLOKInflow","FEC","Istok","S65E","S65EX1")) 
+# map.q$LOIN <- rowSums(map.q[,c("OtherLOKInflow","FEC","Istok","S65E","S65EX1")],na.rm=T)
+map.q$LOOUT <- check.sum.fun(map.q, c("S77","S354","S351","S352","S271","S308"))
+# map.q$LOOUT <- rowSums(map.q[,c("S77","S354","S351","S352","S271","S308")],na.rm=T)
+
+map.q$LOK_to_EAA <- check.sum.fun(map.q,c("S354","S351","S352","S271"))
+map.q$EAA_to_WCAs <- check.sum.fun(map.q,c("WCA1","WCA2","WCA3"))
+# map.q$LOK_to_EAA=(rowSums(map.q[,c("S354","S351","S352","S271")],na.rm=T))
+# map.q$EAA_to_WCAs=(rowSums(map.q[,c("WCA1","WCA2","WCA3")],na.rm=T))
+
+subset(map.q,WCA2<0)
+map.q$WCA2_in=with(map.q,ifelse(WCA2<0,0,WCA2))
+map.q$EAA_WCA1.out=apply(map.q[,c("S10s","WCA1")],1,min,na.rm=T)# EAA flow through WCA1
+map.q$EAA_WCA2.out=apply(map.q[,c("S11s","WCA2_in")],1,min,na.rm=T)# EAA flow through WCA2
+
+map.q$EAA_WCA2=with(map.q,WCA2+EAA_WCA1.out)
+map.q$EAA_WCA3=with(map.q,WCA3+EAA_WCA2.out)
+
 write.csv(map.q,paste0(data.path,"/USACE_20d.csv"),row.names = F)
