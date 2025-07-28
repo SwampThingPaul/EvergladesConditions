@@ -1,7 +1,7 @@
 
 library(AnalystHelper)
 library(lubridate)
-
+library(httr)
 
 data.path <- "./report"
 
@@ -12,7 +12,24 @@ dates <- seq(date.fun(Sys.Date()-ddays(20)),date.fun(Sys.Date()),"1 days")
 ## Maps and Archived data
 # mapdata=readLines("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/1217/StatusDaily.htm")
 
-## Centeral and South Ssytem
+## Centeral and South Sytem
+
+
+fetch_url_with_retry <- function(url, max_attempts = 3, wait_secs = 2) {
+  for (i in seq_len(max_attempts)) {
+    # Check if URL exists
+    resp <- tryCatch(HEAD(url, timeout(5)), error = function(e) NULL)
+    if (!is.null(resp) && status_code(resp) == 200) {
+      # Try to read the content
+      content <- tryCatch(readLines(url, warn = FALSE), error = function(e) NULL)
+      if (!is.null(content)) return(content)
+    }
+    if (i < max_attempts) Sys.sleep(wait_secs)
+  }
+  return(NULL)
+}
+
+
 results_list <- vector("list", length(dates))
 
 extract_val <- function(mapdata, pattern, split1, idx1, split2 = NULL, idx2 = NULL, as_num = TRUE) {
@@ -34,7 +51,7 @@ get_status_daily_data <- function(date_i) {
   url <- paste0("https://w3.saj.usace.army.mil/h2o/reports/StatusDaily/archive/",
                 format(date_i, "%m%d"), "/StatusDaily.htm")
   
-  mapdata <- tryCatch(readLines(url, warn = FALSE), error = function(e) return(NULL))
+  mapdata <- fetch_url_with_retry(url)
   if (is.null(mapdata)) return(NULL)
   
   other_inflow <- {
@@ -97,7 +114,7 @@ get_sdcs_data <- function(date_i) {
   url <- paste0("https://w3.saj.usace.army.mil/h2o/reports/SDCSDaily/archive/",
                 format(date_i, "%m%d"), "/SDCSDaily.htm")
   
-  mapdata <- tryCatch(readLines(url, warn = FALSE), error = function(e) return(NULL))
+  mapdata <- fetch_url_with_retry(url)
   if (is.null(mapdata)) return(NULL)
   
   S355A <- get_sdcs_val(mapdata, "S355A", ">S-355A:|</div>", 2)
@@ -163,7 +180,7 @@ map.q$EAA_to_WCAs <- check.sum.fun(map.q,c("WCA1","WCA2","WCA3"))
 # map.q$LOK_to_EAA=(rowSums(map.q[,c("S354","S351","S352","S271")],na.rm=T))
 # map.q$EAA_to_WCAs=(rowSums(map.q[,c("WCA1","WCA2","WCA3")],na.rm=T))
 
-subset(map.q,WCA2<0)
+# subset(map.q,WCA2<0)
 map.q$WCA2_in=with(map.q,ifelse(WCA2<0,0,WCA2))
 map.q$EAA_WCA1.out=apply(map.q[,c("S10s","WCA1")],1,min,na.rm=T)# EAA flow through WCA1
 map.q$EAA_WCA2.out=apply(map.q[,c("S11s","WCA2_in")],1,min,na.rm=T)# EAA flow through WCA2
