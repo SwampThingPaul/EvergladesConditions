@@ -6,7 +6,7 @@ library(httr)
 data.path <- "./report"
 
 # Data from USACE Daily Map -----------------------------------------------
-dates <- Sys.Date() #seq(date.fun(Sys.Date()-ddays(20)),date.fun(Sys.Date()),"1 days")
+dates <-seq(date.fun(Sys.Date()-ddays(20)),date.fun(Sys.Date()),"1 days")
 # dates=seq(date.fun(paste(format(Sys.Date(),"%Y"),"01","01",sep="-")),date.fun(Sys.Date()),"1 days")
 
 ## Maps and Archived data
