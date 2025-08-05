@@ -359,6 +359,7 @@ dates <- seq(date.fun(Sys.Date()-ddays(20)),date.fun(Sys.Date()),"1 days")
 
 
 map.q <- read.csv("USACE_20d.csv")
+# map.q <- read.csv("./report/USACE_20d.csv")
 map.q$Date <- date.fun(map.q$Date)
 
 
@@ -451,7 +452,8 @@ LakeO.xtab$CY=as.numeric(format(LakeO.xtab$DATE,"%Y"))
 tail(LakeO.xtab)
 LakeO.xtab$LOK.stage[LakeO.xtab$LOK.stage==0]=NA
 
-LakeO.xtab$inter.stage <- na.approx(LakeO.xtab$LOK.stage)
+# LakeO.xtab$inter.stage <- na.approx(LakeO.xtab$LOK.stage)
+LakeO.xtab$inter.stage <- dat.interp(LakeO.xtab$LOK.stage)
 stg.cat <- c(0,9,10,12,13,15,16,17,20)
 LakeO.xtab$stg.cat=as.factor(findInterval(LakeO.xtab$inter.stage,stg.cat))
 
