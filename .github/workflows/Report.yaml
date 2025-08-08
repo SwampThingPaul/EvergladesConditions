@@ -16,7 +16,7 @@ permissions:
 jobs:
   render:
     name: Render report
-    runs-on: windows-latest
+    runs-on: windows-2025
     env:
       R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
