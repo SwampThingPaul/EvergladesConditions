@@ -80,8 +80,7 @@ jobs:
       shell: Rscript {0}
       run: |
         source("./report/NOAA_RS_Download.R")
-        # source("./report/usace_test.R")
-        # source("./report/USACE_download.R")
+        source("./report/USACE_download.R")
     
     - name: Render Site
       shell: Rscript {0}
