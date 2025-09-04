@@ -140,6 +140,7 @@ heckbert_labs <- function(dmin,dmax,m){
 
 # CRS
 nad83.pro <- st_crs("EPSG:4269")
+nad83Harn_east <- st_crs("EPSG:2881")
 utm17 <- st_crs("EPSG:26917")
 wgs84 <- st_crs("EPSG:4326")
 # tmap_mode("view")
@@ -148,6 +149,7 @@ wgs84 <- st_crs("EPSG:4326")
 dates <- seq(date.fun(date.fun(Sys.Date())-ddays(13)),date.fun(Sys.Date()),"1 days")
 
 CurWY <- WY(date.fun(Sys.time()))
+CurWY.Fed <- WY(date.fun(Sys.time()),"Fed")
 
 Start.Date <- date.fun(paste(CurWY-4,05,01,sep="-"))
 End.Date <- date.fun(Sys.Date()-1)
@@ -289,10 +291,11 @@ redline_locs_ls[[3]] <- data.frame(
   REGION =  "WCA3",
   from =    c("STA34","STA34","L28",rep("STA56",20))
 )
-redline_locs <- do.call(rbind,readline_locs_ls)
+redline_locs <- do.call(rbind,redline_locs_ls)
 
 ENP_SRS_locs <- c("S12A","S12B", "S12C", "S12D", "S333N", "S333", "S334", "S335", "S355A","S355B","S356")
 ENP_TSCB_locs <- c("S332D","S332DX1","S328","G737","S200","S332","S175","S18C")
+ENP_FLAB_locs <- 
 
 LT_locs <- c(redline_locs$loc,ENP_SRS_locs)
 
@@ -362,6 +365,8 @@ stg_dbkeys_list[["ENP"]] <- data.frame(loc = c("NESRS2","NP201","S334_HW", "S333
                                        BK = c(rep("NA",2),"IY636", "40368", "AJ016"),
                                        Priority=NA)
 ## added priority column for DA DBKEYS ... does not work across DA and BK
+stg_dbkeys_list[["EAA"]][stg_dbkeys_list[["EAA"]]$loc=="S3_H","DA"] <- "06633"
+stg_dbkeys_list[["EAA"]][stg_dbkeys_list[["EAA"]]$loc=="S352","DA"] <- "FF580"
 
 stg_dbkeys <- do.call(rbind.data.frame, c(stg_dbkeys_list, make.row.names = FALSE))
 
@@ -1669,8 +1674,8 @@ LOK_flow_dir <- c(FECSR70 = 1,S71 = 1, S72 = 1, S84 = 1, S84X = 1, S65E = 1, S65
 LOK_Q <- Qdat_xtab[,c("Date",names(LOK_flow_dir))]
 for (col in names(LOK_flow_dir)) {
   if (col %in% names(LOK_Q)) {
-    LOK_Q[[paste0("q", col, ".out")]] <- pmax(0, LOK_flow_dir[col] * LOK_Q[[col]], na.rm = TRUE)
-    LOK_Q[[paste0("q", col, ".in")]]  <- pmax(0, -LOK_flow_dir[col] * LOK_Q[[col]], na.rm = TRUE)
+    LOK_Q[[paste0("q", col, ".out")]] <- pmax(0, -LOK_flow_dir[col] * LOK_Q[[col]], na.rm = TRUE)
+    LOK_Q[[paste0("q", col, ".in")]]  <- pmax(0, LOK_flow_dir[col] * LOK_Q[[col]], na.rm = TRUE)
   }
 }
 LOK_Q$LOKIN.kacft <- apply(LOK_Q[,paste0("q",names(LOK_flow_dir),".in")],1,sum,na.rm=T)/1000
@@ -2254,7 +2259,7 @@ legend(0.5,0.75,
 max.q <- max(subset(STAQ,Date.EST%in%seq(date.fun(as.Date(Sys.Date())-30),date.fun(as.Date(Sys.Date())),"1 days"))[,c("LSTA","Basin")],na.rm=T)
 ylim.max <- ceiling(max.q*1.2)
 
-ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],4);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
+ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],2);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
 xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 cols <- c("forestgreen","dodgerblue1")
 
@@ -3076,12 +3081,12 @@ wca.Q.da.mon2 <- subset(redline_Qdat,CY>=2012)|>
   dcast(CY+month~REGION,value.var ="inflow.Q",fun.aggregate = function(x) sum(cfs.to.acftd(x)/1000,na.rm=T))
 
 max.q <- max(redline[,month.abb],na.rm=T)
-ylim.max <- # ceiling(max.q*1.1)
+ylim.max <-  ceiling(max.q*1.1)
 
-# ylim.val <- c(0,ylim.max)
+ylim.val <- c(0,ylim.max)
 ymaj <- heckbert_labs(0,ylim.max,5)
 ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)
-ylim.val <- range(ymaj)
+# ylim.val <- range(ymaj)
 xmaj.lab = subset(wca.Q.da.mon2,month == 1)$CY
 xmaj.x = seq(1,nrow(wca.Q.da.mon2),12)
 
@@ -3281,19 +3286,19 @@ ENP.q.tab[,2:ncol(ENP.q.tab)] <- round(ENP.q.tab[,2:ncol(ENP.q.tab)],0)
 ENP.q.tab <- ENP.q.tab[match(ENP.q.tab$Date,rev(ENP.q.tab$Date)),]
 
 cap.val="Daily discharge volume in acre-feet per day for the last 14-days. Data Source: SFWMD DBHYDRO"
-ENP.q.tab[,vars]%>%
-  flextable()%>%
-  colformat_datetime(j=1,fmt_date="%m-%d")%>%
-  colformat_double(j=2:12,big.mark = "",digits=0)%>%
+ENP.q.tab[,vars]|>
+  flextable()|>
+  colformat_datetime(j=1,fmt_date="%m-%d")|>
+  colformat_double(j=2:13,big.mark = "",digits=0)|>
   set_header_labels("Date"="Date",
-                    "ENP_SRS"="Total Inflow")%>%
-  flextable::align(j=2:12,part="all",align="center")%>%
-  padding(padding=1,part="all")%>%
-  # font(fontname="Times New Roman",part="all")%>%
-  fontsize(size=10,part="body")%>%
-  fontsize(size=12,part="header")%>%
-  add_header_lines(values=cap.val)%>%
-  flextable::align(align="center",part="header")%>%fontsize(size=12,part="header")%>%font(fontname = "Times New Roman",part="all")%>%
+                    "ENP_SRS"="Total Inflow")|>
+  flextable::align(j=2:13,part="all",align="center")|>
+  padding(padding=1,part="all")|>
+  # font(fontname="Times New Roman",part="all")|>
+  fontsize(size=10,part="body")|>
+  fontsize(size=12,part="header")|>
+  add_header_lines(values=cap.val)|>
+  flextable::align(align="center",part="header")|>fontsize(size=12,part="header")|>font(fontname = "Times New Roman",part="all")|>
   footnote(j=~ENP_SRS,value=as_paragraph(" Estimated as S12s+(S333+S333N+S355s+min(S356,S335)-S334)."),ref_symbols =c(" 1"),part="header")
 ```
 
@@ -3364,7 +3369,7 @@ axis_fun(2,ymaj,ymin,format(ymaj/1000),cex.axis=1);box(lwd=lwd.val)
 mtext("Day of Federal Water Year",side=1,line=1.5,cex=1)
 mtext(expression("Cumulative Discharge (x1000 Ac-Ft WY"^" -1"*")"),side=2,line=2.5,cex=1)
 mtext(side=3,"SRS Inflow",adj=0,font=2)
-abline(h=c("117","1061"),lty=2,col="red")
+abline(h=c(117,1061)*1000,lty=2,col="red")
 legend("topleft",
        legend=c(paste0("Fed WY",fedWY_vals)),
        col=cumQ_col,lty=c(1),lwd=c(2.5),pt.cex=1,ncol=1,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
@@ -3423,7 +3428,7 @@ mtext(side=3,"Date (Month-Day)",line=-1.75)
 legend(0.5,0.25,legend=c(paste0("WY",min(ENP_Q$WY)," - WY",min(ENP_Q$WY)-1," 10th to 90th\nQuantile Range"),"Daily Discharge"),
        pch=c(22,21),pt.bg=c("lightblue","indianred1"),
        lty=c(0,0),lwd=c(0,0.5),col=c("grey50","black"),
-       pt.cex=1.5,cex=1,ncol=2,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+       pt.cex=c(3,1.5),cex=1,ncol=2,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
 ```
 
 <br>
@@ -3431,48 +3436,53 @@ legend(0.5,0.25,legend=c(paste0("WY",min(ENP_Q$WY)," - WY",min(ENP_Q$WY)-1," 10t
 ### Water Deliveries across Tamiami Trail
 
 ```{r TT_all}
-cols.val=c("cornsilk","lightgreen","lightblue","dodgerblue1","steelblue","pink")
-cols.labs=c("IOP","ERTP","Increment1","Increment 1.1/1.2","Increment 2","COP")
-txt.cols.val=c("maroon","hotpink","yellow")
+cols.val <- c("cornsilk","lightgreen","lightblue","dodgerblue1","steelblue","pink")
+cols.labs <- c("IOP","ERTP","Increment1","Increment 1.1/1.2","Increment 2","COP")
+txt.cols.val <- c("maroon","hotpink","yellow")
 
-CurCY=as.numeric(format(Sys.Date(),"%Y"))
-cols.df=data.frame(expand.grid(mon=1:12,CY=2012:CurCY))
-cols.df$monCY.date=with(cols.df,date.fun(paste(CY,mon,"01",sep="-")))
-cols.df$col=NA
-cols.df$ops=NA
-cols.df$txt.col="black"
+CurCY <- as.numeric(format(Sys.Date(),"%Y"))
+cols.df <- data.frame(expand.grid(mon=1:12,CY=2012:CurCY))
+cols.df$monCY.date <- with(cols.df,date.fun(paste(CY,mon,"01",sep="-")))
+cols.df$col <- NA
+cols.df$ops <- NA
+cols.df$txt.col <- "black"
 
-cols.df[cols.df$monCY.date%in%seq(date.fun("2012-01-01"),date.fun("2012-09-01"),"months"),"col"]=cols.val[1]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),"months"),"col"]=cols.val[2]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"col"]=cols.val[3]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"col"]=cols.val[4]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"col"]=cols.val[5]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),max(cols.df$monCY.date),"months"),"col"]=cols.val[6]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-01-01"),date.fun("2012-09-01"),"months"),"col"] <- cols.val[1]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),"months"),"col"] <- cols.val[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"col"] <- cols.val[3]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"col"] <- cols.val[4]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"col"] <- cols.val[5]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),max(cols.df$monCY.date),"months"),"col"] <- cols.val[6]
 
-cols.df[cols.df$monCY.date%in%seq(date.fun("2012-01-01"),date.fun("2012-09-01"),"months"),"ops"]=cols.labs[1]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),"months"),"ops"]=cols.labs[2]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"ops"]=cols.labs[3]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"ops"]=cols.labs[4]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"ops"]=cols.labs[5]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),max(cols.df$monCY.date),"months"),"ops"]=cols.labs[6]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-01-01"),date.fun("2012-09-01"),"months"),"ops"] <- cols.labs[1]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2012-10-01"),date.fun("2015-09-01"),"months"),"ops"] <- cols.labs[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2015-10-01"),date.fun("2017-02-01"),"months"),"ops"] <- cols.labs[3]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2017-03-01"),date.fun("2018-06-01"),"months"),"ops"] <- cols.labs[4]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"ops"] <- cols.labs[5]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-09-01"),max(cols.df$monCY.date),"months"),"ops"] <- cols.labs[6]
 
-cols.df[cols.df$monCY.date%in%seq(date.fun("2016-02-01"),date.fun("2016-11-01"),"months"),"txt.col"]=txt.cols.val[1]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2017-07-01"),date.fun("2017-12-01"),"months"),"txt.col"]=txt.cols.val[2]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"txt.col"]=txt.cols.val[3]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2020-11-01"),date.fun("2021-01-01"),"months"),"txt.col"]=txt.cols.val[2]
-cols.df[cols.df$monCY.date%in%seq(date.fun("2023-11-01"),date.fun("2024-03-01"),"months"),"txt.col"]=txt.cols.val[1]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2016-02-01"),date.fun("2016-11-01"),"months"),"txt.col"] <- txt.cols.val[1]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2017-07-01"),date.fun("2017-12-01"),"months"),"txt.col"] <- txt.cols.val[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2018-07-01"),date.fun("2020-08-01"),"months"),"txt.col"] <- txt.cols.val[3]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2020-11-01"),date.fun("2021-01-01"),"months"),"txt.col"] <- txt.cols.val[2]
+cols.df[cols.df$monCY.date%in%seq(date.fun("2023-11-01"),date.fun("2024-03-01"),"months"),"txt.col"] <- txt.cols.val[1]
 
-colmatrix=matrix(cols.df$col,ncol=12,byrow=T)
-txt.colmatrix=matrix(cols.df$txt.col,ncol=12,byrow=T)
-cur.month=month.abb[as.numeric(format(Sys.Date(),"%m"))]
+colmatrix <- matrix(cols.df$col,ncol=12,byrow=T)
+txt.colmatrix <- matrix(cols.df$txt.col,ncol=12,byrow=T)
+cur.month <- month.abb[as.numeric(format(Sys.Date(),"%m"))]
 
 ### 
-SRS.delive=dcast(subset(srs.flow.da.xtab,CY>2011),CY~month,value.var ="SRS.del",fun.aggregate = function(x) round(sum(x,na.rm=T)))
-SRS.delive$Total=rowSums(SRS.delive[,2:ncol(SRS.delive)])
-colnames(SRS.delive)=c("Year",month.abb,"Total")
+ENP_Q$CY <- as.numeric(format(ENP_Q$Date,"%Y"))
+ENP_Q$month <- as.numeric(format(ENP_Q$Date,"%m"))
+ENP_Q$total_SRS <- apply(ENP_Q[,c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B","S356")],1,sum,na.rm=T) - ENP_Q$S334
+ENP_Q$total_SRS_east <- apply(ENP_Q[,c("S333","S333N","S355A","S355B","S356")],1,sum,na.rm=T) - ENP_Q$S334
+SRS.delive <- dcast(subset(ENP_Q,CY>2011),CY~month,value.var ="total_SRS",fun.aggregate = function(x) round(sum(x,na.rm=T)))
+SRS.delive$Total <- rowSums(SRS.delive[,2:ncol(SRS.delive)])
+colnames(SRS.delive) <- c("Year",month.abb,"Total")
 
 
 cap.val="Water Deliveries (Ac-Ft) to L-29 Canal (S12s + S333 + S333N + S356 - S334)"
+dbkeys.txt <- with(subset( Qdbkeys,loc%in%c("S12A","S12B","S12C","S12D","S333","S333N","S355A","S355B","S356","S334")),paste0("Structure (DBKEY): ",paste(paste0(loc," (",DA,")"),collapse="; ")))
 SRS.delive|>
   flextable()|>
   colformat_double(j=1,big.mark = "",digits=0)|>
@@ -3482,6 +3492,7 @@ SRS.delive|>
   flextable::align(part="all",align="center")|>
   padding(padding=2,part="all")|>
   footnote(j=1,value=as_paragraph(" Note: All data is from DBHYDRO and provisional."),ref_symbols=" ",part="header")|>
+  footnote(j=2,value=as_paragraph(dbkeys.txt),ref_symbols=" ",part="header")|>
   footnote(j=cur.month,
            value=as_paragraph(" The latest month value may include an incomplete monthly period of record."),ref_symbols=" *",part="header")|>
   font(fontname="Times New Roman",part="all")|>
@@ -3500,30 +3511,37 @@ SRS.delive|>
 
 <br>
 ```{r SRSDelv_plot, echo=FALSE,fig.width=8,fig.height=3.5,fig.align='center',fig.cap="Water Deliveries into Shark River Slough (S12s + S333 + S333N + S356 - S334) from January 2012 to current. Color correspond to operational changes reflected in the table above."}
-SRS_del = ddply(subset(srs.flow.da.xtab,CY>2011),c("CY","month"),summarise,Tflow = sum(SRS.del,na.rm=T)/1000)
+SRS_del <- ddply(subset(ENP_Q,CY>2011),c("CY","month"),summarise,Tflow = sum(total_SRS/1000,na.rm=T))
 
-ylim.val=c(0,400);by.y=100;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
-xmaj.lab = subset(SRS_del,month == 1)$CY
-xmaj.x = seq(1,nrow(SRS_del),12)
+max.q <- max(SRS_del$Tflow,na.rm=T)
+ylim.max <- ceiling(max.q*1.1)
+ylim.val <- c(0,ylim.max);
+ymaj <- heckbert_labs(0,ylim.max,6);
+ymin <- seq(0,max(ymaj),min(diff(ymaj))/2)
+#ylim.val <- range(ymaj)
+
+xmaj.lab <-  subset(SRS_del,month == 1)$CY
+xmaj.x  <-  seq(1,nrow(SRS_del),12)
 
 par(family="serif",mar=c(1,2,0.5,1),oma=c(2.5,2,1.25,1));
-x = barplot(SRS_del$Tflow,col=NA,border=NA,ylim = ylim.val,space=0,axes=F)
+x <- barplot(SRS_del$Tflow,col=NA,border=NA,ylim = ylim.val,space=0,axes=F)
 abline(h=ymaj,v=xmaj.x,lty=3,col="grey",lwd=0.5)
-x = barplot(SRS_del$Tflow,col=cols.df$col,ylim = ylim.val,space=0,axes=F,add=T)
+x <- barplot(SRS_del$Tflow,col=cols.df$col,ylim = ylim.val,space=0,axes=F,add=T)
 axis_fun(1,x[xmaj.x],x,xmaj.lab,line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj);box(lwd=1)
 mtext(side=1,line=1.5,"Calendar Year")
-mtext(side=2,line=2.5,"Discharge (kAc-Ft Mon)")#\u207B\u00B9)")
+# mtext(side=2,line=2.5,"Discharge (kAc-Ft Mon)")#\u207B\u00B9)")
+mtext(expression("Daily Discharge (x1000 Ac-Ft Mon"^" -1"*")"),side=2,line=2.5,cex=1)
 
 ```
 <br>
 
 ```{r eastTT_all}
-eSRS.delive=dcast(subset(srs.flow.da.xtab,CY>2011),CY~month,value.var ="eastSRS.del",fun.aggregate = function(x) round(sum(x,na.rm=T)))
-eSRS.delive$Total=rowSums(eSRS.delive[,2:ncol(eSRS.delive)])
-colnames(eSRS.delive)=c("Year",month.abb,"Total")
+eSRS.delive <- dcast(subset(ENP_Q,CY>2011),CY~month,value.var ="total_SRS_east",fun.aggregate = function(x) round(sum(x,na.rm=T)))
+eSRS.delive$Total <- rowSums(eSRS.delive[,2:ncol(eSRS.delive)])
+colnames(eSRS.delive) <- c("Year",month.abb,"Total")
 
-dbkeys.txt=with(subset(SRS.dbkeys,!(SITE%in%c("S335"))),paste0("Structure (DBKEY): ",paste(paste0(SITE," (",DBKEY,")"),collapse="; ")))
+dbkeys.txt <- with(subset( Qdbkeys,loc%in%c("S333","S333N","S356","S334")),paste0("Structure (DBKEY): ",paste(paste0(loc," (",DA,")"),collapse="; ")))
 cap.val="Water Deliveries (Ac-Ft) to L-29 Canal (S333 + S333N + S356 - S334)"
 eSRS.delive|>
   flextable()|>
