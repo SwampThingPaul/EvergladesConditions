@@ -514,11 +514,11 @@ Qdat_flab_crk_uv <- do.call(rbind, flab_crk_uv_list)|>
   merge(usgs_sites,"site_no",all.x=T)
 
 Qdat_flab_crk_uv$Date <- date.fun(Qdat_flab_crk_uv$dateTime)
-Qdat_flab_crk_da <- ddply(Qdat_flab_crk_uv,c("site_no","agency_cd","Date","loc"),
+Qdat_flab_crk_da <- ddply(Qdat_flab_crk_uv,c("site_no","agency_cd","Date","loc","loc_abb"),
                           summarise,
                           Flow = mean(Flow_Inst,na.rm=T),
-                          Flow_cd = NA)[,names(Qdat_flab_crk)]
-
+                          Flow_cd = NA)
+Qdat_flab_crk_da <- Qdat_flab_crk_da[,names(Qdat_flab_crk)]
 Qdat_flab_crk <- rbind(Qdat_flab_crk,Qdat_flab_crk_da)
 
 # dbWriteTable(con, "Qdat_flab", Qdat_flab_crk, overwrite = TRUE)  # Use append = TRUE to add rows
@@ -536,7 +536,7 @@ Qdat_flab_crk <- rbind(Qdat_flab_crk,Qdat_flab_crk_da)
 fill <- expand.grid(loc = usgs_sites$loc,
                     Date = seq(date.fun(flab.dates[1]),date.fun(dates[2]),"1 days"))|>
   merge(usgs_sites,"loc")
-Qdat_flab_crk <- merge(Qdat_flab_crk,fill,c("loc","site_no","Date"),all.y=T)
+Qdat_flab_crk <- merge(Qdat_flab_crk,fill,c("loc","site_no","Date","loc_abb"),all.y=T)
 
 Qdat_flab_crk$DOWY <- hydro.day(Qdat_flab_crk$Date)
 Qdat_flab_crk$WY <- WY(Qdat_flab_crk$Date)
@@ -843,11 +843,12 @@ Q_cols <- c("dodgerblue1","indianred1","forestgreen")
 
 lok.stg <- subset(stg_dat,loc=="LOK")|>
   dcast(Date~Priority,value.var="Data.Value",mean)|>
-  mutate(Mean = ifelse(is.na(P1)==T,P2,P1),
+  mutate(
          WY = WY(Date),
          DOWY = hydro.day(Date),
          DoY = as.numeric(format(Date,"%j")),
          CY = as.numeric(format(Date,"%Y")))
+lok.stg$Mean <- apply(lok.stg[,c("P1","P2")], 1, function(x) x[!is.na(x)][1])
 
 lok.stg$Mean[lok.stg$Mean==0]=NA
 lok.stg$recess_7day <- with(lok.stg,c(rep(NA,7),diff(Mean,lag=7)))
@@ -866,7 +867,7 @@ if(rec.ops ==  1){
 }
 
 vals <- c(-3, -2, -1, 0, 1)
-fill <- data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
+sch_fill <- data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
 
 LORS08.sch.bk <- data.frame(
   day = c(1, 2, 2, 16, 2, 1, 2, 2, 16, 2, 1, 1, 1, 16, 2, 1, 1, 1, 16, 2, 1, 
@@ -929,8 +930,6 @@ lok.rec.env <- rbind(
 
 ##
 vals <- c(-3, -2, -1, 0, 1)
-fill <- data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
-
 ## LORS08
 # n_row_vals = nrow(LORS08.sch.bk)
 # tot_row = n_row_vals*length(vals)
@@ -967,7 +966,7 @@ date_mat <- data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01"
 
 LOSOM.sch.bk <- cbind(LOSOM.sch.bk,date_mat)|>
   dcast(Date~variable,value.var = "value",mean)|>
-  merge(fill,"Date",all.y=T)
+  merge(sch_fill,"Date",all.y=T)
 
 LOSOM.sch.bk[-1] <- lapply(LOSOM.sch.bk[-1],dat.interp);
 
@@ -987,7 +986,7 @@ date_mat <- data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01"
 
 lok.rec.env.bk <- cbind(lok.rec.env,date_mat)|>
   dcast(Date~variable,value.var = "value",mean)|>
-  merge(fill,"Date",all.y=T)
+  merge(sch_fill,"Date",all.y=T)
 lok.rec.env.bk[-1] <- lapply(lok.rec.env.bk[-1],dat.interp);
 lok.rec.env.bk$DOWY <- hydro.day(lok.rec.env.bk$Date)
 lok.rec.env.bk$WY <- WY(lok.rec.env.bk$Date)
@@ -1928,14 +1927,14 @@ date_mat <- matrix(NA,nrow=tot_row,ncol=1)
 for (i in seq_along(vals)) {
   start_idx <- (i - 1) * n_row_vals + 1
   end_idx <- i * n_row_vals
-  date_mat[start_idx:end_idx, 1] <- date.fun(
+  date_mat[start_idx:end_idx, 1] <- as.character(
     paste(CurWY + vals[i], WCA1.bk.sch$month, WCA1.bk.sch$day, sep = "-")
   )
 }
-date_mat <- data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01")))
+date_mat <- data.frame(Date = date.fun(date_mat))
 WCA1.bk.sch <- cbind(WCA1.bk.sch,date_mat)|>
   dcast(Date~variable,value.var = "value",mean)|>
-  merge(fill,"Date",all.y=T)
+  merge(sch_fill,"Date",all.y=T)
 WCA1.bk.sch[-1] <- lapply(WCA1.bk.sch[-1],dat.interp);
 WCA1.bk.sch$WY <- WY(WCA1.bk.sch$Date)
 WCA1.bk.sch$dec.WY <- decimal.WY(WCA1.bk.sch$Date)
@@ -1951,8 +1950,8 @@ par(mar=c(0.5,1.5,1,1.5),oma=c(0.5,3,1,3));
 layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 plot(A1~DOWY,WCA1.bk.sch,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=ymaj,v=hydro.day(xmin),lwd=1,col="grey",lty=3)
-lines(A2~DOWY,subset(WCA1.bk.sch,WY==CurWY),col="grey50",lwd=1.5,lty=2)
-lines(A1~DOWY,subset(WCA1.bk.sch,WY==CurWY),col="black",lwd=1.5)
+lines(A2~DOWY,subset(WCA1.bk.sch,WY==CurWY-1),col="grey50",lwd=1.5,lty=2)
+lines(A1~DOWY,subset(WCA1.bk.sch,WY==CurWY-1),col="black",lwd=1.5)
 abline(h=14,lwd=1.5,col="black",lty=2)
 for(i in seq_along(stage_yrs)){
 lines(Mean ~ DOWY,subset(WCA1.xtab, WY == stage_yrs[i]),lwd = 2, col = stage_cols[i], lty = 1)
@@ -2144,7 +2143,7 @@ for (i in seq_along(vals)) {
 date_mat <- data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01")))
 WCA2.bk.sch <- cbind(WCA2.bk.sch,date_mat)|>
   dcast(Date~variable,value.var = "value",mean)|>
-  merge(fill,"Date",all.y=T)
+  merge(sch_fill,"Date",all.y=T)
 WCA2.bk.sch[-1] <- lapply(WCA2.bk.sch[-1],dat.interp);
 WCA2.bk.sch$WY <- WY(WCA2.bk.sch$Date)
 WCA2.bk.sch$dec.WY <- decimal.WY(WCA2.bk.sch$Date)
@@ -2161,7 +2160,7 @@ par(mar=c(0.5,1.5,1,1.5),oma=c(0.5,3,1,3));
 layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 plot(Zone.A~DOWY,WCA2.bk.sch,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=ymaj,v=hydro.day(xmin),lwd=1,col="grey",lty=3)
-lines(Zone.A~DOWY,subset(WCA2.bk.sch,WY==CurWY),col="black",lwd=1.5)
+lines(Zone.A~DOWY,subset(WCA2.bk.sch,WY==CurWY-1),col="black",lwd=1.5)
 abline(h=10.5,lwd=1.5,col="grey50",lty=2)
 for(i in seq_along(stage_yrs)){
 lines(CA217 ~ DOWY,subset(WCA2.xtab, WY == stage_yrs[i]),lwd = 2, col = stage_cols[i], lty = 1)
@@ -2364,7 +2363,7 @@ for (i in seq_along(vals)) {
 date_mat <- data.frame(Date = date.fun(as.POSIXct(date_mat,origin = "1970-01-01")))
 WCA3.bk.sch <- cbind(WCA3.bk.sch,date_mat)|>
   dcast(Date~variable,value.var = "value",mean)|>
-  merge(fill,"Date",all.y=T)
+  merge(sch_fill,"Date",all.y=T)
 WCA3.bk.sch[-1] <- lapply(WCA3.bk.sch[-1],dat.interp);
 WCA3.bk.sch$WY <- WY(WCA3.bk.sch$Date)
 WCA3.bk.sch$dec.WY <- decimal.WY(WCA3.bk.sch$Date)
@@ -2383,8 +2382,8 @@ layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 
 plot(Zone.A~DOWY,WCA3.bk.sch,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=ymaj,v=hydro.day(xmin),lwd=1,col="grey",lty=3)
-lines(Zone.A~DOWY,subset(WCA3.bk.sch,WY==CurWY),col="black",lwd=1.5)
-lines(EHWL~DOWY,subset(WCA3.bk.sch,WY==CurWY),col="black",lwd=1.5,lty=3)
+lines(Zone.A~DOWY,subset(WCA3.bk.sch,WY==CurWY-1),col="black",lwd=1.5)
+lines(EHWL~DOWY,subset(WCA3.bk.sch,WY==CurWY-1),col="black",lwd=1.5,lty=3)
 abline(h=7.5,lwd=1.5,col="black",lty=2)
 for(i in seq_along(stage_yrs)){
 lines(Avg.636465 ~ DOWY,subset(WCA3.xtab, WY == stage_yrs[i]),lwd = 2, col = stage_cols[i], lty = 1)
@@ -3506,7 +3505,7 @@ for(i in 1:3){
 axis_fun(1,xmaj,xmin,xmaj,line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj/1000,cex.axis=1);box(lwd=1)
 mtext("Day of Water Year",side=1,line=2,cex=1)
-mtext("Cumulative Discharge (x1000 kAc-Ft)",side=2,line=3.5,cex=1)
+mtext(expression("Cumulative Discharge (x1000 Ac-Ft WY"^" -1"*")"),side=2,line=3.5,cex=1)
 mtext(side=3,"S-79",adj=0)
 
 plot(cum.S77~DOWY,CRE_Q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",ann=F,axes=F)
@@ -3750,10 +3749,10 @@ layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(mar=c(2,2,1,1),oma=c(1,3,1,2));
 plot(S80~Date,SLE_Q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",ann=FALSE,axes=FALSE)
 abline(h=ymaj,v=xmaj,lty=3,col="grey")
-with(SLE_Q,lines(Date,S80.cfs,col=cols[1],lwd=2))
-with(SLE_Q,lines(Date,S308.cfs,col=cols[2],lwd=2,lty=2))
-with(SLE_Q,lines(Date,C44,col=cols[3],lwd=2,lty=3))
-with(SLE_Q,lines(Date,NorthFork,col=cols[4],lwd=2,lty=1))
+with(SLE_Q,lines(Date,S80.cfs,col=SLE_Q_cols[1],lwd=2))
+with(SLE_Q,lines(Date,S308.cfs,col=SLE_Q_cols[2],lwd=2,lty=2))
+with(SLE_Q,lines(Date,C44,col=SLE_Q_cols[3],lwd=2,lty=3))
+with(SLE_Q,lines(Date,NorthFork,col=SLE_Q_cols[4],lwd=2,lty=1))
 axis_fun(1,xmaj,xmin,format(xmaj,"%m/%d/%Y"),line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1)
 box(lwd=1)
@@ -3763,7 +3762,7 @@ mtext("Daily Discharge (cfs)",side=2,line=3.5,cex=1)
 plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
 legend(0.5,0.6,
        legend=c("S-80 (to Estuary)","S-308 (from Lake)","C-44 Basin Flow","North Fork"),
-       col=cols,lty=c(1,2,3,1),lwd=c(2,2,2,2),pt.cex=2,ncol=2,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
+       col=SLE_Q_cols,lty=c(1,2,3,1),lwd=c(2,2,2,2),pt.cex=2,ncol=2,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
 
@@ -3792,7 +3791,7 @@ for(i in 1:3){
 axis_fun(1,xmaj,xmin,xmaj,line=-0.5)
 axis_fun(2,ymaj,ymin,ymaj/1000,cex.axis=1);box(lwd=1)
 mtext("Day of Water Year",side=1,line=2,cex=1)
-mtext("Cumulative Discharge (x1000 kAc-Ft)",side=2,line=3.5,cex=1)
+mtext(expression("Cumulative Discharge (x1000 Ac-Ft WY"^" -1"*")"),side=2,line=3.5,cex=1)
 mtext(side=3,"S-80",adj=0)
 
 plot(cum.S308pos~DOWY,SLE_Q,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",yaxs="i",ann=F,axes=F)
@@ -4028,7 +4027,7 @@ for(i in 1:3){
 axis_fun(1,xmaj,xmin,xmaj,line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj),cex.axis=1);box(lwd=1)
 mtext("Day of Water Year",side=1,line=2,cex=1)
-mtext(expression("Cumulative Discharge (x1000 Ac-Ft d"^" -1"*")"),side=4,line=2.5,cex=1)
+mtext(expression("Cumulative Discharge (x1000 Ac-Ft WY"^" -1"*")"),side=2,line=2.5,cex=1)
 mtext(side=3,"S44 + S155 + S41",adj=0)
 legend("topleft",
        legend=c(paste0("WY",seq(CurWY-2,CurWY,1))),

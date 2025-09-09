@@ -1,5 +1,5 @@
 ## from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
-name: Render & Deploy Site
+name: Render & Deploy Beta Reports
 # on: [push]
 on:
   push:
