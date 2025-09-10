@@ -192,7 +192,7 @@ slough_cut <- st_intersection(st_buffer(sfwmd_bound,-500),sloughs)
 
 ```
 
-```{r data,include = FALSE}
+```{r Structure Q data,include = FALSE}
 # con <- dbConnect(RSQLite::SQLite(), "./report/data/system_report_data.sqlite")
 # con <- dbConnect(RSQLite::SQLite(), "./data/system_report_data.sqlite")
 # tables <- dbListTables(con)
@@ -375,7 +375,7 @@ Qdat_list <- lapply(seq_along(Qdbkeys$DA), function(i) {
     #setTxtProgressBar(pb, i)
     tmp
   }, error = function(e) {
-    message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
+    # message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
     NULL  # Return NULL if there's an error
   })
 })
@@ -417,8 +417,16 @@ Qdat_xtab$ENP_TSCB <- with(Qdat_xtab,(S332+S175)+((S332D-S332DX1-S328)+S328+G737
 
 Qdat_xtab$LOKIN <- Qdat_xtab$NthLake
 Qdat_xtab$LOKOUT <- apply(Qdat_xtab[,c("S77","S354","S351","S352","S271","S308")],1,sum,na.rm=T)
+```
 
-## Florida Bay Q -------------------------------------------------------------------
+```{r Costal Q data,include = FALSE}
+## Coastal Q -------------------------------------------------------------------
+## Add Lostman's
+usgs_west <- data.frame(site_no = c("02290888","02290918","02290878"), 
+                        loc = c("Chatham","Lost","Broad"),
+                        loc_abb = c("ENPWP","ENPLO","ENPBR")
+                      )
+
 usgs_sites <- data.frame(site_no = 
                            c("251241080385300", # UPSTREAM TAYLOR RIVER
                              "251127080382100", # Taylor River at Mouth
@@ -439,6 +447,8 @@ usgs_sites <- data.frame(site_no =
                                  "Alligator"),
                          loc_abb = c("TRUP","TRM","JB","TC","MUD","MCC","HWY","ALLI")
 )
+usgs_sites <- rbind(usgs_sites,usgs_west)
+
 usgs_sites <- usgs_sites[usgs_sites$loc!="Joe Bay",]
 pCode <- c("00060","72137")
 
@@ -467,20 +477,29 @@ flab_crk_list <- lapply(seq_along(usgs_sites$site_no), function(i) {
     
     tmp <- readNWISdv(site_id,pCode,sdate,edate)|>
       renameNWISColumns()
-    if(any(names(tmp)%in%c("X_72137"))){
-      names(tmp)[names(tmp)%in%c("X_72137","X_72137_cd")] <- c("Flow","Flow_cd")
+    # if(any(names(tmp)%in%c("X_72137"))){
+    #   names(tmp)[names(tmp)%in%c("X_72137","X_72137_cd")] <- c("Flow","Flow_cd")
+    # }
+    if (!"Flow" %in% names(tmp) && "X_72137" %in% names(tmp)) {
+      names(tmp)[names(tmp) %in% c("X_72137", "X_72137_cd")] <- c("Flow", "Flow_cd")
     }
     
     tmp
   }, error = function(e) {
-    message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
+    # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
 })
-flab_crk_list <- Filter(Negate(is.null), flab_crk_list)
-Qdat_flab_crk <- do.call(rbind, flab_crk_list)
-Qdat_flab_crk <- merge(Qdat_flab_crk,usgs_sites,"site_no",all.x=T)
-Qdat_flab_crk$Date <- date.fun(Qdat_flab_crk$Date)
+# flab_crk_list <- Filter(Negate(is.null), flab_crk_list)
+# flab_crk_list <- Filter(function(x) nrow(x) > 0, flab_crk_list)
+flab_crk_list <- Filter(function(x) !is.null(x) && nrow(x) > 0, flab_crk_list); #combines the null and nrow methods
+# lapply(flab_crk_list,names)
+
+common_cols <- Reduce(intersect, lapply(flab_crk_list, names))
+flab_crk_list <- lapply(flab_crk_list,function(x) x[common_cols])
+Qdat_flab_crk <- do.call(rbind, flab_crk_list)|>
+  merge(usgs_sites,"site_no",all.x=T)|>
+  mutate(Date = date.fun(Date))
 
 date_chk <- ddply(Qdat_flab_crk,c("loc"),summarise,
       min.date = min(Date,na.rm=T),max.date = max(Date,na.rm=T))|>
@@ -502,7 +521,7 @@ flab_crk_uv_list <- lapply(seq_along(uv_sites$site_no), function(i) {
     
     tmp
   }, error = function(e) {
-    message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
+    # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
 })
@@ -511,9 +530,8 @@ flab_crk_uv_list <- Filter(Negate(is.null), flab_crk_uv_list)
 common_cols <- Reduce(intersect, lapply(flab_crk_uv_list, names))
 flab_crk_uv_list <- lapply(flab_crk_uv_list,function(x) x[common_cols])
 Qdat_flab_crk_uv <- do.call(rbind, flab_crk_uv_list)|>
-  merge(usgs_sites,"site_no",all.x=T)
-
-Qdat_flab_crk_uv$Date <- date.fun(Qdat_flab_crk_uv$dateTime)
+  merge(usgs_sites,"site_no",all.x=T)|>
+  mutate(Date = date.fun(dateTime))
 Qdat_flab_crk_da <- ddply(Qdat_flab_crk_uv,c("site_no","agency_cd","Date","loc","loc_abb"),
                           summarise,
                           Flow = mean(Flow_Inst,na.rm=T),
@@ -531,7 +549,6 @@ Qdat_flab_crk <- rbind(Qdat_flab_crk,Qdat_flab_crk_da)
 #     )
 #   print("source: SQL DB")
 # }
-
 
 fill <- expand.grid(loc = usgs_sites$loc,
                     Date = seq(date.fun(flab.dates[1]),date.fun(dates[2]),"1 days"))|>
@@ -568,8 +585,9 @@ loc_stats <- subset(Qdat_flab_crk,Date==YEST)|>
 loc_stats$PercentileBin <- apply(loc_stats, 1, assign_bin)
 loc_stats$PercentileBin.f <- factor(loc_stats$PercentileBin,levels = c("<10", "10-24", "25-49","50 - 75", "76-90", ">90","NoData"))
 loc_stats_shp <- merge(loc.dat.shp,loc_stats,c("site_no","loc"))
+```
 
-
+```{r Stage data,include = FALSE}
 # STAGE -------------------------------------------------------------------
 LOK.sdate <- date.fun("2007-05-01")
 other.sdate <- date.fun(paste((CurWY-3)-1,"05-01",sep="-"))
@@ -620,7 +638,7 @@ meta.dat <- do.call(rbind,stg.meta.dat_ls)
       #setTxtProgressBar(pb, i)
       tmp
     }, error = function(e) {
-      message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
+      # message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
       NULL  # Return NULL if there's an error
     })
   })
@@ -639,19 +657,22 @@ meta.dat <- do.call(rbind,stg.meta.dat_ls)
 #     )
 #   print("source: SQL DB")
 # }
+```
 
+```{r Salinity data,include = FALSE}
 # Salinity -------------------------------------------------------------------
-
 sal_dbkeys_ls <- list()
 sal_dbkeys_ls[["FLAB"]] <- data.frame(SITE=paste0("ENP",c("TB","GB","BK","MK","JK","WB","LR",
                                                           "LM","JB","LS","TC","BN","BS","DK",
-                                                          "BA","LR","PK")),
+                                                          "BA","LR","PK",
+                                                          "WP","LO","BR")),
                                    param = "SAL",
                                    depth="bottom",
                                    DBKEY=c("63683","63617","63578","63667","63634","63695","63654",
                                            "63642","AN690","63663","63687","63581","63588","63608",
-                                           "63572","63654","63675"),
-                                   region = "FLAB")
+                                           "63572","63654","63675",
+                                           "63703","63650","63584"),
+                                   region = c(rep("FLAB",17),rep("WEST",3)))
 
 sal_dbkeys_ls[["CRE"]] <- data.frame(SITE=c(rep("VALI75",2),rep("FORTMYERSM",2),rep("CCORAL",2),rep("MARKH",2),rep("SANIB2",2)),
                                   param = rep(c("WT","SPC"),5),
@@ -671,26 +692,31 @@ sal_dbkeys_ls[["LWL"]] <- data.frame(SITE=c(rep("LWL19",2),rep("LWL20A",2),rep("
                                   region = "LWL")
 
 sal_dbkeys <- do.call(rbind,sal_dbkeys_ls)
-
+rownames(sal_dbkeys) <- NULL
 # meta <- DBHYDRO.meta.byDBKEY(sal_dbkeys$DBKEY)
 # dput(unique(meta[,c("STATION","X.COORD","Y.COORD")]))
+# meta <- DBHYDRO.meta.byDBKEY(subset(sal_dbkeys,region=="WEST")$DBKEY)
+
 sal_meta_loc <- data.frame(STATION = c("CCORAL", "ENPBA", "ENPBK", "ENPBN", "ENPBS",
                                    "ENPDK", "ENPGB", "ENPJK", "ENPLM", "ENPLR", 
                                    "ENPLS", "ENPMK", "ENPPK", "ENPTB", "ENPTC", 
                                    "ENPWB", "FORTMYERSM", "HR1", "ENPJB", "MARKHA", 
-                                   "SANIB2", "VALI75"), 
+                                   "SANIB2", "VALI75",
+                                   "ENPBR", "ENPLO", "ENPWP"), 
                        X.COORD = c(352675.018, 761669.968, 711235.739, 815342.356,
                                    841898.723, 824821.693, 721884.498, 687788.989,
                                    777641.167, 713901.593, 835723.631, 675254.094, 
                                    740078.865, 747196.279, 810434.559, 743843.619, 
                                    372550.196, 887373.306, 808212.702, 326314.332, 
-                                   324589.681, 395138.526), 
+                                   324589.681, 395138.526,
+                                   659714.274, 600485.625, 574161.177), 
                        Y.COORD = c(810605.903, 252062.008, 286306.87, 274043.909, 
                                    307458.375, 308026.435, 303082.017, 261364.985, 
                                    306313.663, 235603.511, 328083.329, 280833.075, 
                                    212561.101, 299532.324, 319843.846, 268544.369, 
                                    842672.937, 1052747.759, 324129.731, 797163.84, 
-                                   782648.064, 859844.95));# changed JBTS to ENPJB
+                                   782648.064, 859844.95,
+                                   416094.464, 444295.72, 500247.839));# changed JBTS to ENPJB
 
 sal_meta_loc_shp <- st_as_sf(sal_meta_loc,coords = c("X.COORD","Y.COORD"),crs = nad83Harn_east)|>
   st_transform(utm17)
@@ -714,7 +740,7 @@ sal_dat_list <- lapply(seq_along(sal_dbkeys$DBKEY), function(i) {
     
     tmp
   }, error = function(e) {
-    message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
+    # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
 })
@@ -746,7 +772,7 @@ SLE_sal_dat_list <- lapply(seq_along(sites), function(i) {
     
     tmp
   }, error = function(e) {
-    message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
+    # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
 })
@@ -1919,6 +1945,10 @@ WCA1.xtab$CY <- as.numeric(format(WCA1.xtab$Date,"%Y"))
 WCA1.xtab$DOWY <- hydro.day(WCA1.xtab$Date)
 WCA1.xtab$WY <- WY(WCA1.xtab$Date)
   
+
+vals <- c(-3, -2, -1, 0, 1)
+sch_fill <- data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
+
 WCA1.bk.sch <- rbind(data.frame(month=c(5,7,9,12),day=c(12,8,24,1),variable = "A1",value=c(15.75,15.75,17.50,17.50)),
                   data.frame(month=c(1,5,8,10),day=c(16,12,23,17),variable = "A2",value=c(17.00,15.75,15.75,17.00)))
 n_row_vals <- nrow(WCA1.bk.sch)
@@ -2128,6 +2158,8 @@ WCA2.xtab$CY <- as.numeric(format(WCA2.xtab$Date,"%Y"))
 WCA2.xtab$DOWY <- hydro.day(WCA2.xtab$Date)
 WCA2.xtab$WY <- WY(WCA2.xtab$Date)
   
+vals <- c(-3, -2, -1, 0, 1)
+sch_fill <- data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
 
 WCA2.bk.sch <- data.frame(month=c(1,6,9),day=c(31,30,30),variable = "Zone.A",value=c(11,11,13))
 n_row_vals <- nrow(WCA2.bk.sch)
@@ -2345,6 +2377,8 @@ WCA3.xtab$CY <- as.numeric(format(WCA3.xtab$Date,"%Y"))
 WCA3.xtab$DOWY <- hydro.day(WCA3.xtab$Date)
 WCA3.xtab$WY <- WY(WCA3.xtab$Date)
   
+vals <- c(-3, -2, -1, 0, 1)
+sch_fill <- data.frame(Date=seq(date.fun(paste(CurWY+min(vals),"01-01",sep="-")),date.fun(paste(CurWY+max(vals),"04-30",sep="-")),"1 days"))
 
 WCA3.bk.sch <- rbind(
   data.frame(month=c(5,10,12),day=c(30,30,30),variable = "EHWL",value=c(11,12,12)),
@@ -2908,7 +2942,7 @@ legend("topleft",
 
 <br>
 
-```{r SRS_eastwest, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Shark River Slough daily discharge relative to historic peroid of record summary statistics."}
+```{r SRS_eastwest, echo=FALSE,fig.width=7,fig.height=4.5,fig.align='center',fig.cap="Shark River Slough daily discharge relative to historic peroid of record summary statistics."}
 
 # ENP_Q_stats
 
@@ -2948,7 +2982,7 @@ for(i in 1:length(site.val)){
   abline(h=ymaj,v=hydro.day(xmaj),lty=3,col="grey")
   axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%m-%d"),line=-0.5)
   axis_fun(2,ymaj,ymin,format(ymaj/1000),cex.axis=1);box(lwd=1)
-  mtext(site.val.lab[i],side=3,line=-2.75)
+  mtext(site.val.lab[i],side=3,line=-2.75,cex=0.9)
   if(i==1){mtext(expression("Daily Discharge (x1000 Ac-Ft d"^" -1"*")"),side=2,line=2.5,cex=1)}
 }
 
@@ -3116,14 +3150,14 @@ data.frame(LEGEND=c("IOP","ERTP","Increment 1","2016 Emergency Deviation","Incre
 ### Florida Bay 
 
 #### Creek Discharge
-```{r creek_Q, echo=FALSE,fig.width=7,fig.height=4.5,fig.align='center',fig.cap="Creek discharge relative to the period of record percentiles."}
+```{r creek_Q, echo=FALSE,fig.width=8,fig.height=4.5,fig.align='center',fig.cap="Creek discharge relative to the period of record percentiles."}
 percentile_cols <- c("red","orange","green","darkgreen","blue","black")
 par(mar=c(0.2,0.2,0.2,0.2),oma=c(0.5,0.5,0.5,0.5),xpd=F);
 layout(matrix(c(1:2),1,2,byrow=F),widths = c(1,0.5))
 
-slough_cut <- st_intersection(st_buffer(sfwmd_bound,-500),sloughs)
+FLAB_loc.dat.shp <- subset(loc.dat.shp,!(loc_abb%in%c(paste0("ENP",c("BR","WP","LO")))))
 
-bbox.lims <- loc.dat.shp|>st_buffer(2500)|>st_bbox()
+bbox.lims <- FLAB_loc.dat.shp|>st_buffer(2500)|>st_bbox()
 plot(st_geometry(sfwmd_bound),
      ylim=bbox.lims[c(2,4)],
      xlim=bbox.lims[c(1,3)],
@@ -3132,9 +3166,9 @@ plot(st_geometry(slough_cut),add=T,col = "grey80",border=F)
 plot(st_geometry(sfwmd_bound),add=T,col=NA,border = "grey50")
 plot(st_geometry(loc.dat.shp),add=T,pch=21,bg="white",cex=1.7)
 plot(st_geometry(loc_stats_shp),pch=21,bg=percentile_cols[loc_stats_shp$PercentileBin.f],lwd=0.5,add=T,cex=1.75)
-st_txt(subset(loc_stats_shp,!(loc%in%c("Taylor River (upstream)","Taylor River (mouth)"))),subset(loc_stats_shp,!(loc%in%c("Taylor River (upstream)","Taylor River (mouth)")))$loc,halo=TRUE,pos=3)
-st_txt(subset(loc_stats_shp,loc=="Taylor River (mouth)"),subset(loc_stats_shp,loc=="Taylor River (mouth)")$loc,halo=TRUE,pos=1)
-st_txt(subset(loc_stats_shp,loc=="Taylor River (upstream)"),subset(loc_stats_shp,loc=="Taylor River (upstream)")$loc,halo=TRUE,pos=3,offset = 0.75)
+st_txt(subset(loc_stats_shp,!(loc%in%c("Taylor River (upstream)","Taylor River (mouth)"))),subset(loc_stats_shp,!(loc%in%c("Taylor River (upstream)","Taylor River (mouth)")))$loc,halo=TRUE,pos=3,cex=0.9)
+st_txt(subset(loc_stats_shp,loc=="Taylor River (mouth)"),subset(loc_stats_shp,loc=="Taylor River (mouth)")$loc,halo=TRUE,pos=1,cex=0.9)
+st_txt(subset(loc_stats_shp,loc=="Taylor River (upstream)"),subset(loc_stats_shp,loc=="Taylor River (upstream)")$loc,halo=TRUE,pos=3,offset = 0.75,cex=0.9)
 box(lwd=1)
 mapmisc::scaleBar(loc_stats_shp,"bottomleft",bty="n",cex=1,outer=F)
 
@@ -3219,7 +3253,7 @@ xmaj <- seq(xlim.val[1],xlim.val[2],by="14 days");xmin <- seq(xlim.val[1],xlim.v
 
 sum.stat.dates.form <- format(c(flab.dates[1],date.fun(paste(CurWY-1,05,01,sep="-"))),"%b %Y")
 
-site.val <- paste0("ENP",c("GB","TB","LM","TC","LS"))
+site.val <- paste0("ENP",c("GB","TB","LM","JB","LS"))
 flab_crks_sal_sites_shp <- subset(sal_meta_loc_shp,STATION%in%site.val)
 
 # png(filename=paste0(plot.path,"FLAB_saldata.png"),width=6.5,height=4.5,units="in",res=200,type="windows",bg="white")
@@ -3316,6 +3350,204 @@ legend(0.5,0.2,legend=c("> 30 PSU","< 30 PSU"),
 mtext(side=1,line=-1,paste("Data from",format(as.Date(YEST)-30,"%b %d, %Y"),"to",format(YEST,"%b %d, %Y")),font=3,cex=0.75)
 ```
 
+<br>
+
+### West Coast
+
+#### Creek Discharge
+```{r west creek_Q, echo=FALSE,fig.width=7,fig.height=4.5,fig.align='center',fig.cap="Creek discharge relative to the period of record percentiles."}
+percentile_cols <- c("red","orange","green","darkgreen","blue","black")
+par(mar=c(0.2,0.2,0.2,0.2),oma=c(0.5,0.5,0.5,0.5),xpd=F);
+layout(matrix(c(1:2),1,2,byrow=F),widths = c(1,0.5))
+
+west_loc.dat.shp <- subset(loc.dat.shp,(loc_abb%in%c(paste0("ENP",c("BR","WP","LO")))))
+
+bbox.lims <- west_loc.dat.shp|>st_buffer(4000)|>st_bbox()
+plot(st_geometry(sfwmd_bound),
+     ylim=bbox.lims[c(2,4)],
+     xlim=bbox.lims[c(1,3)],
+     col="cornsilk",border="grey50",bg="lightblue")
+plot(st_geometry(slough_cut),add=T,col = "grey80",border=F)
+plot(st_geometry(sfwmd_bound),add=T,col=NA,border = "grey50")
+plot(st_geometry(loc.dat.shp),add=T,pch=21,bg="white",cex=1.7)
+plot(st_geometry(loc_stats_shp),pch=21,bg=percentile_cols[loc_stats_shp$PercentileBin.f],lwd=0.5,add=T,cex=1.75)
+st_txt(loc_stats_shp,loc_stats_shp$loc,halo=TRUE,pos=3)
+box(lwd=1)
+mapmisc::scaleBar(loc_stats_shp,"bottomleft",bty="n",cex=1,outer=F)
+
+plot(0:1,0:1,type="n",ann=F,axes=F)
+legend("center",
+       legend = c("<10","10 - 24","25 - 49","50 - 75","76 - 90",">90","No Data"),
+       pch=21,pt.bg=c(percentile_cols,"white"),pt.cex=2,
+       lwd=0.5,lty=0,col="black",
+       title = "Percentile Classes",title.adj = 0,
+       bty = "n",y.intersp=1,x.intersp=0.75,
+       xjust=0.5,yjust=1,cex=1.25)
+mtext(side=1,line=-1,paste("Data from",format(YEST,"%b %d, %Y"),"\n(USGS)"),font=3)
+mtext(side = 3,line=-2,"Site POR\n(May 2012 - Current) Stats")
+
+```
+
+```{r west Q, echo=FALSE,fig.width=8,fig.height=5,fig.align='center',fig.cap="Net 365-day moving sum creek flows for select locations along the west coast of ENP."}
+lostENP_Q <- subset(Qdat_flab_crk,loc_abb%in%c(paste0("ENP",c("BR","WP","LO"))))
+lostENP_Q$total_Q_365 <- with(lostENP_Q,ave(Data.Value.acft,loc,FUN = function(x)rollapplyr(x,365,sum,na.rm=T,fill=NA)/1000))
+
+lostENP_Q_stats <- subset(lostENP_Q,WY!=CurWY)|>
+  ddply(c("loc","DOWY"),summarise,
+        q10 = quantile(Data.Value.acft,probs=0.10,na.rm=T),
+        q50 = quantile(Data.Value.acft,probs=0.50,na.rm=T),
+        q90 = quantile(Data.Value.acft,probs=0.90,na.rm=T)
+        )
+
+max.q <- max(lostENP_Q$total_Q_365,na.rm=T)
+ylim.max <- ceiling(max.q*1.1)
+
+ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],6);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
+xlim.val <- date.fun(c(as.Date(flab.dates[1])+366,as.Date(End.Date)+60));
+xmaj <- seq(xlim.val[1],xlim.val[2],by="1 years");xmin <- seq(xlim.val[1],xlim.val[2],by="6 months")
+
+lostENP_locs <- c("Chatham","Lost","Broad")
+
+layout(matrix(1:3,3,1,byrow=F))
+par(mar=c(2,2,0.5,1),oma=c(0.5,2.5,1,0.5));
+for(i in seq_along(lostENP_locs)){
+  tmp_dat <- subset(lostENP_Q,loc==lostENP_locs[i])
+plot(total_Q_365~Date,Qdat_flab_crk_total,type="n",ylim=ylim.val,xlim=xlim.val,xaxs="i",xaxt="n",yaxt="n",xlab=NA,ylab=NA)  
+abline(h=ymaj,v=xmaj,lty=3,col="grey")
+lines(total_Q_365~Date,tmp_dat,col="dodgerblue1",lwd=1.5)
+if(i==3){axis_fun(1,xmaj,xmin,format(xmaj,"%m-%Y"),line=-0.5)}else{axis_fun(1,xmaj,xmin,NA,line=-0.5)}
+axis_fun(2,ymaj,ymin,format(ymaj))
+mtext(side=3,adj=0,line=-1.25,paste0(" ",lostENP_locs[i]))
+box(lwd=1)
+if(i==1){mtext(side = 3,adj=0,"West Coast ENP",font=2)}
+}
+mtext(expression("Net 365-Day Moving Discharge (x1000 Ac-Ft d"^" -1"*")"),side=2,outer=T,line=0.5)
+mtext(side=1,line=1.5,"Date (M-Y)")
+
+```
+
+```{r WestCoast Daily Q, echo=FALSE,fig.width=6.5,fig.height=6,fig.align='center',fig.cap="West Coast creeks daily discharge relative to historic peroid of record summary statistics."}
+
+max.q <- max(subset(lostENP_Q,Date%in%seq(date.fun(as.Date(Sys.Date())-90),date.fun(as.Date(Sys.Date())),"1 days"))[,c("Data.Value.acft")],na.rm=T)
+ylim.max <- ceiling(max.q*1.1)
+# ylim.val <- c(0,ylim.max);
+ymaj <- heckbert_labs(0,ylim.max,6);
+ymin <- seq(0,max(ymaj),min(diff(ymaj))/2)
+ylim.val <- range(ymaj)
+
+xlim.val <- c(date.fun(as.Date(Sys.Date())-90),date.fun(as.Date(Sys.Date())));
+xmaj <- seq(xlim.val[1],xlim.val[2],by="30 days");
+xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val2 <- hydro.day(xlim.val)
+
+par(mar=c(2,2,0.5,1),oma=c(1.25,3,1,1));
+layout(matrix(c(1:4,4,1),4,1,byrow=T),heights=c(1,1,1,0.4))
+
+site.val <- lostENP_locs
+site.val.lab <- lostENP_locs
+#i=1
+for(i in 1:length(site.val)){
+  tmp.dat <- subset(lostENP_Q,Date%in%seq(date.fun(as.Date(Sys.Date())-100),date.fun(as.Date(Sys.Date())),"1 days")&loc==site.val[i])
+  
+  max.q <- ceiling(max(subset(lostENP_Q_stats,loc==site.val[i])$q90,na.rm=T))
+  ymaj <- heckbert_labs(0,max.q,6);
+  ymin <- seq(0,max(ymaj),min(diff(ymaj))/2)
+  ylim.val <- range(ymaj)
+  
+  plot(Data.Value.acft~DOWY,tmp.dat,type="n",ylim=ylim.val,xlim=xlim.val2,axes=F,ann=F)
+  with(subset(lostENP_Q_stats,loc==site.val[i]),shaded.range(DOWY,q10,q90,"lightblue",lty=1,col.adj=1))
+  lines(q50~DOWY,subset(lostENP_Q_stats,loc==site.val[i]),col="grey50")
+  with(tmp.dat,pt_line(DOWY,Data.Value.acft,2,"black",1,21,"indianred1",cex=1.25))
+  abline(h=ymaj,v=hydro.day(xmaj),lty=3,col="grey")
+  axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%m-%d"),line=-0.5)
+  axis_fun(2,ymaj,ymin,format(ymaj/1000),cex.axis=1);box(lwd=1)
+  mtext(paste0(" ",site.val.lab[i]),side=3,line=-1.5,cex=0.9)
+  if(i==2){mtext(expression("Daily Discharge (x1000 Ac-Ft d"^" -1"*")"),side=2,line=2.5,cex=1)}
+}
+
+par(mar=c(0.5,1.5,0.25,1))
+plot(0:1,0:1,type="n",ann=F,axes=F)
+mtext(side=3,"Date (Month-Day)",line=-1.75)
+legend(0.5,0.25,legend=c(paste0("WY",min(lostENP_Q$WY)," - WY",min(lostENP_Q$WY)-1," 10th to 90th\nQuantile Range"),"Daily Discharge"),
+       pch=c(22,21),pt.bg=c("lightblue","indianred1"),
+       lty=c(0,0),lwd=c(0,0.5),col=c("grey50","black"),
+       pt.cex=c(3,1.5),cex=1,ncol=2,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+```
+
+<br>
+
+#### Salinity
+
+```{r west_SAL, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Daily salinity values for select West Coast creek salinity mointoring locations relative to site specific daily historic statistics."}
+lost_sal <- subset(sal_dat_xtab,SITE%in%subset(sal_dbkeys,region=="WEST")$SITE)
+
+lost_sal_site_statsum <- ddply(subset(sal_dat_xtab,WY!=CurWY& SITE%in%subset(sal_dbkeys,region=="WEST")$SITE),c("SITE"),summarise,
+                               min.val=min(calc_Sal,na.rm=T),
+                               q10=quantile(calc_Sal,prob=0.1,na.rm=T),
+                               q50 = quantile(calc_Sal,prob = 0.50, na.rm=T),
+                               q90=quantile(calc_Sal,prob=0.9,na.rm=T),
+                               max.val=max(calc_Sal,na.rm=T))
+lost_sal_siteDOWY_statsum <- ddply(subset(sal_dat_xtab,WY!=CurWY&
+                                            SITE%in%subset(sal_dbkeys,region=="WEST")$SITE),
+                                   c("SITE","DOY"),summarise,
+                                   min.val=min(calc_Sal,na.rm=T),
+                                   q10=quantile(calc_Sal,prob=0.1,na.rm=T),
+                                   q50 = quantile(calc_Sal,prob = 0.50, na.rm=T),
+                                   q90=quantile(calc_Sal,prob=0.9,na.rm=T),
+                                   max.val=max(calc_Sal,na.rm=T))
+lost_sal_siteDOWY_statsum$DATE.plt=date.fun(as.Date(lost_sal_siteDOWY_statsum$DOY,origin=paste0(format(End.Date,"%Y"),"-01-01")))
+
+
+## Sal time series
+ylim.val <- c(0,40);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],6);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));
+xmaj <- seq(xlim.val[1],xlim.val[2],by="14 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+
+sum.stat.dates.form <- format(c(flab.dates[1],date.fun(paste(CurWY-1,05,01,sep="-"))),"%b %Y")
+
+site.val <- paste0("ENP",c("WP","LO","BR"))
+site.val.lab <- c("Chatham","Lost","Broad")
+flab_crks_sal_sites_shp <- subset(sal_meta_loc_shp,STATION%in%site.val)
+
+# png(filename=paste0(plot.path,"FLAB_saldata.png"),width=6.5,height=4.5,units="in",res=200,type="windows",bg="white")
+par(mar=c(1,3,0.5,0.5),oma=c(2,0.5,1,0.5));
+layout(matrix(c(1:3,4,4,5),3,2,byrow=F),widths = c(1,0.5))
+
+for(i in seq_along(site.val)){
+  plot(calc_Sal~Date,lost_sal,type="n",ylim=ylim.val,xlim=xlim.val,xaxt="n",yaxt="n",xlab=NA,ylab=NA)
+  with(subset(lost_sal_siteDOWY_statsum,SITE==site.val[i]),shaded.range(DATE.plt,q10,q90,"lightblue",lty=1,col.adj=1))
+  abline(h=ymaj,v=xmaj,lty=3,col="grey")
+  with(subset(lost_sal,SITE==site.val[i]),pt_line(Date,calc_Sal,2,"black",1,21,"indianred1",cex=1.25))
+  axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
+  axis_fun(2,ymaj,ymin,ymaj,cex.axis=1);box(lwd=1)
+  mtext(site.val.lab[i],side=3,line=-1.25)
+  if(i==1){mtext(side=3,adj=0,"West Coast",cex=1.25)}
+  if(i==2){mtext(side=2,line=1.25,"Salinity")}
+  if(i==3){mtext(side=1,"Date (Month-Day)",line=2)}
+}
+
+
+
+par(mar=c(1,0.5,0.5,0.5))
+bbox.lims <- flab_crks_sal_sites_shp|>st_buffer(2500)|>st_bbox()
+plot(st_geometry(sfwmd_bound),
+     ylim=bbox.lims[c(2,4)],
+     xlim=bbox.lims[c(1,3)],
+     col="cornsilk",border="grey50",bg="lightblue")
+plot(st_geometry(slough_cut),add=T,col = "grey80",border=F)
+# plot(st_geometry(FLAB),add=T,lty=3,border="grey50")
+plot(st_geometry(flab_crks_sal_sites_shp),add=T,pch=21,bg="lightgreen",cex=1.5)
+st_txt(flab_crks_sal_sites_shp,flab_crks_sal_sites_shp$STATION,pos=3,halo=T)
+box(lwd=1)
+
+plot(0:1,0:1,type="n",ann=F,axes=F)
+legend("center",legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form[2],"\n10th to 90th\nQuantile Range"),"Daily Average Salinity"),
+       pch=c(22,21),pt.bg=c("lightblue","indianred1"),
+       lty=c(0,0),lwd=c(0,0.5),col=c("grey50","black"),
+       pt.cex=1.5,cex=1,ncol=1,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
+
+
+```
 ------------------------------------------------------------------------
 
 # Northern Estuaries
