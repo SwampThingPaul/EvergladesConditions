@@ -381,8 +381,8 @@ Qdat_list <- lapply(seq_along(Qdbkeys$DA), function(i) {
 })
 
 Qdat_list <- Filter(Negate(is.null), Qdat_list)
-Qdat <- do.call(rbind, Qdat_list)
-Qdat <- merge(Qdat,Qdbkeys.melt,'DBKEY',all.x=T)
+Qdat <- do.call(rbind, Qdat_list)|>
+  merge(Qdbkeys.melt,'DBKEY',all.x=T)
 
 # dbWriteTable(con, "Qdata", Qdat, overwrite = TRUE)  # Use append = TRUE to add rows
 # print("source: Direct Download")
@@ -398,7 +398,7 @@ Qdat <- merge(Qdat,Qdbkeys.melt,'DBKEY',all.x=T)
 tom_locs<- Qdbkeys[!(Qdbkeys$DA%in%unique(Qdat$DBKEY)),]
 # tom_locs
 
-Qdat$Data.Value <- as.numeric(unlist(Qdat$Data.Value))
+# Qdat$Data.Value <- as.numeric(unlist(Qdat$Data.Value))
 Qdat_P_xtab <- dcast(Qdat,Date+loc~DA_P,value.var = "Data.Value",mean,na.rm=T)
 Qdat_P_xtab$Data.Value <- apply(Qdat_P_xtab[c("P1","P2")], 1, function(x) x[!is.na(x)][1]);# if more P, just add
 
