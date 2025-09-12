@@ -1,7 +1,7 @@
 ## from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
 name: Render & Deploy Report Site
 # on: [push]
-on: [workflow_dispatch] # only runs manually via the GitHub Actions UI (when you click “Run workflow”)
+on: 
   push:
   schedule:
     - cron: '55 10,12 * * *'
@@ -63,6 +63,8 @@ jobs:
           httr
           mapmisc
           ggplot2
+          future
+          future.apply
 
     - name: Install terra and raster from rspatial
       shell: Rscript {0}
