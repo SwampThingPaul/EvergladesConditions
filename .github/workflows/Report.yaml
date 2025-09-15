@@ -62,13 +62,13 @@ jobs:
           rvest
           httr
           mapmisc
-          ggplot2
           future
           future.apply
 
     - name: Install terra and raster from rspatial
       shell: Rscript {0}
       run: |
+        install.packages("ggplot2", version = "3.5.1", repos = "https://cran.rstudio.com")
         install.packages('sf', type = "binary")
         install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
         install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))

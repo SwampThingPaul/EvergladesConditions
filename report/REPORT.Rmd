@@ -634,12 +634,12 @@ stg_dbkeys <- do.call(rbind.data.frame, c(stg_dbkeys_list, make.row.names = FALS
 L29_stg_loc_str <- data.frame(loc = c("S334_HW", "S333N_TW", "S333_TW"),str = c("S334","S333","S333"))
 eaa.stg.canal <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),canal = c("Hills/NNR","Miami","WPB","L8"))
 
-chunks <- split(stg_dbkeys$DA, ceiling(seq_along(stg_dbkeys$DA) / 10))
-stg.meta.dat_ls <- list()
-for(i in seq_along(chunks)){
-  stg.meta.dat_ls[[i]] <- DBHYDRO.meta.byDBKEY(chunks[[i]])
-}
-meta.dat <- do.call(rbind,stg.meta.dat_ls)
+# chunks <- split(stg_dbkeys$DA, ceiling(seq_along(stg_dbkeys$DA) / 10))
+# stg.meta.dat_ls <- list()
+# for(i in seq_along(chunks)){
+#   stg.meta.dat_ls[[i]] <- DBHYDRO.meta.byDBKEY(chunks[[i]])
+# }
+# meta.dat <- do.call(rbind,stg.meta.dat_ls)
 
 # tables <- dbListTables(con)
 # if(any(tables%in%c("STGdata"))){
