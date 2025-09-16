@@ -491,7 +491,7 @@ loc.dat.shp <- st_as_sf(loc.dat,coords=c("dec_long_va","dec_lat_va"),crs=wgs84)|
 # if(!any(tables%in%c("Qdat_flab"))|max_date<YEST){
 
 ## Creek Discharge 
-flab_crk_list <- lapply(seq_along(usgs_sites$site_no), function(i) {
+flab_crk_list <- future_lapply(seq_along(usgs_sites$site_no), function(i) {
   # Attempt to retrieve data and handle errors
   tryCatch({
     site_id <- usgs_sites$site_no[i]
@@ -512,7 +512,7 @@ flab_crk_list <- lapply(seq_along(usgs_sites$site_no), function(i) {
     # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
-})
+}, future.seed = TRUE)
 # flab_crk_list <- Filter(Negate(is.null), flab_crk_list)
 # flab_crk_list <- Filter(function(x) nrow(x) > 0, flab_crk_list)
 flab_crk_list <- Filter(function(x) !is.null(x) && nrow(x) > 0, flab_crk_list); #combines the null and nrow methods
@@ -529,7 +529,7 @@ date_chk <- ddply(Qdat_flab_crk,c("loc"),summarise,
   merge(usgs_sites,"loc",all.y=T)
 
 uv_sites <- subset(date_chk,max.date!=YEST|is.na(max.date))
-flab_crk_uv_list <- lapply(seq_along(uv_sites$site_no), function(i) {
+flab_crk_uv_list <- future_lapply(seq_along(uv_sites$site_no), function(i) {
   # Attempt to retrieve data and handle errors
   tryCatch({
     site_id <- uv_sites$site_no[i]
@@ -547,7 +547,7 @@ flab_crk_uv_list <- lapply(seq_along(uv_sites$site_no), function(i) {
     # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
-})
+}, future.seed = TRUE)
 
 flab_crk_uv_list <- Filter(Negate(is.null), flab_crk_uv_list)
 common_cols <- Reduce(intersect, lapply(flab_crk_uv_list, names))
@@ -649,7 +649,7 @@ eaa.stg.canal <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),canal = c("Hi
 #   max_date <- NA
 # }
 # if(!any(tables%in%c("STGdata"))|max_date<YEST){
-  stg_dat_list <- lapply(seq_along(stg_dbkeys$DA), function(i) {
+  stg_dat_list <- future_lapply(seq_along(stg_dbkeys$DA), function(i) {
     # Attempt to retrieve data and handle errors
     tryCatch({
       dbkey <- stg_dbkeys$DA[i]
@@ -664,7 +664,7 @@ eaa.stg.canal <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),canal = c("Hi
       # message(sprintf("Skipping DBKEY %s due to error: %s", dbkey, e$message))
       NULL  # Return NULL if there's an error
     })
-  })
+  }, future.seed = TRUE)
   
   stg_dat_list <- Filter(Negate(is.null), stg_dat_list)
   stg_dat <- do.call(rbind, stg_dat_list)|>
@@ -752,7 +752,7 @@ sal_meta_loc_shp <- st_as_sf(sal_meta_loc,coords = c("X.COORD","Y.COORD"),crs = 
 #   max_date <- NA
 # }
 # if(!any(tables%in%c("SALdata"))|max_date<YEST){
-sal_dat_list <- lapply(seq_along(sal_dbkeys$DBKEY), function(i) {
+sal_dat_list <- future_lapply(seq_along(sal_dbkeys$DBKEY), function(i) {
   # Attempt to retrieve data and handle errors
   tryCatch({
     dbkey <- sal_dbkeys$DBKEY[i]
@@ -766,7 +766,7 @@ sal_dat_list <- lapply(seq_along(sal_dbkeys$DBKEY), function(i) {
     # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
-})
+}, future.seed = TRUE)
 
 
 # dat <- readNWISdv(usgs_sites$site_no, pCode, dates[1], dates[2])
@@ -779,7 +779,7 @@ sal_dat_xtab <- dcast(sal_dat,SITE+Date~param,value.var = "Data.Value",mean,na.r
 sites <- c("02277100","02277110")
 pCode2 <- c("00010","00095","00480");#temp, spc,sal
 # readNWISsite(sites)
-SLE_sal_dat_list <- lapply(seq_along(sites), function(i) {
+SLE_sal_dat_list <- future_lapply(seq_along(sites), function(i) {
   # Attempt to retrieve data and handle errors
   tryCatch({
     site_no <- sites[i]
@@ -798,7 +798,7 @@ SLE_sal_dat_list <- lapply(seq_along(sites), function(i) {
     # message(sprintf("Skipping site_no %s due to error: %s", site_no, e$message))
     NULL  # Return NULL if there's an error
   })
-})
+}, future.seed = TRUE)
 SLE_sal_dat <- do.call(rbind,SLE_sal_dat_list)|>
   merge(data.frame(site_no=sites,SITE=c("STL_RIVER","STL_STPT")),"site_no")
 
@@ -1167,9 +1167,10 @@ legend(0.5,0.5,
 
 ```{r}
 CurWY <- WY(Sys.Date())
+WYs <- c(CurWY+c(0,-1:-3)) 
 cap.val <- "Stage and recession rates this day for the current and last three water years"
 
-subset(lok.stg,DOWY==hydro.day(YEST)&WY%in%c(CurWY+c(0,-1:-3)))|>
+subset(lok.stg,DOWY==hydro.day(YEST)&WY%in%WYs)|>
   flextable(col_keys=c("Date","WY","Mean","recess_7day","recess_30day"))|>
   flextable::width(width=c(1,1,1.25,1.5,1.5))|>
   flextable::align(align="center",part="all")|>
