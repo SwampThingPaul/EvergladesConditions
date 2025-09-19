@@ -316,6 +316,8 @@ Qdbkeys3 <- rbind(Qdbkeys3,
 Qdbkeys <- rbind(Qdbkeys,Qdbkeys2,Qdbkeys3)
 Qdbkeys$EffDate <- date.fun(Qdbkeys$EffDate)
 Qdbkeys$InaDate <- date.fun(Qdbkeys$InaDate)
+Qdbkeys <- Qdbkeys[duplicated(Qdbkeys)==FALSE,]
+# duplicated(Qdbkeys)
 
 redline_locs_ls <- list()
 redline_locs_ls[[1]] <- data.frame(
