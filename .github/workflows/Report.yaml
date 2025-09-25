@@ -44,22 +44,15 @@ jobs:
           ${{ runner.os }}-R-
 
     - name: Install pak
+      shell: Rscript {0}  
       run: |
         install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable")
-      shell: Rscript {0}          
-
-    - uses: r-lib/actions/setup-r-dependencies@v2
-      with:
-        extra-packages: |
-          any::gdtools
-          any::rmarkdown
-          any::knitr    
 
     - name: Install dependencies
+      shell: Rscript {0}
       run: |
         Sys.setenv(PAK_PREFER_BINARY=1)
         pak::lockfile_install(".github/pkg.lock")
-      shell: Rscript {0}
 
 #     - name: Install packages
 #       uses: r-lib/actions/setup-r-dependencies@v2
@@ -91,11 +84,11 @@ jobs:
     - name: Install terra and raster from rspatial
       shell: Rscript {0}
       run: |
-        install.packages("ggplot2", version = "3.5.1", repos = "https://cran.rstudio.com")
-        install.packages('sf', type = "binary")
-        install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
-        install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
-        # install.packages('flextable', type = "binary")
+        # install.packages("ggplot2", version = "3.5.1", repos = "https://cran.rstudio.com")
+        # install.packages('sf', type = "binary")
+        # install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        # install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        ## install.packages('flextable', type = "binary")
         # remotes::install_github("davidgohel/flextable")
         # remotes::install_github("davidgohel/officer")
         # remotes::install_github("davidgohel/gdtools")
