@@ -1,5 +1,3 @@
-pak::lockfile_create(".", dependencies = TRUE, lockfile = ".github/pkg.lock")
-
 
 libs_val <- c("remotes", "rmarkdown", "knitr", "reshape2", "plyr", "zoo", 
               "lubridate", "RcppRoll", "dataRetrieval", "downloadthis", "rvest", 

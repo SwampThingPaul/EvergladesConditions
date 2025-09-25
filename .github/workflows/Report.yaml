@@ -41,11 +41,16 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-R-
     
-    - name: Install R packages
-      run: |
-        Sys.setenv(PAK_PREFER_BINARY=1)
-        pak::lockfile_install(".github/pkg.lock")
-      shell: Rscript {0}
+    - name: Install pak
+        run: |
+          install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable")
+        shell: Rscript {0}
+
+    - name: Install dependencies
+        run: |
+          Sys.setenv(PAK_PREFER_BINARY=1)
+          pak::lockfile_install(".github/pkg.lock")
+        shell: Rscript {0}
 
 #     - name: Install packages
 #       uses: r-lib/actions/setup-r-dependencies@v2
