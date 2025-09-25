@@ -34,12 +34,12 @@ jobs:
       uses: r-lib/actions/setup-pandoc@v2
 
     - name: Cache R packages
-      uses: actions/cache@v4
+      uses: actions/cache@v3
       with:
         path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-r-${{ hashFiles('**/*.R', '**/*.Rmd', '.github/pkg.lock') }}
+        key: ${{ runner.os }}-R-${{ hashFiles('**/*.R', '**/*.Rmd') }}
         restore-keys: |
-          ${{ runner.os }}-r-
+          ${{ runner.os }}-R-
 
     - name: Install packages
       uses: r-lib/actions/setup-r-dependencies@v2
