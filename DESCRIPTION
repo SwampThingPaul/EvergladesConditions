@@ -1,0 +1,30 @@
+Package: EvergladesConditions
+Title: Everglades Conditions Reports
+Version: 0.0.1
+Authors@R: person("Julian", "Paul", email = "pauljulianphd@gmail.com", role = c("aut", "cre"))
+Description: Project for generating Everglades condition reports.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+
+Imports: 
+    remotes,
+    rmarkdown,
+    knitr,
+    reshape2,
+    plyr,
+    zoo,
+    lubridate,
+    RcppRoll,
+    dataRetrieval,
+    downloadthis,
+    rvest,
+    httr,
+    mapmisc,
+    future,
+    future.apply,
+    flextable,
+Remotes:
+    r-lib/pak,
+    SwampThingPaul/AnalystHelper,
+    SwampThingPaul/EVERSpatDat

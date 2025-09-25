@@ -16,8 +16,7 @@ permissions:
 jobs:
   render:
     name: Render report
-    runs-on: ubuntu-latest
-#    runs-on: windows-2025
+    runs-on: windows-2025
     env:
       R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -41,33 +40,39 @@ jobs:
         key: ${{ runner.os }}-R-${{ hashFiles('**/*.R', '**/*.Rmd') }}
         restore-keys: |
           ${{ runner.os }}-R-
+    
+    - name: Install R packages
+      run: |
+        Sys.setenv(PAK_PREFER_BINARY=1)
+        pak::lockfile_install(".github/pkg.lock")
+      shell: Rscript {0}
 
-    - name: Install packages
-      uses: r-lib/actions/setup-r-dependencies@v2
-      with:
-        cache-version: 1
-#        pak-version: "devel"
-        packages: |
-          SwampThingPaul/AnalystHelper
-          SwampThingPaul/EVERSpatDat
-          gdtools
-          remotes
-          rmarkdown
-          knitr
-          reshape2
-          plyr
-          zoo
-          lubridate
-          magrittr
-          RcppRoll
-          dataRetrieval
-          downloadthis
-          rvest
-          httr
-          mapmisc
-          future
-          future.apply
-          flextable
+#     - name: Install packages
+#       uses: r-lib/actions/setup-r-dependencies@v2
+#       with:
+#         cache-version: 1
+#         pak-version: "devel"
+#         packages: |
+#           SwampThingPaul/AnalystHelper
+#           SwampThingPaul/EVERSpatDat
+#           gdtools
+#           remotes
+#           rmarkdown
+#           knitr
+#           reshape2
+#           plyr
+#           zoo
+#           lubridate
+#           magrittr
+#           RcppRoll
+#           dataRetrieval
+#           downloadthis
+#           rvest
+#           httr
+#           mapmisc
+#           future
+#           future.apply
+#           flextable
 
     - name: Install terra and raster from rspatial
       shell: Rscript {0}
