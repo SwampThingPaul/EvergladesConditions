@@ -42,18 +42,18 @@ jobs:
         key: ${{ runner.os }}-R-${{ hashFiles('**/*.R', '**/*.Rmd') }}
         restore-keys: |
           ${{ runner.os }}-R-
-          
+
+    - name: Install pak
+      run: |
+        install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable")
+      shell: Rscript {0}          
+
     - uses: r-lib/actions/setup-r-dependencies@v2
       with:
         extra-packages: |
           any::gdtools
           any::rmarkdown
           any::knitr    
-
-    - name: Install pak
-      run: |
-        install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable")
-      shell: Rscript {0}
 
     - name: Install dependencies
       run: |
