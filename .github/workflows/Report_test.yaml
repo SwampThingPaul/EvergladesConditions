@@ -1,4 +1,4 @@
-## from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
+# from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
 name: Render & Deploy Beta Reports
 # on: [push]
 on: [workflow_dispatch] # only runs manually via the GitHub Actions UI (when you click “Run workflow”)
