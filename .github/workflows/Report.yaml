@@ -18,6 +18,8 @@ jobs:
     name: Render report
     runs-on: windows-2025
     env:
+      R_COMPILE_AND_INSTALL_PACKAGES: never
+      PAK_PREFER_BINARY: true
       R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
@@ -40,7 +42,14 @@ jobs:
         key: ${{ runner.os }}-R-${{ hashFiles('**/*.R', '**/*.Rmd') }}
         restore-keys: |
           ${{ runner.os }}-R-
-    
+          
+    - uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        extra-packages: |
+          any::gdtools
+          any::rmarkdown
+          any::knitr    
+
     - name: Install pak
       run: |
         install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable")
