@@ -2,9 +2,9 @@
 name: Render & Deploy Beta Reports
 # on: [push]
 on: [workflow_dispatch] # only runs manually via the GitHub Actions UI (when you click “Run workflow”)
-  push:
-  schedule:
-    - cron: '55 10,12 * * *'
+#  push:
+#  schedule:
+#    - cron: '55 10,12 * * *'
 #    - cron: '55 10,15 * * *'
 #    - cron: '40 11,12,15 * * 1,2,3,4,5'
 # https://crontab.guru/#5_*_*_*_*

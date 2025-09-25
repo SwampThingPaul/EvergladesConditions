@@ -16,7 +16,8 @@ permissions:
 jobs:
   render:
     name: Render report
-    runs-on: windows-2025
+    runs-on: windows-latest
+#    runs-on: windows-2025
     env:
       R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -45,7 +46,7 @@ jobs:
       uses: r-lib/actions/setup-r-dependencies@v2
       with:
         cache-version: 1
-        pak-version: "devel"
+#        pak-version: "devel"
         packages: |
           SwampThingPaul/AnalystHelper
           SwampThingPaul/EVERSpatDat
