@@ -44,7 +44,7 @@ jobs:
     - name: Install R packages
       shell: Rscript {0}
       run: |
-        install.packages(c("remotes","reshape2","plyr","zoo","lubridate",
+        install.packages(c("remotes","reshape2","plyr","zoo",
         "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
         "mapmisc","future","future.apply","flextable","ggplot2"))
     
@@ -67,7 +67,7 @@ jobs:
     - name: Render Site
       shell: Rscript {0}
       run: |
-          rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document",clean = TRUE, envir = new.env())
+          rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document")# ,clean = TRUE, envir = new.env())
     
     - name: setup git config
       run: |
