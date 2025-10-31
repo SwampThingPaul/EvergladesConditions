@@ -72,13 +72,11 @@ library(AnalystHelper)
 library(reshape2)
 library(plyr)
 library(zoo)
-library(lubridate)
+# library(lubridate)
 library(flextable)
-library(magrittr)
 library(RcppRoll)
 library(dataRetrieval)
 library(downloadthis)
-
 library(future.apply)
 
 library(sf)
@@ -104,14 +102,14 @@ ci.reverse.scaling.fun=function(DN){
 ci.scaling.fun=function(ci){
   round(83.3 * (log10(ci[ci>0]) + 4.2))
 }
-decdate.fun=function(date){
-  Y=as.numeric(format(date,"%Y"))
-  start=date.fun(paste(Y,1,1,sep="-"))
-  end=date.fun(paste(Y+1,1,1,sep="-"))
-  sofar <- as.numeric(difftime(date, start, units = "secs"))
-  total <- as.numeric(difftime(end, start, units = "secs"))
-  Y + sofar / total
-}
+# decdate.fun=function(date){
+#   Y=as.numeric(format(date,"%Y"))
+#   start=date.fun(paste(Y,1,1,sep="-"))
+#   end=date.fun(paste(Y+1,1,1,sep="-"))
+#   sofar <- as.numeric(difftime(date, start, units = "secs"))
+#   total <- as.numeric(difftime(end, start, units = "secs"))
+#   Y + sofar / total
+# }
 heck_nice <- function(x,round){
       e <- floor(log10(x))
     f <- x/(10^e)
@@ -162,6 +160,50 @@ assign_bin <- function(row) {
   return(labels[bin_index])
 }
 
+dec_date <- function(date){
+  ## a base version of lubridate::decimal_date
+  if (any(!inherits(date, c("POSIXt", "Date")))) {
+    stop("date(s) not in POSIXt or Date format")
+  }
+  
+  # Convert Date to POSIXct for consistent time handling
+  date <- as.POSIXct(date)
+  
+  # Extract year as numeric
+  Y <- as.numeric(format(date,"%Y"))
+  tz.val<-if(is.null(attr(date,"tzone"))){Sys.timezone()}else{attr(date,"tzone")}
+  
+  # Define start and end of the year in same timezone
+  start <- as.POSIXct(paste(Y, 1, 1,sep="-"), tz = tz.val)
+  end <- as.POSIXct(paste(Y+1, 1, 1,sep="-"), tz = tz.val)
+  
+  # Compute fraction of year elapsed
+  sofar <- as.numeric(difftime(date, start, units = "secs"))
+  total <- as.numeric(difftime(end, start, units = "secs"))
+  
+  Y + sofar / total
+}
+
+date_dec <- function(decimal,tz = NULL){
+  ## a base version of lubridate::date_decimal
+  tz.val<-if(is.null(tz)){Sys.timezone()}else{tz}
+  
+  Y <- trunc(decimal)
+  frac <- decimal - Y
+  
+  # Define start and end of the year in same timezone
+  start <- as.POSIXct(paste(Y, 1, 1,sep="-"), tz = tz.val)
+  end <- as.POSIXct(paste(Y+1, 1, 1,sep="-"), tz = tz.val)
+  
+  seconds <- as.numeric(difftime(end, start, units = "secs"))
+  
+  # compute exact numeric POSIX seconds, then round to nearest second to avoid 1-second artifacts
+  numeric_time <- as.numeric(start) + seconds * frac
+  numeric_time <- round(numeric_time)  # round to nearest second
+  
+  out <- as.POSIXct(numeric_time, origin = "1970-01-01", tz = tz.val)
+  out
+}
 
 # CRS
 nad83.pro <- st_crs("EPSG:4269")
@@ -171,15 +213,13 @@ wgs84 <- st_crs("EPSG:4326")
 # tmap_mode("view")
 
 ###
-# dates <- seq(date.fun(date.fun(Sys.Date())-ddays(13)),date.fun(Sys.Date()),"1 days")
-
 CurWY <- WY(date.fun(Sys.time()))
 CurWY.Fed <- WY(date.fun(Sys.time()),"Fed")
 
 Start.Date <- date.fun(paste(CurWY-4,05,01,sep="-"))
 End.Date <- date.fun(Sys.Date()-1)
 
-YEST <- End.Date# date.fun(End.Date-ddays(1))
+YEST <- End.Date# date.fun(as.Date(End.Date)-1)
 dates <- c(Start.Date,End.Date)
 flab.dates <- c(date.fun(paste(CurWY-15,05,01,sep="-")),End.Date)
 ```
@@ -865,7 +905,7 @@ Qtab_dat[,vars]|>
 ```
 
 ```{r}
-Qtab_dat%>%
+Qtab_dat|>
   download_this(
     output_name = "Discharge14day",
     output_extension = ".xlsx",
@@ -1144,7 +1184,7 @@ axis_fun(2,ymaj,ymin,ymaj)
 box(lwd=1)
 mtext(side=1,"Month",line=2,cex=1.25)
 mtext(side=2,"Stage Elevation (Feet, NGVD29)",line=2.5,cex=1.25)
-mtext(side=3,adj=0,paste("Date:",format(date.fun(Sys.Date()-ddays(1)),"%b %d, %Y")))
+mtext(side=3,adj=0,paste("Date:",format(date.fun(as.Date(Sys.Date())+1),"%b %d, %Y")))
 mtext(side=3,adj=1,"Data are provisional and subject to change",col="red")
 
 ylim.val2=c(8,16);by.y2=1
@@ -1270,7 +1310,7 @@ ylim.val <- c(0,ylim.max);
 ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],4)
 ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
 # by.y <- ylim.max/4;ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
-xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 
 
 layout(matrix(1:2,2,1,byrow=F),heights=c(2,0.4))
@@ -1448,7 +1488,7 @@ cyano_area <- cyano_area|>
          bloom.area.mi2=bloom.area.m2*3.86102e-7,
          bloom.area.per=(bloom.area.m2/as.numeric(LOK.area))*100,
          date=date.fun(date),
-         decdate=decdate.fun(date),
+         decdate=dec_date(date.fun(date)),
          vis.bloom.mi2=vis.bloom*3.86102e-7)
 
 write.csv(cyano_area,"cyano_area.csv",row.names = F); # for rmarkdown
@@ -1619,7 +1659,7 @@ with(subset(cyano_area,date==max(cyano_area$date)),
 k.mod <- loess(bloom.area.mi2~decdate,subset(cyano_area,bloom.area.mi2>0&cloud.area.per<0.30))
 x.val <- seq(min(cyano_area$decdate),max(cyano_area$decdate),length.out=100)
 pred.mod <- predict(k.mod,data.frame(decdate=x.val))
-lines(date.fun(lubridate::date_decimal(x.val),form="%F %R"),pred.mod,col="red",lwd=2)
+lines(date.fun(date_dec(x.val),form="%F %R"),pred.mod,col="red",lwd=2)
 axis_fun(2,ymaj,ymin,ymaj)
 axis_fun(1,xmaj,xmin,format(xmaj,"%b-%Y"),line=-0.5)
 axis_fun(1,xmaj,xmin,NA)
@@ -1800,11 +1840,10 @@ EAA_Q.xtab.sum.direct <- subset(EAA_Q.xtab.sum,direct%in%c("Inflow","Outflow","P
 
 ```{r EAA_Q plot,echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Lake Okeechobee inflow and outflow volume from DBHYDRO"}
 max.q <- max(subset(EAA_Q.xtab.sum.direct,Date.EST%in%seq(date.fun(as.Date(Sys.Date())-30),date.fun(as.Date(Sys.Date())),"1 days"))[,c("Inflow","Outflow")],na.rm=T)
-# max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$EAA_to_WCAs.kacft,na.rm=T)
 ylim.max <- ceiling(max.q*1.2)
 
 ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],4);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
-xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
@@ -1834,7 +1873,7 @@ max.q <- max(subset(STAQ,Date.EST%in%seq(date.fun(as.Date(Sys.Date())-30),date.f
 ylim.max <- ceiling(max.q*1.2)
 
 ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],5);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
-xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 cols <- c("forestgreen","dodgerblue1")
 
 layout(matrix(1:4,2,2,byrow=F),heights=c(2,0.4))
@@ -1889,7 +1928,7 @@ EAA_stg$WY <- WY(EAA_stg$Date)
 # unique(EAA_stg$canal)
 
 eaa_canal_labs <- c("Miami","Hills/NNR","L8","WPB")
-xlim.val <- date.fun(c(End.Date-ddays(60),End.Date+ddays(3)));
+xlim.val <- date.fun(c(as.Date(End.Date)-60,as.Date(End.Date)+3))
 xmaj <- seq(xlim.val[1],xlim.val[2],by="14 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 
 layout(matrix(1:4,2,2,byrow=T))
@@ -2076,25 +2115,25 @@ legend(0.5,0.5,
 ```{r}
 cap.val="Stage and recession rates this time for the current and last three water years"
 
-subset(WCA1.xtab,DOWY==hydro.day(YEST))%>%
-  flextable(col_keys=c("Date","WY","Mean","recess_7day","recess_30day"))%>%
-  flextable::width(width=c(1,1,1.25,1.5,1.5))%>%
-  flextable::align(align="center",part="all")%>%
-  colformat_datetime(j=1,fmt_date="%m-%d")%>%
-  colformat_double(j=2,big.mark="",digits=0)%>%
-  colformat_double(j=3:5,digits=2,na_str="- NR -")%>%
-  padding(padding=1,part="all")%>%
-  # font(fontname="Times New Roman",part="all")%>%
-  fontsize(size=12,part="body")%>%
-  fontsize(size=13,part="header")%>%
-  bold(part="header")%>%
+subset(WCA1.xtab,DOWY==hydro.day(YEST))|>
+  flextable(col_keys=c("Date","WY","Mean","recess_7day","recess_30day"))|>
+  flextable::width(width=c(1,1,1.25,1.5,1.5))|>
+  flextable::align(align="center",part="all")|>
+  colformat_datetime(j=1,fmt_date="%m-%d")|>
+  colformat_double(j=2,big.mark="",digits=0)|>
+  colformat_double(j=3:5,digits=2,na_str="- NR -")|>
+  padding(padding=1,part="all")|>
+  # font(fontname="Times New Roman",part="all")|>
+  fontsize(size=12,part="body")|>
+  fontsize(size=13,part="header")|>
+  bold(part="header")|>
   set_header_labels("Date"="Date\n(Month-Day)",
                     "WY"="Water Year",
                     "Mean"="Stage\n(ft, NGVD29)",
                     "recess_7day"="7-Day Recession Rate\n(ft 7-d\u207B\u00B9)",
-                    "recess_30day"="30-Day Recession Rate\n(ft 30-d\u207B\u00B9)")%>%
-  bg(i=~WY==CurWY,part="body",bg="wheat")%>%
-  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
+                    "recess_30day"="30-Day Recession Rate\n(ft 30-d\u207B\u00B9)")|>
+  bg(i=~WY==CurWY,part="body",bg="wheat")|>
+  add_header_lines(values=cap.val)|>flextable::align(align="center",part="header")|>fontsize(size=13,part="header")
     
 
 ```
@@ -2143,11 +2182,10 @@ WCA1_Q$S10s.kacft <- apply(WCA1_Q[,paste0("q",c("S10A","S10C","S10D"),".out")],1
 
 ```{r WCA1_Q, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="WCA1 inflow and outflow volume from DBHYDRO"}
 max.q <- max(subset(WCA1_Q,Date%in%seq(date.fun(as.Date(Sys.Date())-30),date.fun(as.Date(Sys.Date())),"1 days"))[,c("IN.kacft","OUT.kacft")],na.rm=T)
-# max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$EAA_to_WCAs.kacft,na.rm=T)
 ylim.max <- ceiling(max.q*1.2)
 
 ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],4);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
-xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(mar=c(2,2,1,1),oma=c(0.5,2,1,2));
@@ -2256,7 +2294,7 @@ axis_fun(2,ymaj,ymin,ymaj)
 box(lwd=1)
 mtext(side=1,"Month",line=2,cex=1.25)
 mtext(side=2,"Stage Elevation (Feet, NGVD29)",line=2.5,cex=1)
-mtext(side=3,adj=0,paste("Date:",format(date.fun(Sys.Date()-ddays(1)),"%b %d, %Y")))
+mtext(side=3,adj=0,paste("Date:",format(date.fun(as.Date(Sys.Date())-1),"%b %d, %Y")))
 mtext(side=3,adj=1,"Data are provisional and subject to change",col="red")
 
 ylim.val2 <- c(8,13);by.y2 <- 1
@@ -2357,11 +2395,10 @@ WCA2_Q$S11s.kacft <- apply(WCA2_Q[,paste0("q",c("S11A","S11B","S11C"),".out")],1
 
 ```{r WCA2_Q, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="WCA2 inflow and outflow volume from DBHYDRO"}
 max.q <- max(subset(WCA2_Q,Date%in%seq(date.fun(as.Date(Sys.Date())-30),date.fun(as.Date(Sys.Date())),"1 days"))[,c("IN.kacft","OUT.kacft")],na.rm=T)
-# max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$EAA_to_WCAs.kacft,na.rm=T)
 ylim.max <- ceiling(max.q*1.2)
 
 ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],4);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
-xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(mar=c(2,2,1,1),oma=c(0.5,2,1,2));
@@ -2481,7 +2518,7 @@ axis_fun(2,ymaj,ymin,ymaj)
 box(lwd=1)
 mtext(side=1,"Month",line=2,cex=1.25)
 mtext(side=2,"Stage Elevation (Feet, NGVD29)",line=2.5,cex=1)
-mtext(side=3,adj=0,paste("Date:",format(date.fun(Sys.Date()-ddays(1)),"%b %d, %Y")))
+mtext(side=3,adj=0,paste("Date:",format(date.fun(as.Date(Sys.Date())-1),"%b %d, %Y")))
 mtext(side=3,adj=1,"Data are provisional and subject to change",col="red")
 
 ylim.val2 <- c(5,11);by.y2 <- 1
@@ -2577,11 +2614,10 @@ WCA3_Q$SRS.kacft <- apply(WCA3_Q[,paste0("q",c("S12A","S12B","S12C","S12D","S333
 
 ```{r WCA3_Q, echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="WCA3A inflow and outflow volume from DBHYDRO."}
 max.q <- max(subset(WCA3_Q,Date%in%seq(date.fun(as.Date(Sys.Date())-30),date.fun(as.Date(Sys.Date())),"1 days"))[,c("IN.kacft","OUT.kacft")],na.rm=T)
-# max.q=max(subset(map.q,Date%in%seq(End.Date-ddays(30),End.Date+ddays(3),"1 days"))$EAA_to_WCAs.kacft,na.rm=T)
 ylim.max <- ceiling(max.q*1.5)
 
 ylim.val <- c(0,ylim.max);ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],6);ymin <- seq(ylim.val[1],ylim.val[2],min(diff(ymaj))/2)
-xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(mar=c(2,2,1,1),oma=c(0.5,2,1,2));
@@ -2769,7 +2805,7 @@ axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj));box(lwd=1)
 mtext(side=1,"Month",line=2,cex=1.25)
 mtext(side=2,"Stage Elevation (Feet, NGVD29)",line=2.5,cex=1)
-mtext(side=3,adj=0,paste("Date:",format(date.fun(Sys.Date()-ddays(1)),"%b %d, %Y")),cex=0.8)
+mtext(side=3,adj=0,paste("Date:",format(date.fun(as.Date(Sys.Date())-1),"%b %d, %Y")),cex=0.8)
 mtext(side=3,adj=0,"L29 Canal",font=2,line=1.2)
 plot(0:1,0:1,type = 'n', axes = F,xlab=NA, ylab=NA)
 legend(0.5,0.5,
@@ -2818,25 +2854,25 @@ legend(0.5,0.5,
 ```{r}
 cap.val="Stage (Ft, NGVD29) this time for the current and last three water years"
 
-subset(ENP.xtab,DOWY==hydro.day(YEST))%>%
-  flextable(col_keys=c("Date","WY","L29","NESRS2","NP201"))%>%
-  flextable::width(width=c(1.25,1,1,1,1))%>%
-  flextable::align(align="center",part="all")%>%
-  colformat_datetime(j=1,fmt_date="%m-%d")%>%
-  colformat_double(j=2,big.mark="",digits=0)%>%
-  colformat_double(j=3:5,digits=2,na_str="- NR -")%>%
-  padding(padding=1,part="all")%>%
-  # font(fontname="Times New Roman",part="all")%>%
-  fontsize(size=12,part="body")%>%
-  fontsize(size=13,part="header")%>%
-  bold(part="header")%>%
+subset(ENP.xtab,DOWY==hydro.day(YEST))|>
+  flextable(col_keys=c("Date","WY","L29","NESRS2","NP201"))|>
+  flextable::width(width=c(1.25,1,1,1,1))|>
+  flextable::align(align="center",part="all")|>
+  colformat_datetime(j=1,fmt_date="%m-%d")|>
+  colformat_double(j=2,big.mark="",digits=0)|>
+  colformat_double(j=3:5,digits=2,na_str="- NR -")|>
+  padding(padding=1,part="all")|>
+  # font(fontname="Times New Roman",part="all")|>
+  fontsize(size=12,part="body")|>
+  fontsize(size=13,part="header")|>
+  bold(part="header")|>
   set_header_labels("Date"="Date\n(Month-Day)",
                     "WY"="Water Year",
                     "L29Canal.f"="L29 Canal",
                     "NESRS2"="NESRS2",
-                    "NP201"="NP201")%>%
-  bg(i=~WY==CurWY,part="body",bg="wheat")%>%
-  add_header_lines(values=cap.val)%>%flextable::align(align="center",part="header")%>%fontsize(size=13,part="header")
+                    "NP201"="NP201")|>
+  bg(i=~WY==CurWY,part="body",bg="wheat")|>
+  add_header_lines(values=cap.val)|>flextable::align(align="center",part="header")|>fontsize(size=13,part="header")
     
 ```
 
@@ -2903,7 +2939,7 @@ ylim.val <- c(0,ylim.max);
 ymaj <- heckbert_labs(0,ylim.max,6);
 ymin <- seq(0,max(ymaj),min(diff(ymaj))/2)
 
-xlim.val <- date.fun(c(End.Date-ddays(30),End.Date+ddays(3)));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
+xlim.val <- date.fun(c(as.Date(End.Date)-30,as.Date(End.Date)+3));xmaj <- seq(xlim.val[1],xlim.val[2],by="7 days");xmin <- seq(xlim.val[1],xlim.val[2],by="1 days")
 
 layout(matrix(1:2,2,1,byrow=F),widths=c(2,1),heights=c(2,0.4))
 par(mar=c(2,2,1,1),oma=c(0.5,2,1,2));
@@ -3990,9 +4026,9 @@ legend(0.75,0.75,
 
 **St Lucie Conditions Summary:** Flow to the St Lucie Estuary had a
 7-day average of
-**`r format(round(subset(SLE_Q,Date==date.fun(End.Date-ddays(1)))$Q.7,0),big.mark=",")`
+**`r format(round(subset(SLE_Q,Date==date.fun(as.Date(End.Date)-1))$Q.7,0),big.mark=",")`
 cfs** from **North and South Forks** with a 7-day average of
-**`r format(round(subset(SLE_Q,Date==date.fun(End.Date-ddays(1)))$S308Q.7,0),big.mark=",")`
+**`r format(round(subset(SLE_Q,Date==date.fun(as.Date(End.Date)-1))$S308Q.7,0),big.mark=",")`
 cfs** coming from the lake at **S-308**.
 
 ```{r SLE_LOK_Q, echo=FALSE,fig.width=6,fig.height=4.5,fig.align='center',fig.cap="S-308 (from Lake Okeechobee), S-80 (to Lower Fork),  C-44 Basin and North Fork (Gordy Rd, S49, S48) daily discharge. C-44 Basin Flow was calculated as the difference from S-308 and S-80."}
