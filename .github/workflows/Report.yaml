@@ -18,7 +18,6 @@ jobs:
     name: Render report
     runs-on: windows-2025
     env:
-      PAK_PREFER_BINARY: true
       R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
