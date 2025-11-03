@@ -46,17 +46,18 @@ jobs:
       run: |
         install.packages(c("remotes","reshape2","plyr","zoo",
         "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
-        "mapmisc","future","future.apply","flextable","ggplot2"))
+        "mapmisc","future","future.apply","flextable","ggplot2","RCurl"))
     
     
     - name: Install terra and raster from rspatial and others
       shell: Rscript {0}
       run: |
-        remotes::install_github("SwampThingPaul/AnalystHelper")
-        remotes::install_github("SwampThingPaul/EVERSpatDat")
         install.packages('sf', type = "binary")
         install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
         install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        
+        remotes::install_github("SwampThingPaul/AnalystHelper")
+        remotes::install_github("SwampThingPaul/EVERSpatDat")
       
     - name: Download data
       shell: Rscript {0}
