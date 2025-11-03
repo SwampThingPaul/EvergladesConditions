@@ -33,6 +33,9 @@ jobs:
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v2
 
+    - name: Set up Rtools
+      uses: r-lib/actions/setup-rtools@v2
+
     - name: Cache R packages
       uses: actions/cache@v3
       with:
@@ -44,9 +47,11 @@ jobs:
     - name: Install R packages
       shell: Rscript {0}
       run: |
-        install.packages(c("remotes","reshape2","plyr","zoo",
+        install.packages(c(
+        "remotes","reshape2","plyr","zoo",
         "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
-        "mapmisc","future","future.apply","flextable","ggplot2","RCurl"))
+        "mapmisc","future","future.apply","flextable","ggplot2","RCurl"
+        ))
     
     
     - name: Install terra and raster from rspatial and others
