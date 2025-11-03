@@ -54,12 +54,9 @@ jobs:
     - name: Install terra and raster from rspatial and others
       shell: Rscript {0}
       run: |
-        install.packages(c(
-          'sf','raster','terra'
-          ), repos = c('https://rspatial.r-universe.dev', 
-                       'https://cloud.r-project.org'), 
-                       dependencies = TRUE)
-        
+        install.packages('sf', type = "binary")
+        install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
         remotes::install_github("SwampThingPaul/AnalystHelper")
         remotes::install_github("SwampThingPaul/EVERSpatDat")
       
