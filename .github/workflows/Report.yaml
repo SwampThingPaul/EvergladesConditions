@@ -33,9 +33,6 @@ jobs:
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v2
 
-    - name: Set up Rtools
-      uses: r-lib/actions/setup-rtools@v2
-
     - name: Cache R packages
       uses: actions/cache@v3
       with:
@@ -51,15 +48,17 @@ jobs:
         "remotes","reshape2","plyr","zoo",
         "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
         "mapmisc","future","future.apply","flextable","ggplot2","RCurl"
-        ))
+        ), dependencies = TRUE)
     
     
     - name: Install terra and raster from rspatial and others
       shell: Rscript {0}
       run: |
-        install.packages('sf', type = "binary")
-        install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
-        install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        install.packages(c(
+          'sf','raster','terra'
+          ), repos = c('https://rspatial.r-universe.dev', 
+                       'https://cloud.r-project.org'), 
+                       dependencies = TRUE)
         
         remotes::install_github("SwampThingPaul/AnalystHelper")
         remotes::install_github("SwampThingPaul/EVERSpatDat")
