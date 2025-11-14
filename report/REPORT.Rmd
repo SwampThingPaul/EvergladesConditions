@@ -658,15 +658,21 @@ LOK.sdate <- date.fun("2007-05-01")
 other.sdate <- date.fun(paste((CurWY-3)-1,"05-01",sep="-"))
 
 stg_dbkeys_list <- list()
-stg_dbkeys_list[["LOK"]] <- data.frame(loc = c("LOK"),DA = c("06832","N3466"),BK=NA,Priority=c("P2","P1"))
-stg_dbkeys_list[["EAA"]] <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),DA = c("06562","65448","40536","02854"),BK=NA,Priority=NA)
-stg_dbkeys_list[["WCA1"]] <- data.frame(loc = c("CA1-8T","CA1-9","CA1-7"),DA = c("15809","15811","15808"),BK=NA,Priority=NA)
-stg_dbkeys_list[["WCA2"]] <- data.frame(loc = c("S11B_H","CA217"),DA = c("WN126","16531"),BK=NA,Priority=NA)
-stg_dbkeys_list[["WCA3"]] <- data.frame(loc = c("CA3-62","CA3-63","CA3-64","CA3-65"),DA = c("16536","16532","16537","16538"),BK=NA,Priority=NA)
+stg_dbkeys_list[["LOK"]] <- data.frame(loc = c("LOK"),DA = c("06832","N3466","94832"),BK=NA,Priority=c("P3","P2","P1"),
+                                       datum = c("NGVD29","NGVD29","NAVD88"),datum_conv = 1.25 )
+stg_dbkeys_list[["EAA"]] <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),DA = c("06562","65448","40536","02854"),BK=NA,Priority=NA, 
+                                       datum = "NGVD29",datum_conv = NA)
+stg_dbkeys_list[["WCA1"]] <- data.frame(loc = c("CA1-8T","CA1-9","CA1-7"),DA = c("15809","15811","15808"),BK=NA,Priority=NA, 
+                                       datum = "NGVD29",datum_conv = NA)
+stg_dbkeys_list[["WCA2"]] <- data.frame(loc = c("S11B_H","CA217"),DA = c("WN126","16531"),BK=NA,Priority=NA, 
+                                       datum = "NGVD29",datum_conv = NA)
+stg_dbkeys_list[["WCA3"]] <- data.frame(loc = c("CA3-62","CA3-63","CA3-64","CA3-65"),DA = c("16536","16532","16537","16538"),BK=NA,Priority=NA, 
+                                       datum = "NGVD29",datum_conv = NA)
 stg_dbkeys_list[["ENP"]] <- data.frame(loc = c("NESRS2","NP201","S334_HW", "S333N_TW", "S333_TW"),
                                        DA = c("01218","06719","DJ184", "40367", "AJ015"),
                                        BK = c(rep("NA",2),"IY636", "40368", "AJ016"),
-                                       Priority=NA)
+                                       Priority=NA, 
+                                       datum = "NGVD29",datum_conv = NA)
 ## added priority column for DA DBKEYS ... does not work across DA and BK
 stg_dbkeys_list[["EAA"]][stg_dbkeys_list[["EAA"]]$loc=="S3_H","DA"] <- "06633"
 stg_dbkeys_list[["EAA"]][stg_dbkeys_list[["EAA"]]$loc=="S352","DA"] <- "FF580"
@@ -697,8 +703,9 @@ eaa.stg.canal <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),canal = c("Hi
       dbkey <- stg_dbkeys$DA[i]
       sdate <- if(subset(stg_dbkeys,DA==dbkey)$loc=="LOK"){LOK.sdate}else{other.sdate}
       edate <- dates[2]
+      datum_val <-  stg_dbkeys$datum[i]
       
-      tmp <- insight_fetch_daily(sdate,edate, dbkey,datum="NGVD29")
+      tmp <- insight_fetch_daily(sdate,edate, dbkey,datum=datum_val)
       tmp$DBKEY <- as.character(dbkey)
       #setTxtProgressBar(pb, i)
       tmp
@@ -710,8 +717,10 @@ eaa.stg.canal <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),canal = c("Hi
   
   stg_dat_list <- Filter(Negate(is.null), stg_dat_list)
   stg_dat <- do.call(rbind, stg_dat_list)|>
-    merge(stg_dbkeys[,c("loc","DA","Priority")],by.x='DBKEY',by.y="DA",all.x=T)
-  
+    merge(stg_dbkeys[,c("loc","DA","Priority","datum_conv")],by.x='DBKEY',by.y="DA",all.x=T)
+
+  stg_dat$Data.Value <- with(stg_dat,ifelse(!is.na(datum_conv)&units=="ft NAVD88",Data.Value + datum_conv,Data.Value))
+    
 #   dbWriteTable(con, "STGdata", stg_dat, overwrite = TRUE)  # Use append = TRUE to add rows
 #   print("source: Direct Download")
 # }else{
@@ -939,7 +948,7 @@ lok.stg <- subset(stg_dat,loc=="LOK")|>
          DOWY = hydro.day(Date),
          DoY = as.numeric(format(Date,"%j")),
          CY = as.numeric(format(Date,"%Y")))
-lok.stg$Mean <- apply(lok.stg[,c("P1","P2")], 1, function(x) x[!is.na(x)][1])
+lok.stg$Mean <- apply(lok.stg[,c("P1","P2","P3")], 1, function(x) x[!is.na(x)][1])
 
 lok.stg$Mean[lok.stg$Mean==0]=NA
 lok.stg$recess_7day <- with(lok.stg,c(rep(NA,7),diff(Mean,lag=7)))
@@ -1123,7 +1132,7 @@ layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 
 plot(ZONE.BC~DOWY,LOSOM.sch.bk,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=seq(9,18,1),v=hydro.day(xmin),lwd=1,col="grey",lty=3)
-if(RecEnv.plot==1){with(subset(lok.rec.env.bk,WY==CurWY),shaded.range(DOWY,lower,upper,"grey40",col.adj=1,lty=1))}
+if(RecEnv.plot==1){with(subset(lok.rec.env.bk,WY==CurWY),shaded.range(DOWY,lower,upper,"grey60",col.adj=1,lty=1))}
 # with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.B~DOWY,lwd=2,col="black"))
 # with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C~DOWY,lwd=2,col="black"))
 # with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C1~DOWY,lwd=2,col="black"))
@@ -1922,7 +1931,7 @@ plot(0:1,0:1,type="n",bty="n",axes=F,ann=F)
 <br>
 
 ```{r EAA_stg, echo=FALSE,fig.width=7,fig.height=6,fig.align='center',fig.cap="EAA canal stage."}
-EAA_stg <- merge(stg_dat,eaa.stg.canal)
+EAA_stg <- merge(stg_dat,eaa.stg.canal,c("loc"))
 EAA_stg$DOWY <- hydro.day(EAA_stg$Date)
 EAA_stg$WY <- WY(EAA_stg$Date)
 # unique(EAA_stg$canal)
