@@ -56,7 +56,7 @@ jobs:
         "remotes","reshape2","plyr","zoo",
         "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
         "mapmisc","future","future.apply","flextable","ggplot2","RCurl",
-        "raster","sf","terra","units"
+        "raster","sf","terra","units","wesanderson"
         ), dependencies = TRUE, 
         type = "binary", 
         repos = c('https://rspatial.r-universe.dev', 
