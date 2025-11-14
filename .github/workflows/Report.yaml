@@ -37,9 +37,16 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-R-${{ hashFiles('**/*.R', '**/*.Rmd') }}
+        key: ${{ runner.os }}-R-2025-11
         restore-keys: |
           ${{ runner.os }}-R-
+## If you ever want to reset the cache (e.g., after adding new packages), just change the cache key (e.g., update 2025-11 to 2025-12).          
+    
+    - name: Ensure R library exists
+      shell: Rscript {0}
+      run: |
+        dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
+        .libPaths(Sys.getenv("R_LIBS_USER"))
 
     - name: Install R packages
       shell: Rscript {0}
@@ -59,7 +66,10 @@ jobs:
         install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
         remotes::install_github("SwampThingPaul/AnalystHelper")
         remotes::install_github("SwampThingPaul/EVERSpatDat")
-      
+
+    - name: Check R library contents
+      run: ls -l ${{ env.R_LIBS_USER }}
+
     - name: Download data
       shell: Rscript {0}
       run: |

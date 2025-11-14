@@ -1123,7 +1123,7 @@ layout(matrix(1:2,2,1,byrow=T),heights=c(1,0.25))
 
 plot(ZONE.BC~DOWY,LOSOM.sch.bk,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,yaxs="i",xaxs="i")
 abline(h=seq(9,18,1),v=hydro.day(xmin),lwd=1,col="grey",lty=3)
-if(RecEnv.plot==1){with(subset(lok.rec.env.bk,WY==CurWY),shaded.range(DOWY,lower,upper,"grey90",col.adj=1,lty=1))}
+if(RecEnv.plot==1){with(subset(lok.rec.env.bk,WY==CurWY),shaded.range(DOWY,lower,upper,"grey40",col.adj=1,lty=1))}
 # with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.B~DOWY,lwd=2,col="black"))
 # with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C~DOWY,lwd=2,col="black"))
 # with(subset(LORS08.sch.bk,WY==CurWY),lines(ZONE.C1~DOWY,lwd=2,col="black"))
