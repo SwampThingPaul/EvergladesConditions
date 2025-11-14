@@ -51,21 +51,24 @@ jobs:
     - name: Install R packages
       shell: Rscript {0}
       run: |
+        .libPaths(Sys.getenv("R_LIBS_USER"))
         install.packages(c(
         "remotes","reshape2","plyr","zoo",
         "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
-        "mapmisc","future","future.apply","flextable","ggplot2","RCurl"
-        ), dependencies = TRUE)
-    
-    
-    - name: Install terra and raster from rspatial and others
+        "mapmisc","future","future.apply","flextable","ggplot2","RCurl",
+        "raster","sf","terra","units"
+        ), dependencies = TRUE, 
+        type = "binary", 
+        repos = c('https://rspatial.r-universe.dev', 
+        'https://cloud.r-project.org'))
+
+    - name: Install custom packages
       shell: Rscript {0}
       run: |
-        install.packages('sf', type = "binary")
-        install.packages('terra', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
-        install.packages('raster', repos = c('https://rspatial.r-universe.dev', 'https://cloud.r-project.org'))
+        .libPaths(Sys.getenv("R_LIBS_USER"))
         remotes::install_github("SwampThingPaul/AnalystHelper")
         remotes::install_github("SwampThingPaul/EVERSpatDat")
+
 
     - name: Check R library contents
       run: ls -l ${{ env.R_LIBS_USER }}
@@ -73,13 +76,15 @@ jobs:
     - name: Download data
       shell: Rscript {0}
       run: |
+        .libPaths(Sys.getenv("R_LIBS_USER"))
         source("./report/NOAA_RS_Download.R")
         # source("./report/USACE_download.R")
     
     - name: Render Site
       shell: Rscript {0}
       run: |
-          rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document")# ,clean = TRUE, envir = new.env())
+        .libPaths(Sys.getenv("R_LIBS_USER"))
+        rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document")# ,clean = TRUE, envir = new.env())
     
     - name: setup git config
       run: |
