@@ -1,11 +1,11 @@
 ## NOAA CI Remote Sensing Product download for analysis
 ## Created by: Paul Julian (pjulian@evergladesfoundation.org)
 ## Created on: 2024-07-10
-
-hangle.git <- c("SwampThingPaul")
-pkg.git <- c("AnalystHelper")
-new.pkg <- pkg.git[!(pkg.git %in% installed.packages()[, "Package"])]
-if (length(new.pkg)){remotes::install_github(paste(hangle.git,pkg.git,sep="/"))}
+# 
+# hangle.git <- c("SwampThingPaul")
+# pkg.git <- c("AnalystHelper")
+# new.pkg <- pkg.git[!(pkg.git %in% installed.packages()[, "Package"])]
+# if (length(new.pkg)){remotes::install_github(paste(hangle.git,pkg.git,sep="/"))}
 
 library(AnalystHelper)
 library(rvest)
