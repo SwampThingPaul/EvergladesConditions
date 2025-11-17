@@ -3412,7 +3412,9 @@ mapmisc::scaleBar(flab_meta_loc_shp,"bottomleft",bty="n",cex=1,outer=F)
 mtext(side=3,adj=0,"Florida Bay",font=2)
 
 plot(0:1,0:1,type="n",ann=F,axes=F)
-leg.fun(bks,sal_delta_cols,expression(Delta*"(30-day Avg Salinity, 30 PSU)"),
+leg.fun(b = bks,
+        pal = sal_delta_cols,
+        expression(Delta*"(30-day Avg Salinity, 30 PSU)"),
         x.max=0.6,x.min=0.4,bot.val = 0.4,leg.type = "continuous")
 legend(0.5,0.2,legend=c("> 30 PSU","< 30 PSU"),
        pch=c(24,25),pt.bg=c("grey"),
