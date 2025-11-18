@@ -720,6 +720,8 @@ eaa.stg.canal <- data.frame(loc = c("S2_H","S3_H","S352","L8.441"),canal = c("Hi
     merge(stg_dbkeys[,c("loc","DA","Priority","datum_conv")],by.x='DBKEY',by.y="DA",all.x=T)
 
   stg_dat$Data.Value <- with(stg_dat,ifelse(!is.na(datum_conv)&units=="ft NAVD88",Data.Value + datum_conv,Data.Value))
+  
+  # max(stg_dat$Date)
     
 #   dbWriteTable(con, "STGdata", stg_dat, overwrite = TRUE)  # Use append = TRUE to add rows
 #   print("source: Direct Download")
