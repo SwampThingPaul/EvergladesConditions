@@ -1,12 +1,11 @@
 # from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
 name: Render & Deploy Report Site
-# on: [push]
+
 on: 
   push:
   schedule:
+    # Runs daily at 12:55 UTC (07:55 ET) and 13:55 UTC (08:55 ET)
     - cron: '55 12,13 * * *'
-#    - cron: '55 10,15 * * *'
-#    - cron: '40 11,12,15 * * 1,2,3,4,5'
 # https://crontab.guru/#5_*_*_*_*
 
 
@@ -24,6 +23,13 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    # Logging step here
+    - name: Log Scheduled and Current Time
+      run: |
+        echo "Scheduled cron: 55 12,13 * * *"
+        echo "Current UTC time: $(date -u)"
+        echo "Current local time: $(date)"
 
     - name: Set up R
       uses: r-lib/actions/setup-r@v2
