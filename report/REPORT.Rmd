@@ -1195,7 +1195,7 @@ axis_fun(2,ymaj,ymin,ymaj)
 box(lwd=1)
 mtext(side=1,"Month",line=2,cex=1.25)
 mtext(side=2,"Stage Elevation (Feet, NGVD29)",line=2.5,cex=1.25)
-mtext(side=3,adj=0,paste("Date:",format(date.fun(as.Date(Sys.Date())+1),"%b %d, %Y")))
+mtext(side=3,adj=0,paste("Date:",format(date.fun(as.Date(Sys.Date())),"%b %d, %Y")))
 mtext(side=3,adj=1,"Data are provisional and subject to change",col="red")
 
 ylim.val2=c(8,16);by.y2=1
@@ -1355,6 +1355,7 @@ and **`r format(round(sum(subset(LOK_Q,Date%in%sjudag)$EAA_in),0),big.mark=",")`
 was **`r format(round(sum(subset(LOK_Q,Date%in%sjudag)$LOKIN.kacft)*1000,0),big.mark=",")` AF**
 (`r format(round(sum(subset(LOK_Q,Date%in%sjudag)$NthLake),0),big.mark=",")` AF from Fisheating Creek,
 S-71, S-72, S-84s, S-65EX, and S-65EX1)
+
 ### Lake Okeechobee Cyano HAB
 
 Data from NOAA NCCOS, HAB Monitoring Products ([link](https://coastalscience.noaa.gov/science-areas/habs/hab-monitoring-system/))
@@ -2646,7 +2647,7 @@ mtext(side = 3,adj=0,"Water Conservation Area 3",font=2)
 
 plot(0:1,0:1,type="n",yaxt="n",xaxt="n",bty="n")
 legend(0.5,0.75,
-       legend=c("Inflow","Outflow","S11s"),
+       legend=c("Inflow","Outflow","S12s+S333s"),
        col=c(Q_cols[1:2],"black"),lty=c(1,2,2),lwd=c(2.5,2.5),pt.cex=2.5,ncol=3,cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
 ```
