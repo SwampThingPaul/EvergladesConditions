@@ -1848,9 +1848,20 @@ STAQ$cumQ_Basin <- with(STAQ,ave(Basin,WY,FUN = function(x) cumsum(x)))
 
 EAA_Q.xtab.sum.direct <- subset(EAA_Q.xtab.sum,direct%in%c("Inflow","Outflow","Pass"))|>
   dcast(Date.EST~direct,value.var = "TFlow",fun.aggregate = function(x) sum(x,na.rm=T)/1000);# calculates total kacft
+
+EAA_Q.xtab.sum.direct$month <- as.numeric(format(EAA_Q.xtab.sum.direct$Date.EST,"%m"))
+EAA_Q.xtab.sum.direct$CY <- as.numeric(format(EAA_Q.xtab.sum.direct$Date.EST,"%Y"))
+tmp <- subset(EAA_Q.xtab.sum.direct,CY==2026)|>
+  ddply(c("CY","month"),summarise,
+        TInflow = sum(cfs.to.acftd(Inflow)),
+        TOutflow = sum(cfs.to.acftd(Outflow)),
+        TPass = sum(cfs.to.acftd(Pass)))
+
+
+
 ```
 
-```{r EAA_Q plot,echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Lake Okeechobee inflow and outflow volume from DBHYDRO"}
+```{r EAA_Q plot,echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Lake Okeechobee inflow and outflow volume from DBHYDRO",include = FALSE}
 max.q <- max(subset(EAA_Q.xtab.sum.direct,Date.EST%in%seq(date.fun(as.Date(Sys.Date())-30),date.fun(as.Date(Sys.Date())),"1 days"))[,c("Inflow","Outflow")],na.rm=T)
 ylim.max <- ceiling(max.q*1.2)
 
@@ -1880,7 +1891,7 @@ legend(0.5,0.75,
 
 <br>
 
-```{r STA_Q plot,echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Everglades STA Inflow from the Lake and Basin."}
+```{r STA_Q plot,echo=FALSE,fig.width=6.5,fig.height=4.5,fig.align='center',fig.cap="Everglades STA Inflow from the Lake and Basin.",include = FALSE}
 max.q <- max(subset(STAQ,Date.EST%in%seq(date.fun(as.Date(Sys.Date())-30),date.fun(as.Date(Sys.Date())),"1 days"))[,c("LSTA","Basin")],na.rm=T)
 ylim.max <- ceiling(max.q*1.2)
 
