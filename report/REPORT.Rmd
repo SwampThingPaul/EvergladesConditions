@@ -62,7 +62,7 @@ knitr::opts_chunk$set(echo=FALSE,
                       dev.args = list(png = list(type = "cairo")))
 
 ## Turn on/off LOK recovery envelope shading
-RecEnv.plot  <-  1
+RecEnv.plot  <-  0
 rec.ops <-  0
 
 lake.rec.start <- AnalystHelper::date.fun("2024-12-07")
@@ -3432,7 +3432,7 @@ leg.fun(b = bks,
         x.max=0.6,x.min=0.4,bot.val = 0.4,leg.type = "continuous")
 legend(0.5,0.2,legend=c("> 30 PSU","< 30 PSU"),
        pch=c(24,25),pt.bg=c("grey"),
-       lty=c(0,0),lwd=c(0,0.5),col="black",
+       lty=c(0,0),lwd=c(0.5,0.5),col="black",
        pt.cex=1.5,cex=1,ncol=1,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
 
 mtext(side=1,line=-1,paste("Data from",format(as.Date(YEST)-30,"%b %d, %Y"),"to",format(YEST,"%b %d, %Y")),font=3,cex=0.75)
