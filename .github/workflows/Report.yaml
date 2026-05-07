@@ -15,14 +15,14 @@ permissions:
 jobs:
   render:
     name: Render report
-    runs-on: windows-2025
+    runs-on: windows-2025-vs2026
     env:
       R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     # Logging step here
     - name: Log Scheduled and Current Time
@@ -40,7 +40,7 @@ jobs:
       uses: r-lib/actions/setup-pandoc@v2
 
     - name: Cache R packages
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       with:
         path: ${{ env.R_LIBS_USER }}
         key: ${{ runner.os }}-R-2025-11

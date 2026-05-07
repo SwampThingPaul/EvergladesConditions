@@ -62,3 +62,6 @@ rsconnect/
 champ_cal_plot.png
 
 /resources/
+
+*.geojson.txt
+*.json

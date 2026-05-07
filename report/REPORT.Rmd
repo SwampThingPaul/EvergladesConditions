@@ -516,6 +516,8 @@ usgs_sites <- rbind(usgs_sites,usgs_west)
 
 usgs_sites <- usgs_sites[usgs_sites$loc!="Joe Bay",]
 pCode <- c("00060","72137")
+pCode_def <- data.frame(parameter_code = pCode,
+                        param = c("Q","Q_tidefilt"))
 
 loc.dat <- readNWISsite(usgs_sites$site_no)
 loc.dat.shp <- st_as_sf(loc.dat,coords=c("dec_long_va","dec_lat_va"),crs=wgs84)|>
@@ -531,23 +533,26 @@ loc.dat.shp <- st_as_sf(loc.dat,coords=c("dec_long_va","dec_lat_va"),crs=wgs84)|
 # }
 # 
 # if(!any(tables%in%c("Qdat_flab"))|max_date<YEST){
-
+usgs_sites$monitoring_location_id <- paste0("USGS-",usgs_sites$site_no)
 ## Creek Discharge 
-flab_crk_list <- future_lapply(seq_along(usgs_sites$site_no), function(i) {
+flab_crk_list <- future_lapply(seq_along(usgs_sites$monitoring_location_id), function(i) {
   # Attempt to retrieve data and handle errors
   tryCatch({
-    site_id <- usgs_sites$site_no[i]
+    site_id <- usgs_sites$monitoring_location_id[i]
     sdate <- flab.dates[1]
     edate <- dates[2]
     
-    tmp <- readNWISdv(site_id,pCode,sdate,edate)|>
-      renameNWISColumns()
-    # if(any(names(tmp)%in%c("X_72137"))){
-    #   names(tmp)[names(tmp)%in%c("X_72137","X_72137_cd")] <- c("Flow","Flow_cd")
+    # tmp <- readNWISdv(site_id,pCode,sdate,edate)|>renameNWISColumns()
+    tmp <- read_waterdata_daily(
+      monitoring_location_id = site_id,
+      parameter_code = pCode,
+      time = c(sdate, edate),
+      skipGeometry = TRUE
+    )
+
+    # if (!"Flow" %in% names(tmp) && "X_72137" %in% names(tmp)) {
+    #   names(tmp)[names(tmp) %in% c("X_72137", "X_72137_cd")] <- c("Flow", "Flow_cd")
     # }
-    if (!"Flow" %in% names(tmp) && "X_72137" %in% names(tmp)) {
-      names(tmp)[names(tmp) %in% c("X_72137", "X_72137_cd")] <- c("Flow", "Flow_cd")
-    }
     
     tmp
   }, error = function(e) {
@@ -560,29 +565,43 @@ flab_crk_list <- future_lapply(seq_along(usgs_sites$site_no), function(i) {
 flab_crk_list <- Filter(function(x) !is.null(x) && nrow(x) > 0, flab_crk_list); #combines the null and nrow methods
 # lapply(flab_crk_list,names)
 
+
 common_cols <- Reduce(intersect, lapply(flab_crk_list, names))
 flab_crk_list <- lapply(flab_crk_list,function(x) x[common_cols])
 Qdat_flab_crk <- do.call(rbind, flab_crk_list)|>
-  merge(usgs_sites,"site_no",all.x=T)|>
-  mutate(Date = date.fun(Date))
+  merge(usgs_sites,"monitoring_location_id",all.x=T)|>
+  merge(pCode_def,"parameter_code")|>
+  mutate(Date = date.fun(time))
+
+Qdat_flab_crk1 <- Qdat_flab_crk
+Qdat_flab_crk <- dcast(Qdat_flab_crk,site_no+loc+loc_abb+Date~param,value.var = "value",mean)
+
+Qdat_flab_crk$Flow <- with(Qdat_flab_crk,ifelse(is.na(Q),Q_tidefilt,Q))
+
 
 date_chk <- ddply(Qdat_flab_crk,c("loc"),summarise,
       min.date = min(Date,na.rm=T),max.date = max(Date,na.rm=T))|>
   merge(usgs_sites,"loc",all.y=T)
 
 uv_sites <- subset(date_chk,max.date!=YEST|is.na(max.date))
-flab_crk_uv_list <- future_lapply(seq_along(uv_sites$site_no), function(i) {
+flab_crk_uv_list <- future_lapply(seq_along(uv_sites$monitoring_location_id), function(i) {
   # Attempt to retrieve data and handle errors
   tryCatch({
-    site_id <- uv_sites$site_no[i]
+    site_id <- uv_sites$monitoring_location_id[i]
     sdate <- if(is.na(uv_sites$min.date[i])){flab.dates[1]}else{uv_sites$max.date[i]}
     edate <- if(is.na(uv_sites$max.date[i])|uv_sites$max.date[i]<dates[2]){dates[2]}
     
-    tmp <- readNWISuv(site_id,pCode,sdate,edate,tz = "EST")|>
-      renameNWISColumns()
-    if(any(names(tmp)%in%c("X_72137"))){
-      names(tmp)[names(tmp)%in%c("X_72137","X_72137_cd")] <- c("Flow","Flow_cd")
-    }
+    # tmp <- readNWISuv(site_id,pCode,sdate,edate,tz = "EST")|>
+    #   renameNWISColumns()
+    # if(any(names(tmp)%in%c("X_72137"))){
+    #   names(tmp)[names(tmp)%in%c("X_72137","X_72137_cd")] <- c("Flow","Flow_cd")
+    # }
+    tmp <- read_waterdata_daily(
+      monitoring_location_id = site_id,
+      parameter_code = pCode,
+      time = c(sdate, edate),
+      skipGeometry = TRUE
+    )
     
     tmp
   }, error = function(e) {
@@ -595,12 +614,17 @@ flab_crk_uv_list <- Filter(Negate(is.null), flab_crk_uv_list)
 common_cols <- Reduce(intersect, lapply(flab_crk_uv_list, names))
 flab_crk_uv_list <- lapply(flab_crk_uv_list,function(x) x[common_cols])
 Qdat_flab_crk_uv <- do.call(rbind, flab_crk_uv_list)|>
-  merge(usgs_sites,"site_no",all.x=T)|>
-  mutate(Date = date.fun(dateTime))
-Qdat_flab_crk_da <- ddply(Qdat_flab_crk_uv,c("site_no","agency_cd","Date","loc","loc_abb"),
-                          summarise,
-                          Flow = mean(Flow_Inst,na.rm=T),
-                          Flow_cd = NA)
+  merge(usgs_sites,"monitoring_location_id",all.x=T)|>
+  merge(pCode_def,"parameter_code")|>
+  mutate(Date = date.fun(time))
+
+Qdat_flab_crk_da <- dcast(Qdat_flab_crk_uv,site_no+loc+loc_abb+Date~param,value.var = "value",mean)
+Qdat_flab_crk_da$Flow <- with(Qdat_flab_crk_da,ifelse(is.na(Q),Q_tidefilt,Q))
+
+# Qdat_flab_crk_da <- ddply(Qdat_flab_crk_uv,c("site_no","agency_cd","Date","loc","loc_abb"),
+#                           summarise,
+#                           Flow = mean(Flow_Inst,na.rm=T),
+#                           Flow_cd = NA)
 Qdat_flab_crk_da <- Qdat_flab_crk_da[,names(Qdat_flab_crk)]
 Qdat_flab_crk <- rbind(Qdat_flab_crk,Qdat_flab_crk_da)
 
@@ -950,7 +974,26 @@ lok.stg <- subset(stg_dat,loc=="LOK")|>
          DOWY = hydro.day(Date),
          DoY = as.numeric(format(Date,"%j")),
          CY = as.numeric(format(Date,"%Y")))
-lok.stg$Mean <- apply(lok.stg[,c("P1","P2","P3")], 1, function(x) x[!is.na(x)][1])
+# lok.stg$Mean <- apply(lok.stg[,c("P1","P2","P3")], 1, function(x) x[!is.na(x)][1])
+
+priority_cols <- c("P1", "P2", "P3")
+
+missing_cols <- setdiff(priority_cols, names(lok.stg))
+
+if (length(missing_cols) > 0L) {
+  for (cc in missing_cols) {
+    lok.stg[[cc]] <- NA_real_
+  }
+}
+
+lok.stg$Mean <- apply(lok.stg[, priority_cols, drop = FALSE],1,
+  function(x) {
+    x <- x[!is.na(x)]
+    if (length(x) == 0L) NA_real_ else x[1L]
+  }
+)
+
+
 
 lok.stg$Mean[lok.stg$Mean==0]=NA
 lok.stg$recess_7day <- with(lok.stg,c(rep(NA,7),diff(Mean,lag=7)))
@@ -1956,14 +1999,15 @@ xmaj <- seq(xlim.val[1],xlim.val[2],by="14 days");xmin <- seq(xlim.val[1],xlim.v
 
 layout(matrix(1:4,2,2,byrow=T))
 par(mar=c(2,2,1,1),oma=c(1,3,1,2));
-ylim.val.min=c(9,9,9,8,11)
-ylim.val.max=c(13,13,13,13,17)
+ylim.val.min=c(9,9,9,8)
+ylim.val.max=c(13,13,16,13)
 for(i in seq_along(eaa_canal_labs)){
   tmp.dat <- subset(EAA_stg,canal==eaa_canal_labs[i])
   tmp.dat <- tmp.dat[order(tmp.dat$Date),]
   
-  ylim.val <- c(floor(min(tmp.dat$Data.Value,na.rm=T)),
-                ceiling(max(tmp.dat$Data.Value,na.rm=T)))
+  # ylim.val <- c(floor(min(tmp.dat$Data.Value,na.rm=T)),
+  #               ceiling(max(tmp.dat$Data.Value,na.rm=T)))
+  ylim.val <- c(ylim.val.min[i],ylim.val.max[i])
   by.y <- if(diff(ylim.val)>5){2}else{1};
   ymaj <- seq(ylim.val[1],ylim.val[2],by.y);ymin <- seq(ylim.val[1],ylim.val[2],by.y/2)
   
@@ -2025,7 +2069,22 @@ tmp[,c("Date","WY",eaa_canal_labs)]|>
 ```{r WCA1plot,echo=FALSE,fig.width=7,fig.height=5,fig.align='center',fig.cap=paste0("Water Conservation Area 1 (WCA1/LNWR) daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years relative to the WCA1 Regulation Schedule.")}
 WCA1.xtab <- subset(stg_dat,loc%in%c("CA1-8T","CA1-9","CA1-7"))|>
   dcast(Date~loc,value.var = "Data.Value",mean)
-WCA1.xtab$Mean <- apply(WCA1.xtab[,c("CA1-8T","CA1-9","CA1-7")],1,mean,na.rm=T)
+# WCA1.xtab$Mean <- apply(WCA1.xtab[,c("CA1-8T","CA1-9","CA1-7")],1,mean,na.rm=T)
+
+mean_cols <- c("CA1-8T","CA1-9","CA1-7")
+missing_cols <- setdiff(mean_cols, names(WCA1.xtab))
+if (length(missing_cols) > 0L) {
+  for (cc in missing_cols) {
+    WCA1.xtab[[cc]] <- NA_real_
+  }
+}
+
+WCA1.xtab$Mean <- apply(WCA1.xtab[, mean_cols, drop = FALSE],1,
+  function(x) {
+    x <- mean(x,na.rm=T)
+    if (length(x) == 0L) NA_real_ else x[1L]
+  }
+)
 
 WCA1.xtab$recess_7day <- with(WCA1.xtab,c(rep(NA,7),diff(Mean,lag=7)))
 WCA1.xtab$recess_30day <- with(WCA1.xtab,c(rep(NA,30),diff(Mean,lag=30)))
@@ -2450,13 +2509,41 @@ legend(0.5,0.75,
 
 ## Water Conservation Area 3
 
-```{r WCA3plot,echo=FALSE,fig.width=7,fig.height=5.5,fig.align='center',fig.cap=paste0("Water Conservation Area 3A (WCA3A/LNWR) daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years relative to the WCA3A Regulation Schedule. Average stage values represented by the 3-gauge average (3-63,3-64,3-65) and 2-gauge average (3-62 and 3-63).")}
+```{r WCA3plot,echo=FALSE,fig.width=7,fig.height=5.5,fig.align='center',fig.cap=paste0("Water Conservation Area 3A (WCA3A) daily average stage elevation for water year ",CurWY," (WY", CurWY,") relative to the last two water years relative to the WCA3A Regulation Schedule. Average stage values represented by the 3-gauge average (3-63,3-64,3-65) and 2-gauge average (3-62 and 3-63).")}
 
 WCA3.xtab <- subset(stg_dat,loc%in%c("CA3-65","CA3-64","CA3-63","CA3-62"))|>
   dcast(Date~loc,value.var = "Data.Value",mean)
 
-WCA3.xtab$Avg.636465 <- apply(WCA3.xtab[,c("CA3-65","CA3-64","CA3-63")],1,mean,na.rm=T)
-WCA3.xtab$Avg.6263 <- apply(WCA3.xtab[,c("CA3-63","CA3-62")],1,mean,na.rm=T)
+# WCA3.xtab$Avg.636465 <- apply(WCA3.xtab[,c("CA3-65","CA3-64","CA3-63")],1,mean,na.rm=T)
+mean_cols <- c("CA3-65","CA3-64","CA3-63")
+missing_cols <- setdiff(mean_cols, names(WCA3.xtab))
+if (length(missing_cols) > 0L) {
+  for (cc in missing_cols) {
+    WCA3.xtab[[cc]] <- NA_real_
+  }
+}
+WCA3.xtab$Avg.636465 <- apply(WCA3.xtab[, mean_cols, drop = FALSE],1,
+  function(x) {
+    x <- mean(x,na.rm=T)
+    if (length(x) == 0L) NA_real_ else x[1L]
+  }
+)
+
+# WCA3.xtab$Avg.6263 <- apply(WCA3.xtab[,c("CA3-63","CA3-62")],1,mean,na.rm=T)
+mean_cols <- c("CA3-63","CA3-62")
+missing_cols <- setdiff(mean_cols, names(WCA3.xtab))
+if (length(missing_cols) > 0L) {
+  for (cc in missing_cols) {
+    WCA3.xtab[[cc]] <- NA_real_
+  }
+}
+WCA3.xtab$Avg.6263 <- apply(WCA3.xtab[, mean_cols, drop = FALSE],1,
+  function(x) {
+    x <- mean(x,na.rm=T)
+    if (length(x) == 0L) NA_real_ else x[1L]
+  }
+)
+
 WCA3.xtab$recess_7day <- with(WCA3.xtab,c(rep(NA,7),diff(Avg.636465,lag=7)))
 WCA3.xtab$recess_30day <- with(WCA3.xtab,c(rep(NA,30),diff(Avg.636465,lag=30)))
 WCA3.xtab$DoY <- as.numeric(format(WCA3.xtab$Date,"%j"))
@@ -2729,6 +2816,14 @@ redline|>
 ```{r Redline_plot, echo=FALSE,fig.width=8,fig.height=3.5,fig.align='center',fig.cap="Discharges across the Red line (northern inflows to WCAs) from January 2012 to current."}
 wca.Q.da.mon2 <- subset(redline_Qdat,CY>=2012)|>
   dcast(CY+month~REGION,value.var ="inflow.Q",fun.aggregate = function(x) sum(cfs.to.acftd(x)/1000,na.rm=T))
+# wca.Q.da.mon2$monCY.date <- with(wca.Q.da.mon2,date.fun(paste(CY,month,"01",sep="-")))
+# date_fill <- data.frame(monCY.date = seq(min(wca.Q.da.mon2$monCY.date),
+#                                          date.fun(paste(max(wca.Q.da.mon2$CY),12,"01",sep="-")),
+#                                          "1 month")
+# )|>
+#   mutate(month = as.numeric(format(monCY.date,"%m")),
+#          CY = as.numeric(format(monCY.date,"%Y")))
+# wca.Q.da.mon2 <- merge(wca.Q.da.mon2,date_fill,c("CY","month","monCY.date"),all.y = TRUE,sort = FALSE)
 
 max.q <- max(redline[,month.abb],na.rm=T)
 ylim.max <-  ceiling(max.q*1.1)
@@ -2737,8 +2832,12 @@ ylim.val <- c(0,ylim.max)
 ymaj <- heckbert_labs(0,ylim.max,5)
 ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)
 # ylim.val <- range(ymaj)
-xmaj.lab = subset(wca.Q.da.mon2,month == 1)$CY
-xmaj.x = seq(1,nrow(wca.Q.da.mon2),12)
+# xmaj.lab = subset(wca.Q.da.mon2,month == 1)$CY
+# xmaj.x = seq(1,nrow(wca.Q.da.mon2),12)
+
+xmaj.x <- which(wca.Q.da.mon2$month == 1)
+xmaj.lab <- wca.Q.da.mon2$CY[xmaj.x]
+
 
 # cols <- viridis::cividis(3)
 # cols <- paletteer::paletteer_d("colorBlindness::Blue2Orange12Steps",n=3,type="continuous",direction=-1)|>as.character()
@@ -2772,7 +2871,20 @@ legend("topleft",inset=0.01,
 
 L29_stg <- merge(stg_dat,L29_stg_loc_str,"loc")
 L29_stg_xtab <- dcast(L29_stg,Date~str,value.var="Data.Value",mean)
-L29_stg_xtab$L29 <- apply(L29_stg_xtab[,c("S333","S334")],1,mean,na.rm=T)
+# L29_stg_xtab$L29 <- apply(L29_stg_xtab[,c("S333","S334")],1,mean,na.rm=T)
+mean_cols <- c("S333","S334")
+missing_cols <- setdiff(mean_cols, names(L29_stg_xtab))
+if (length(missing_cols) > 0L) {
+  for (cc in missing_cols) {
+    L29_stg_xtab[[cc]] <- NA_real_
+  }
+}
+L29_stg_xtab$L29 <- apply(L29_stg_xtab[, mean_cols, drop = FALSE],1,
+  function(x) {
+    x <- mean(x,na.rm=T)
+    if (length(x) == 0L) NA_real_ else x[1L]
+  }
+)
 # L29_stg_xtab$DOWY <- hydro.day(L29_stg_xtab$Date)
 # L29_stg_xtab$WY <- WY(L29_stg_xtab$Date)
 
