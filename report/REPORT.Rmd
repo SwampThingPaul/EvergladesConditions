@@ -518,11 +518,16 @@ usgs_sites <- usgs_sites[usgs_sites$loc!="Joe Bay",]
 pCode <- c("00060","72137")
 pCode_def <- data.frame(parameter_code = pCode,
                         param = c("Q","Q_tidefilt"))
+usgs_sites$monitoring_location_id <- paste0("USGS-",usgs_sites$site_no)
 
-loc.dat <- readNWISsite(usgs_sites$site_no)
-loc.dat.shp <- st_as_sf(loc.dat,coords=c("dec_long_va","dec_lat_va"),crs=wgs84)|>
+loc.dat.shp <- read_waterdata_monitoring_location(usgs_sites$monitoring_location_id )|>
   st_transform(utm17)|>
-  merge(usgs_sites,"site_no")
+  merge(usgs_sites,"monitoring_location_id")
+
+# loc.dat <- readNWISsite(usgs_sites$site_no)
+# loc.dat.shp <- st_as_sf(loc.dat,coords=c("dec_long_va","dec_lat_va"),crs=wgs84)|>
+#   st_transform(utm17)|>
+#   merge(usgs_sites,"site_no")
 
 # tables <- dbListTables(con)
 # if(any(tables%in%c("Qdat_flab"))){
@@ -533,7 +538,7 @@ loc.dat.shp <- st_as_sf(loc.dat,coords=c("dec_long_va","dec_lat_va"),crs=wgs84)|
 # }
 # 
 # if(!any(tables%in%c("Qdat_flab"))|max_date<YEST){
-usgs_sites$monitoring_location_id <- paste0("USGS-",usgs_sites$site_no)
+# usgs_sites$monitoring_location_id <- paste0("USGS-",usgs_sites$site_no)
 ## Creek Discharge 
 flab_crk_list <- future_lapply(seq_along(usgs_sites$monitoring_location_id), function(i) {
   # Attempt to retrieve data and handle errors
@@ -2888,13 +2893,13 @@ L29_stg_xtab$L29 <- apply(L29_stg_xtab[, mean_cols, drop = FALSE],1,
 # L29_stg_xtab$DOWY <- hydro.day(L29_stg_xtab$Date)
 # L29_stg_xtab$WY <- WY(L29_stg_xtab$Date)
 
-ENP.xtab <- subset(stg_dat,loc%in%c("NESRS2","NP201"))|>
+ENP.xtab <- subset(stg_dat,loc%in%c("NESRS2"))|>
   dcast(Date~loc,value.var = "Data.Value",mean,na..rm=T)|>
   mutate(DOWY = hydro.day(Date),
          WY = WY(Date))
 
 # range(ENP.xtab$NP201[ENP.xtab$NP201<20],na.rm=T)
-ENP.xtab$NP201[ENP.xtab$NP201>20] <- NA;# outlier data
+# ENP.xtab$NP201[ENP.xtab$NP201>20] <- NA;# outlier data
 
 ENP.xtab <- merge(ENP.xtab,L29_stg_xtab[,c("Date","L29")],"Date")
 
@@ -2949,7 +2954,7 @@ legend(0.5,0.5,
        lty=1,lwd=1,
        ncol=length(stage_yrs),cex=1,bty="n",y.intersp=1,x.intersp=0.5,xpd=NA,xjust=0.5)
 
-ylim.val <- c(6,10)# ;by.y=0.5;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
+ylim.val <- c(5,10)# ;by.y=0.5;ymaj=seq(ylim.val[1],ylim.val[2],by.y);ymin=seq(ylim.val[1],ylim.val[2],by.y/2)
 ymaj <- heckbert_labs(ylim.val[1],ylim.val[2],5)
 ymin <- seq(ylim.val[1],ylim.val[2],mean(diff(ymaj))/2)
 # ylim.val <- range(ymaj)
@@ -2958,7 +2963,7 @@ plot(NESRS2~DOWY,ENP.xtab,ylim=ylim.val,xlim=xlim.vals2,type="n",ann=F,axes=F,ya
 abline(h=ymaj,v=hydro.day(xmin),lwd=1,col="grey",lty=3)
 for(i in seq_along(stage_yrs)){
   lines(NESRS2 ~ DOWY,subset(ENP.xtab, WY == stage_yrs[i]),lwd = 1, col = stage_cols[i], lty = 1)
-  lines(NP201 ~ DOWY,subset(ENP.xtab, WY == stage_yrs[i]),lwd = 1, col = stage_cols[i], lty = 2)
+#   lines(NP201 ~ DOWY,subset(ENP.xtab, WY == stage_yrs[i]),lwd = 1, col = stage_cols[i], lty = 2)
 }
 axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%b"),line=-0.5)
 axis_fun(2,ymaj,ymin,format(ymaj));box(lwd=1)
@@ -2966,9 +2971,9 @@ mtext(side=1,"Month",line=2,cex=1.25)
 mtext(side=3,adj=1,"Data are provisional and subject to change",col="red")
 mtext(side=3,adj=0,"North SRS (ENP)",font=2,line=1.2)
 
-labs.val <- c(paste0("WY",rev(stage_yrs)," NESRS2"), paste0("WY",rev(stage_yrs)," NP201"))
-cols.vals <- rep(rev(stage_cols),2)
-lty.vals <- c(rep(1,length(stage_yrs)),rep(2,length(stage_yrs)))
+labs.val <- c(paste0("WY",rev(stage_yrs)," NESRS2"))#, paste0("WY",rev(stage_yrs)," NP201"))
+cols.vals <- stage_cols# rep(rev(stage_cols),2)
+lty.vals <- 1 # c(rep(1,length(stage_yrs)),rep(2,length(stage_yrs)))
 lwd.vals <- c(1,1,1)
 plot(0:1,0:1,type = 'n', axes = F,xlab=NA, ylab=NA)
 legend(0.5,0.5,
@@ -3164,8 +3169,8 @@ site.val=c("SRS_west","SRS_east")
 site.val.lab=c("SRS West\n(S12s)","SRS East\n(S333s, S335s & min(S356, S335))")
 #i=1
 for(i in 1:length(site.val)){
-  tmp.dat <- subset(ENP_Q,Date%in%seq(date.fun(as.Date(Sys.Date())-100),date.fun(as.Date(Sys.Date())),"1 days"))[,c("DOWY","SRS_east","SRS_west")]|>
-    melt(id.vars="DOWY",variable.name = "loc",value.name = "flow.acft")|>
+  tmp.dat <- subset(ENP_Q,Date%in%seq(date.fun(as.Date(Sys.Date())-100),date.fun(as.Date(Sys.Date())),"1 days"))[,c("Date","WY","DOWY","SRS_east","SRS_west")]|>
+    melt(id.vars=c("Date","WY","DOWY"),variable.name = "loc",value.name = "flow.acft")|>
     subset(loc==site.val[i])
   
   max.q <- ceiling(max(subset(ENP_Q_stats,loc==site.val[i])$q90,na.rm=T)*1.1)
@@ -3173,12 +3178,14 @@ for(i in 1:length(site.val)){
   ymin <- seq(0,max(ymaj),min(diff(ymaj))/2)
   ylim.val <- range(ymaj)
   
-  plot(flow.acft~DOWY,tmp.dat,type="n",ylim=ylim.val,xlim=xlim.val2,axes=F,ann=F)
-  with(subset(ENP_Q_stats,loc==site.val[i]),shaded.range(DOWY,q10,q90,"lightblue",lty=1,col.adj=1))
-  lines(q50~DOWY,subset(ENP_Q_stats,loc==site.val[i]),col="grey50")
-  with(tmp.dat,pt_line(DOWY,flow.acft,2,"black",1,21,"indianred1",cex=1.25))
+  tmp.dat <- merge(tmp.dat,ENP_Q_stats,c("DOWY","loc"))
+  tmp.dat <- tmp.dat[order(tmp.dat$Date),]
+  plot(flow.acft~Date,tmp.dat,type="n",ylim=ylim.val,xlim=xlim.val,axes=F,ann=F)
+  with(subset(tmp.dat,loc==site.val[i]),shaded.range(Date,q10,q90,"lightblue",lty=1,col.adj=1))
+  lines(q50~Date,subset(tmp.dat,loc==site.val[i]),col="grey50")
+  with(tmp.dat,pt_line(Date,flow.acft,2,"black",1,21,"indianred1",cex=1.25))
   abline(h=ymaj,v=hydro.day(xmaj),lty=3,col="grey")
-  axis_fun(1,hydro.day(xmaj),hydro.day(xmin),format(xmaj,"%m-%d"),line=-0.5)
+  axis_fun(1,xmaj,xmin,format(xmaj,"%m-%d"),line=-0.5)
   axis_fun(2,ymaj,ymin,format(ymaj/1000),cex.axis=1);box(lwd=1)
   mtext(site.val.lab[i],side=3,line=-2.75,cex=0.9)
   if(i==1){mtext(expression("Daily Discharge (x1000 Ac-Ft d"^" -1"*")"),side=2,line=2.5,cex=1)}
@@ -3284,6 +3291,9 @@ ymin <- seq(0,max(ymaj),min(diff(ymaj))/2)
 
 xmaj.lab <-  subset(SRS_del,month == 1)$CY
 xmaj.x  <-  seq(1,nrow(SRS_del),12)
+
+xmaj.x <- which(SRS_del$month == 1)
+xmaj.lab <- SRS_del$CY[xmaj.x]
 
 par(mar=c(1,2,0.5,1),oma=c(2.5,2,1.25,1));
 x <- barplot(SRS_del$Tflow,col=NA,border=NA,ylim = ylim.val,space=0,axes=F)
@@ -3746,8 +3756,8 @@ legend("center",legend=c(paste0(sum.stat.dates.form[1]," - ",sum.stat.dates.form
        lty=c(0,0),lwd=c(0,0.5),col=c("grey50","black"),
        pt.cex=1.5,cex=1,ncol=1,bty="n",y.intersp=1.25,x.intersp=0.75,xpd=NA,xjust=0.5,yjust=0.5)
 
-
 ```
+
 ------------------------------------------------------------------------
 
 # Northern Estuaries
