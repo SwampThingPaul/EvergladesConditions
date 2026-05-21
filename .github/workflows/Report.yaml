@@ -15,7 +15,7 @@ permissions:
 jobs:
   render:
     name: Render report
-    runs-on: windows-2022
+    runs-on: windows-2025
     env:
       R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-R-2025-11
+        key: ${{ runner.os }}-R-2026-05
         restore-keys: |
           ${{ runner.os }}-R-
 ## If you ever want to reset the cache (e.g., after adding new packages), just change the cache key (e.g., update 2025-11 to 2025-12).          
