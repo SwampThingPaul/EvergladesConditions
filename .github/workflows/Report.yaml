@@ -40,13 +40,13 @@ jobs:
       uses: r-lib/actions/setup-pandoc@v2
       
       
-     - name: Show R session info
-       shell: Rscript {0}
-       run: |
-         print(R.version.string)
-         print(.libPaths())
-         print(Sys.getenv("R_LIBS_USER"))
-         print(getOption("repos"))
+    - name: Show R session info
+      shell: Rscript {0}
+      run: |
+        print(R.version.string)
+        print(.libPaths())
+        print(Sys.getenv("R_LIBS_USER"))
+        print(getOption("repos"))
 
 #     - name: Cache R packages
 #       uses: actions/cache@v5
