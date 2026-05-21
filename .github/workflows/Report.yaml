@@ -101,9 +101,7 @@ jobs:
       shell: Rscript {0}
       run: |
         .libPaths(Sys.getenv("R_LIBS_USER"))
-        rmarkdown::render("./report/REPORT.Rmd", 
-        output_format = "html_document",
-        clean = TRUE, envir = new.env())
+        rmarkdown::render("./report/REPORT.Rmd",output_format = "html_document")# ,clean = TRUE, envir = new.env())
     
     - name: setup git config
       run: |
