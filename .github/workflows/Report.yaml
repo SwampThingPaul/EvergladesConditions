@@ -17,7 +17,7 @@ jobs:
     name: Render report
     runs-on: windows-2022
     env:
-      R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
+      # R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
@@ -38,61 +38,77 @@ jobs:
 
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v2
+      
+      
+     - name: Show R session info
+       shell: Rscript {0}
+       run: |
+         print(R.version.string)
+         print(.libPaths())
+         print(Sys.getenv("R_LIBS_USER"))
+         print(getOption("repos"))
 
-    - name: Cache R packages
-      uses: actions/cache@v5
-      with:
-        path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-R-2026-05-dataRetrievalUpdate-v2
-        # key: ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-2026-05
-        restore-keys: |
-          ${{ runner.os }}-R-
-## If you ever want to reset the cache (e.g., after adding new packages), just change the cache key (e.g., update 2025-11 to 2025-12).          
-    
-    - name: Ensure R library exists
-      shell: Rscript {0}
-      run: |
-        dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
-        .libPaths(Sys.getenv("R_LIBS_USER"))
+#     - name: Cache R packages
+#       uses: actions/cache@v5
+#       with:
+#         path: ${{ env.R_LIBS_USER }}
+#         key: ${{ runner.os }}-R-2026-05-dataRetrievalUpdate-v2
+#         # key: ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-2026-05
+#         restore-keys: |
+#           ${{ runner.os }}-R-
+# ## If you ever want to reset the cache (e.g., after adding new packages), just change the cache key (e.g., update 2025-11 to 2025-12).          
+#     
+#     - name: Ensure R library exists
+#       shell: Rscript {0}
+#       run: |
+#         dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
+#         .libPaths(Sys.getenv("R_LIBS_USER"))
 
     - name: Install R packages
       shell: Rscript {0}
       run: |
-        .libPaths(Sys.getenv("R_LIBS_USER"))
+        options(
+          repos = c(
+            USGS = "https://doi-usgs.r-universe.dev",
+            rspatial = "https://rspatial.r-universe.dev",
+            CRAN = "https://cloud.r-project.org"
+          )
+        )
+        
         install.packages(c(
-        "remotes","reshape2","plyr","zoo",
-        "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
-        "mapmisc","future","future.apply","flextable","ggplot2","RCurl",
-        "raster","sf","terra","units","wesanderson"
-        ), dependencies = TRUE, 
-        type = "binary", 
-        repos = c('https://rspatial.r-universe.dev',
-        'https://doi-usgs.r-universe.dev',
-        'https://cloud.r-project.org'))
+          "remotes", "reshape2", "plyr", "zoo",
+          "RcppRoll", "dataRetrieval", "downloadthis", "rvest", "httr",
+          "mapmisc", "future", "future.apply", "flextable", "ggplot2", "RCurl",
+          "raster", "sf", "terra", "units", "wesanderson",
+          "htmltools", "rmarkdown", "knitr", "xfun", "bslib", "fontawesome"
+        ), dependencies = TRUE, type = "binary")
+
 
     - name: Install custom packages
       shell: Rscript {0}
       run: |
-        .libPaths(Sys.getenv("R_LIBS_USER"))
+        # .libPaths(Sys.getenv("R_LIBS_USER"))
         remotes::install_github("SwampThingPaul/AnalystHelper")
         remotes::install_github("SwampThingPaul/EVERSpatDat")
 
 
-    - name: Check R library contents
-      run: ls -l ${{ env.R_LIBS_USER }}
+    # - name: Check R library contents
+    #   run: ls -l ${{ env.R_LIBS_USER }}
 
     - name: Download data
       shell: Rscript {0}
       run: |
-        .libPaths(Sys.getenv("R_LIBS_USER"))
+        # .libPaths(Sys.getenv("R_LIBS_USER"))
         source("./report/NOAA_RS_Download.R")
         # source("./report/USACE_download.R")
     
     - name: Render Site
       shell: Rscript {0}
       run: |
-        .libPaths(Sys.getenv("R_LIBS_USER"))
-        rmarkdown::render("./report/REPORT.Rmd", output_format = "html_document")# ,clean = TRUE, envir = new.env())
+        # .libPaths(Sys.getenv("R_LIBS_USER"))
+        rmarkdown::render("./report/REPORT.Rmd", 
+        output_format = "html_document",
+        clean = TRUE, envir = new.env())
     
     - name: setup git config
       run: |
