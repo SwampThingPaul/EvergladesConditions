@@ -32,9 +32,10 @@ jobs:
         echo "Current local time: $(date)"
 
     - name: Set up R
+      id: setup-r
       uses: r-lib/actions/setup-r@v2
       with:
-          r-version: 'release' # '4.2.0' 
+          r-version: '4.5.2'
 
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v2
@@ -43,10 +44,10 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-R-2026-05-dataRetrievalUpdate-v3
+        key: ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-2026-05-v4
         # key: ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-2026-05
         restore-keys: |
-          ${{ runner.os }}-R-
+          ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-
       # If you ever want to reset the cache (e.g., after adding new packages), just change the cache key (e.g., update 2025-11 to 2025-12).     
     
     - name: Ensure R library exists
@@ -71,7 +72,8 @@ jobs:
         "remotes","reshape2","plyr","zoo",
         "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
         "mapmisc","future","future.apply","flextable","ggplot2","RCurl",
-        "raster","sf","terra","units","wesanderson","htmltools","xfun"
+        "raster","sf","terra","units","wesanderson",
+        "htmltools","xfun","data.table"
         ), dependencies = TRUE, 
         type = "binary", 
         repos = c('https://rspatial.r-universe.dev',
