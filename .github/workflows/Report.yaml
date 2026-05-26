@@ -88,7 +88,7 @@ jobs:
       run: ls -l "$R_LIBS_USER"
 
     - name: Download data
-      shell: bash
+      shell: Rscript {0}
       run: source("./report/NOAA_RS_Download.R")
 
     - name: Render Site
