@@ -76,26 +76,31 @@ jobs:
           "htmltools","xfun","data.table"
         ), dependencies = TRUE, type = "binary")
 
-
     - name: Install custom packages
       shell: Rscript {0}
       run: |
-        # .libPaths(Sys.getenv("R_LIBS_USER"))
-        remotes::install_github("SwampThingPaul/AnalystHelper")
-        remotes::install_github("SwampThingPaul/EVERSpatDat")
-
+        lib <- Sys.getenv("R_LIBS_USER")
+        cat("Installing into:", lib, "\n")
+        remotes::install_github("SwampThingPaul/AnalystHelper",
+                            lib = lib, upgrade = "never")
+        remotes::install_github("SwampThingPaul/EVERSpatDat",
+                            lib = lib, upgrade = "never")
+        # Hard fail if the package didn't actually land in the lib we expect.
+        stopifnot(
+          "AnalystHelper" %in% rownames(installed.packages(lib.loc = lib)),
+          "EVERSpatDat"   %in% rownames(installed.packages(lib.loc = lib))
+        )
+        cat("Installed packages in lib:\n")
+        print(installed.packages(lib.loc = lib)[, c("Package", "Version", "LibPath")])
 
     - name: Check R library contents
       shell: bash
       run: ls -l "$R_LIBS_USER"
 
     - name: Download data
-      shell: Rscript {0}
-      run: |
-        .libPaths(Sys.getenv("R_LIBS_USER"))
-        source("./report/NOAA_RS_Download.R")
-        
-    
+      shell: bash
+      run: source("./report/NOAA_RS_Download.R")
+
     - name: Render Site
       shell: Rscript {0}
       run: |
