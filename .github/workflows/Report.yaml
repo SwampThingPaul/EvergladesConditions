@@ -73,7 +73,7 @@ jobs:
           "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
           "mapmisc","future","future.apply","flextable","ggplot2","RCurl",
           "raster","sf","terra","units","wesanderson",
-          "htmltools","xfun","data.table","beepr"
+          "htmltools","xfun","data.table","beepr","viridis"
         ), dependencies = TRUE, type = "binary")
 
     - name: Install custom packages
