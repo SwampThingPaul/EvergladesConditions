@@ -17,7 +17,7 @@ jobs:
     name: Render report
     runs-on: windows-2022
     env:
-      R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
+      # R_LIBS_USER: ${{ github.workspace }}/.Rlibrary
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
@@ -35,7 +35,8 @@ jobs:
       id: setup-r
       uses: r-lib/actions/setup-r@v2
       with:
-          r-version: '4.5.2'
+          r-version: '4.6.0'
+          use-public-rspm: true
 
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v2
@@ -44,17 +45,17 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-2026-05-v4
+        key: ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-2026-05-v5
         # key: ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-2026-05
         restore-keys: |
           ${{ runner.os }}-R-${{ steps.setup-r.outputs.installed-r-version }}-
       # If you ever want to reset the cache (e.g., after adding new packages), just change the cache key (e.g., update 2025-11 to 2025-12).     
     
-    - name: Ensure R library exists
-      shell: Rscript {0}
-      run: |
-        dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
-        .libPaths(Sys.getenv("R_LIBS_USER"))      
+    # - name: Ensure R library exists
+    #   shell: Rscript {0}
+    #   run: |
+    #     dir.create(Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
+    #     .libPaths(Sys.getenv("R_LIBS_USER"))      
     
     - name: Show R session info
       shell: Rscript {0}
@@ -67,30 +68,32 @@ jobs:
     - name: Install R packages
       shell: Rscript {0}
       run: |
-        .libPaths(Sys.getenv("R_LIBS_USER"))
+        # PPM (set by setup-r) is the primary source; fall back to r-universe for rspatial/usgs.
+        options(repos = c(
+          getOption("repos"),
+          rspatial = "https://rspatial.r-universe.dev",
+          doiusgs  = "https://doi-usgs.r-universe.dev"
+        ))
         install.packages(c(
-        "remotes","reshape2","plyr","zoo",
-        "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
-        "mapmisc","future","future.apply","flextable","ggplot2","RCurl",
-        "raster","sf","terra","units","wesanderson",
-        "htmltools","xfun","data.table"
-        ), dependencies = TRUE, 
-        type = "binary", 
-        repos = c('https://rspatial.r-universe.dev',
-        'https://doi-usgs.r-universe.dev',
-        'https://cloud.r-project.org'))
+          "remotes","reshape2","plyr","zoo",
+          "RcppRoll","dataRetrieval","downloadthis","rvest","httr",
+          "mapmisc","future","future.apply","flextable","ggplot2","RCurl",
+          "raster","sf","terra","units","wesanderson",
+          "htmltools","xfun","data.table"
+        ), dependencies = TRUE, type = "binary")
 
 
     - name: Install custom packages
       shell: Rscript {0}
       run: |
-        .libPaths(Sys.getenv("R_LIBS_USER"))
+        # .libPaths(Sys.getenv("R_LIBS_USER"))
         remotes::install_github("SwampThingPaul/AnalystHelper")
         remotes::install_github("SwampThingPaul/EVERSpatDat")
 
 
     - name: Check R library contents
-      run: ls -l ${{ env.R_LIBS_USER }}
+      shell: bash
+      run: ls -l "$R_LIBS_USER"
 
     - name: Download data
       shell: Rscript {0}
@@ -103,7 +106,7 @@ jobs:
       shell: Rscript {0}
       run: |
         .libPaths(Sys.getenv("R_LIBS_USER"))
-        rmarkdown::render("./report/REPORT.Rmd",output_format = "html_document")# ,clean = TRUE, envir = new.env())
+        rmarkdown::render("./report/REPORT.Rmd",output_format = "html_document")
     
     - name: setup git config
       run: |
