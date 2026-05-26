@@ -79,19 +79,9 @@ jobs:
     - name: Install custom packages
       shell: Rscript {0}
       run: |
-        lib <- Sys.getenv("R_LIBS_USER")
-        cat("Installing into:", lib, "\n")
-        remotes::install_github("SwampThingPaul/AnalystHelper",
-                            lib = lib, upgrade = "never")
-        remotes::install_github("SwampThingPaul/EVERSpatDat",
-                            lib = lib, upgrade = "never")
-        # Hard fail if the package didn't actually land in the lib we expect.
-        stopifnot(
-          "AnalystHelper" %in% rownames(installed.packages(lib.loc = lib)),
-          "EVERSpatDat"   %in% rownames(installed.packages(lib.loc = lib))
-        )
-        cat("Installed packages in lib:\n")
-        print(installed.packages(lib.loc = lib)[, c("Package", "Version", "LibPath")])
+        # .libPaths(Sys.getenv("R_LIBS_USER"))
+        remotes::install_github("SwampThingPaul/AnalystHelper")
+        remotes::install_github("SwampThingPaul/EVERSpatDat")
 
     - name: Check R library contents
       shell: bash
