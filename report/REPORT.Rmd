@@ -1773,7 +1773,8 @@ EAA_Q$Data.Value <- with(EAA_Q,ifelse(is.na(InaDate),as.numeric(Data.Value),
 EAA_Q$Date.EST <- EAA_Q$Date
 EAA_Q$WY <- WY(EAA_Q$Date)
 
-EAA_Q.xtab <- dcast(EAA_Q,Date.EST+WY~loc,value.var = "Data.Value",mean)#fun.aggregate = function(x) mean(cfs.to.acftd(x)/1000,na.rm=T))
+EAA_Q.xtab <- dcast(EAA_Q,Date.EST+WY~loc,value.var = "Data.Value",
+                    fun.aggregate = function(x) mean(cfs.to.acftd(x)/1000,na.rm=T))
 EAA_Q.xtab[,subset(tom_locs,loc%in%names(flow_dir))$loc] <- NA
 
 EAA_Q.xtab_names_all <- names(EAA_Q.xtab)[!(names(EAA_Q.xtab)%in%c("Date.EST","WY"))]
@@ -1843,8 +1844,12 @@ vars <- c(paste0("q",unique(names(flow_dir)),".out"),paste0("q",unique(names(flo
           paste0("q",c("S5A","S6","S7","S8"),"pass_STA"),
           paste0("q",c("S5A","S6","S7","S8"),"STARunoff"))#,
 #"qSTA56")
-EAA_Q.xtab.sum <- melt(EAA_Q.xtab[,c("Date.EST",vars)],id.vars="Date.EST")|>
-  ddply(c("Date.EST","variable"),summarise,TFlow = round(sum(value,na.rm=T),1))
+# EAA_Q.xtab.sum <- melt(EAA_Q.xtab[,c("Date.EST",vars)],id.vars="Date.EST")|>
+#   ddply(c("Date.EST","variable"),summarise,TFlow = round(sum(value,na.rm=T),1))
+
+EAA_Q.xtab.sum <-  melt(EAA_Q.xtab[,c("Date.EST",vars)],id.vars="Date.EST")|>
+  aggregate(value~Date.EST+variable,FUN = function(x) round(sum(x,na.rm=T),2))|>
+  rename(c("value"="TFlow"))
 
 ## Parse pass through from lake to STAs and EAA outflow to STA (basin)
 # LOK = from EAA Basin to LOK (outflow)
@@ -1894,18 +1899,32 @@ STAQ$cumQ_LSTA <- with(STAQ,ave(LSTA,WY,FUN = function(x) cumsum(x)))
 STAQ$cumQ_Basin <- with(STAQ,ave(Basin,WY,FUN = function(x) cumsum(x)))
 
 
+
+EAA_Q.xtab.sum$WY <- WY(EAA_Q.xtab.sum$Date.EST)
+# subset(EAA_Q.xtab.sum,WY==2025&Basin == "S5A")|>
+#   dcast(Basin+region~direct,value.var = "TFlow",fun.aggregate = function(x) sum(x,na.rm=T)/1000)
+
+
+
 EAA_Q.xtab.sum.direct <- subset(EAA_Q.xtab.sum,direct%in%c("Inflow","Outflow","Pass"))|>
-  dcast(Date.EST~direct,value.var = "TFlow",fun.aggregate = function(x) sum(x,na.rm=T)/1000);# calculates total kacft
+  dcast(Date.EST~direct,value.var = "TFlow",fun.aggregate = function(x) sum(x,na.rm=T));# calculates total kacft
+# tail(EAA_Q.xtab.sum.direct)
 
 EAA_Q.xtab.sum.direct$month <- as.numeric(format(EAA_Q.xtab.sum.direct$Date.EST,"%m"))
 EAA_Q.xtab.sum.direct$CY <- as.numeric(format(EAA_Q.xtab.sum.direct$Date.EST,"%Y"))
+EAA_Q.xtab.sum.direct$WY <- WY(EAA_Q.xtab.sum.direct$Date.EST)
+# tail(EAA_Q.xtab.sum.direct)
 tmp <- subset(EAA_Q.xtab.sum.direct,CY==2026)|>
   ddply(c("CY","month"),summarise,
         TInflow = sum(cfs.to.acftd(Inflow)),
         TOutflow = sum(cfs.to.acftd(Outflow)),
         TPass = sum(cfs.to.acftd(Pass)))
 
-
+# subset(EAA_Q.xtab.sum.direct,WY==2025)|>
+#   ddply(c("WY"),summarise,
+#         TInflow = sum(Inflow/1000),
+#         TOutflow = sum(Outflow/1000),
+#         TPass = sum(Pass/1000))
 
 ```
 
