@@ -485,7 +485,7 @@ Qdat_xtab$LOKOUT <- apply(Qdat_xtab[,c("S77","S354","S351","S352","S271","S308")
 ```
 
 ```{r Coastal Q data,include = FALSE}
-## Coastal Q -------------------------------------------------------------------
+## Coastal Q ------------------------------------------------------------------
 ## Add Lostman's
 usgs_west <- data.frame(site_no = c("02290888","02290918","02290878"), 
                         loc = c("Chatham","Lost","Broad"),
@@ -860,20 +860,29 @@ sal_dat_xtab <- dcast(sal_dat,SITE+Date~param,value.var = "Data.Value",mean,na.r
 ## SLE Sal
 sites <- c("02277100","02277110")
 pCode2 <- c("00010","00095","00480");#temp, spc,sal
+
+# read_waterdata_monitoring_location(paste0("USGS-",sites))
 # readNWISsite(sites)
 SLE_sal_dat_list <- future_lapply(seq_along(sites), function(i) {
   # Attempt to retrieve data and handle errors
   tryCatch({
-    site_no <- sites[i]
+    site_id <- paste0("USGS-",sites[i])
     sdate <- Start.Date[1]
     edate <- YEST
     
-    tmp <- readNWISdv(site_no,pCode2,sdate,edate)
-    col_names_vals <- names(tmp)
-    if(any(grep(c("..from.SP.Cond."),col_names_vals))){
-      col_names_vals <- gsub("\\.\\.from\\.SP\\.Cond\\.", "",col_names_vals)
-      }
-    colnames(tmp) <- col_names_vals
+    tmp <- read_waterdata_daily(
+      monitoring_location_id = site_id,
+      parameter_code = pCode2,
+      time = c(sdate, edate),
+      skipGeometry = TRUE
+    )
+    
+    # tmp <- readNWISdv(site_no,pCode2,sdate,edate)
+    # col_names_vals <- names(tmp)
+    # if(any(grep(c("..from.SP.Cond."),col_names_vals))){
+    #   col_names_vals <- gsub("\\.\\.from\\.SP\\.Cond\\.", "",col_names_vals)
+    #   }
+    # colnames(tmp) <- col_names_vals
     
     tmp
   }, error = function(e) {
@@ -881,16 +890,25 @@ SLE_sal_dat_list <- future_lapply(seq_along(sites), function(i) {
     NULL  # Return NULL if there's an error
   })
 }, future.seed = TRUE)
+
 SLE_sal_dat <- do.call(rbind,SLE_sal_dat_list)|>
-  merge(data.frame(site_no=sites,SITE=c("STL_RIVER","STL_STPT")),"site_no")
+  merge(data.frame(monitoring_location_id = paste0("USGS-",sites),
+                   SITE = c("STL_RIVER","STL_STPT")),
+        "monitoring_location_id")|>
+  merge(
+    data.frame(parameter_code = pCode2,
+               param = c("WT","SPC","SAL")),
+    "parameter_code"
+  )
 
-SLE_sal_dat_melt <- SLE_sal_dat[,c("site_no","Date","SITE",paste("X_BOTTOM",pCode2,"00003",sep="_"))]|>
-  melt(id.vars =c("site_no","Date","SITE"))
-SLE_sal_dat_melt$pCode <- sapply(strsplit(as.character(SLE_sal_dat_melt$variable),"_"),"[",3)
-SLE_sal_dat_melt <- merge(SLE_sal_dat_melt,
-                          data.frame(pCode = pCode2,param = c("WT","SPC","SAL")),"pCode")
+# SLE_sal_dat_melt <- SLE_sal_dat[,c("site_no","Date","SITE",paste("X_BOTTOM",pCode2,"00003",sep="_"))]|>
+#   melt(id.vars =c("site_no","Date","SITE"))
+# SLE_sal_dat_melt$pCode <- sapply(strsplit(as.character(SLE_sal_dat_melt$variable),"_"),"[",3)
+# SLE_sal_dat_melt <- merge(SLE_sal_dat_melt,
+#                           data.frame(pCode = pCode2,param = c("WT","SPC","SAL")),"pCode")
+SLE_sal_dat$Date <- date.fun(SLE_sal_dat$time)
 
-SLE_sal_dat_xtab <- dcast(SLE_sal_dat_melt,SITE+Date~param,value.var = "value",mean,na.rm=TRUE)
+SLE_sal_dat_xtab <- dcast(SLE_sal_dat,SITE+Date~param,value.var = "value",mean,na.rm=TRUE)
 
 sal_dat_xtab <- rbind(sal_dat_xtab,SLE_sal_dat_xtab)
 
@@ -905,7 +923,8 @@ sal_dat_xtab <- rbind(sal_dat_xtab,SLE_sal_dat_xtab)
 #   print("source: SQL DB")
 # }
 
-sal_dat_xtab$calc_Sal=with(sal_dat_xtab,ifelse(is.na(SAL),SalinityCalc(SPC,WT),SAL))
+sal_dat_xtab$calc_Sal <- with(sal_dat_xtab,
+                              ifelse(is.na(SAL),SalinityCalc(SPC,WT),SAL))
 sal_dat_xtab$DOY <- as.numeric(format(sal_dat_xtab$Date,"%j"))
 sal_dat_xtab$DOWY <- hydro.day(sal_dat_xtab$Date)
 sal_dat_xtab$WY <- WY(sal_dat_xtab$Date)
@@ -1206,11 +1225,10 @@ for(i in seq_along(lok_stage_yrs)){
 lines(Mean ~ DOWY,subset(lok.stg, WY == lok_stage_yrs[i]),lwd = 3, col = lok_stage_cols[i], lty = 1)
 }
 
-
-lines(Mean~DOWY,subset(lok.stg,WY==CurWY-3),lwd=4,col=adjustcolor("purple",0.5),lty=1)
-lines(Mean~DOWY,subset(lok.stg,WY==CurWY-2),lwd=4,col=adjustcolor("forestgreen",0.5),lty=1)
-lines(Mean~DOWY,subset(lok.stg,WY==CurWY-1),lwd=4,col=adjustcolor("blue",0.5),lty=1)
-lines(Mean~DOWY,subset(lok.stg,WY==CurWY),lwd=4,col="red",lty=1)
+# lines(Mean~DOWY,subset(lok.stg,WY==CurWY-3),lwd=4,col=adjustcolor("purple",0.5),lty=1)
+# lines(Mean~DOWY,subset(lok.stg,WY==CurWY-2),lwd=4,col=adjustcolor("forestgreen",0.5),lty=1)
+# lines(Mean~DOWY,subset(lok.stg,WY==CurWY-1),lwd=4,col=adjustcolor("blue",0.5),lty=1)
+# lines(Mean~DOWY,subset(lok.stg,WY==CurWY),lwd=4,col="red",lty=1)
 
 lab.loc <- subset(LOSOM.sch.bk,Date == YEST)$ZONE.D-0.8
 
@@ -2060,29 +2078,30 @@ mtext(side=2,outer=T,line=1, "Stage Elevation (Ft, NGVD29)")
 <br>
 
 ```{r}
-EAA.STG.locs <- merge(stg_dbkeys,eaa.stg.canal,"loc")
-EAA.STG.locs$labs <- with(EAA.STG.locs,paste0(canal," (DBKEY:",DA,")"))
-
-cap.val <- "Stage elevations this time for the current and last three water years"
-tmp <- subset(EAA_stg,DOWY==hydro.day(YEST))|>
-  dcast(Date+WY~canal,value.var = "Data.Value",fun.aggregate = function(x) round(mean(x),2))
-tmp[,c("Date","WY",eaa_canal_labs)]|>
-  flextable()|>
-  flextable::width(width=c(1,0.75,rep(1.0,4)))|>
-  flextable::align(align="center",part="all")|>
-  colformat_datetime(j=1,fmt_date="%m-%d")|>
-  colformat_double(j=2,big.mark="",digits=0)|>
-  colformat_num(j=3:6,na_str="- NR -",digits = 2)|>
-  padding(padding=1,part="all")|>
-  # font(fontname="Times New Roman",part="all")|>
-  fontsize(size=12,part="body")|>
-  fontsize(size=13,part="header")|>
-  bold(part="header")|>
-  set_header_labels("Date"="Date\n(Month-Day)",
-                    "WY"="Water Year")|>
-  bg(i=~WY==CurWY,part="body",bg="wheat")|>
-  footnote(j=3:6,value=as_paragraph(EAA.STG.locs$labs),ref_symbols =paste0(" ",1:4," "),part="header")|>
-  add_header_lines(values=cap.val)|>flextable::align(align="center",part="header")|>fontsize(size=13,part="header")
+# 
+# EAA.STG.locs <- merge(stg_dbkeys,eaa.stg.canal,"loc")
+# EAA.STG.locs$labs <- with(EAA.STG.locs,paste0(canal," (DBKEY:",DA,")"))
+# 
+# cap.val <- "Stage elevations this time for the current and last three water years"
+# tmp <- subset(EAA_stg,DOWY==hydro.day(YEST))|>
+#   dcast(Date+WY~canal,value.var = "Data.Value",fun.aggregate = function(x) round(mean(x),2))
+# tmp[,c("Date","WY",eaa_canal_labs)]|>
+#   flextable()|>
+#   flextable::width(width=c(1,0.75,rep(1.0,4)))|>
+#   flextable::align(align="center",part="all")|>
+#   colformat_datetime(j=1,fmt_date="%m-%d")|>
+#   colformat_double(j=2,big.mark="",digits=0)|>
+#   colformat_num(j=3:6,na_str="- NR -",digits = 2)|>
+#   padding(padding=1,part="all")|>
+#   # font(fontname="Times New Roman",part="all")|>
+#   fontsize(size=12,part="body")|>
+#   fontsize(size=13,part="header")|>
+#   bold(part="header")|>
+#   set_header_labels("Date"="Date\n(Month-Day)",
+#                     "WY"="Water Year")|>
+#   bg(i=~WY==CurWY,part="body",bg="wheat")|>
+#   footnote(j=3:6,value=as_paragraph(EAA.STG.locs$labs),ref_symbols =paste0(" ",1:4," "),part="header")|>
+#   add_header_lines(values=cap.val)|>flextable::align(align="center",part="header")|>fontsize(size=13,part="header")
 
 ```
 
