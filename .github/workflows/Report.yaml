@@ -28,6 +28,7 @@ jobs:
 
     # Logging step here
     - name: Log Scheduled and Current Time
+      shell: bash
       run: |
         echo "Scheduled cron: 55 7,8 * * *"
         echo "Scheduled timezone: America/New_York"
