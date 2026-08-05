@@ -1,14 +1,14 @@
 # from https://distillery.rbind.io/posts/2021-03-18-use-github-actions-with-r-markdown-and-distill/
 name: Render & Deploy Report Site
 
-on: 
-  push:
-  workflow_dispatch:
-  schedule:
-    # Runs daily at 12:55 UTC (07:55 ET) and 13:55 UTC (08:55 ET)
-    - cron: '30 7,8 * * *'
-      timezone: 'America/New_York'
-# https://crontab.guru/#5_*_*_*_*
+on: push
+#  push:
+#   workflow_dispatch:
+#   schedule:
+#     # Runs daily at 12:55 UTC (07:55 ET) and 13:55 UTC (08:55 ET)
+#     - cron: '30 7,8 * * *'
+#       timezone: 'America/New_York'
+# # https://crontab.guru/#5_*_*_*_*
 
 
 permissions:
